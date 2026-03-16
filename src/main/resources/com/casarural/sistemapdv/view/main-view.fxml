@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml">
+
+    <!-- Menu superior -->
+    <top>
+        <MenuBar fx:id="menuPrincipal">
+
+            <Menu text="Arquivo">
+                <MenuItem text="Novo"/>
+                <MenuItem text="Abrir"/>
+                <MenuItem text="Sair" fx:id="menuSair"/>
+            </Menu>
+
+            <Menu text="Sistema">
+                <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
+                <MenuItem text="Atualizar Dados"/>
+            </Menu>
+
+            <Menu text="Ajuda">
+                <MenuItem text="Sobre"/>
+            </Menu>
+
+        </MenuBar>
+    </top>
+
+    <!-- Área central -->
+    <center>
+        <GridPane hgap="25" vgap="25" alignment="CENTER">
+
+            <padding>
+                <Insets top="30" right="30" bottom="30" left="30"/>
+            </padding>
+
+            <!-- Linha 1 -->
+            <Button text="PDV"
+                    fx:id="botaoPDV"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="0"
+                    GridPane.columnIndex="0"/>
+
+            <Button text="Cadastrar Produtos"
+                    fx:id="botaoProdutos"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="0"
+                    GridPane.columnIndex="1"/>
+
+            <Button text="Consultar Produtos"
+                    fx:id="botaoConsultarProdutos"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="0"
+                    GridPane.columnIndex="2"/>
+
+            <!-- Linha 2 -->
+            <Button text="Cadastrar Clientes"
+                    fx:id="botaoClientes"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="1"
+                    GridPane.columnIndex="0"/>
+
+            <Button text="Consultar Fiados"
+                    fx:id="botaoFiados"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="1"
+                    GridPane.columnIndex="1"/>
+
+            <Button text="Histórico de Compras"
+                    fx:id="botaoHistorico"
+                    prefWidth="220"
+                    prefHeight="120"
+                    GridPane.rowIndex="1"
+                    GridPane.columnIndex="2"/>
+
+        </GridPane>
+    </center>
+
+</BorderPane>

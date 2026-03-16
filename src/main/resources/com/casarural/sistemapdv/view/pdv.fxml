@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml">
+
+    <!-- Barra superior -->
+    <top>
+        <HBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <Label text="Código"/>
+            <TextField fx:id="campoCodigoProduto" prefWidth="200"/>
+
+            <Label text="Qtd"/>
+            <TextField fx:id="campoQuantidade" prefWidth="80"/>
+
+            <Button text="Adicionar" fx:id="botaoAdicionar"/>
+        </HBox>
+    </top>
+
+    <!-- Tabela de itens -->
+    <center>
+        <TableView fx:id="tabelaItens">
+            <columns>
+                <TableColumn text="Código" fx:id="colunaCodigo" prefWidth="120"/>
+                <TableColumn text="Produto" fx:id="colunaProduto" prefWidth="300"/>
+                <TableColumn text="Qtd" fx:id="colunaQuantidade" prefWidth="80"/>
+                <TableColumn text="Preço" fx:id="colunaPreco" prefWidth="120"/>
+                <TableColumn text="Total" fx:id="colunaTotal" prefWidth="120"/>
+            </columns>
+        </TableView>
+    </center>
+
+    <!-- Painel lateral -->
+    <right>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <Label text="Resumo"/>
+
+            <HBox spacing="10">
+                <Label text="Subtotal"/>
+                <Label fx:id="labelSubtotal"/>
+            </HBox>
+
+            <HBox spacing="10">
+                <Label text="Desconto"/>
+                <Label fx:id="labelDesconto"/>
+            </HBox>
+
+            <HBox spacing="10">
+                <Label text="Total"/>
+                <Label fx:id="labelTotal"/>
+            </HBox>
+
+            <Separator/>
+
+            <Button text="Finalizar Venda" fx:id="botaoFinalizar" maxWidth="Infinity"/>
+            <Button text="Cancelar Venda" fx:id="botaoCancelar" maxWidth="Infinity"/>
+
+        </VBox>
+    </right>
+
+    <!-- Rodapé -->
+    <bottom>
+        <HBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <Button text="Remover Item" fx:id="botaoRemover"/>
+            <Button text="Limpar Venda" fx:id="botaoLimpar"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
+

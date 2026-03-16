@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml">
+
+    <!-- Barra superior -->
+    <top>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="15" right="15" bottom="10" left="15"/>
+            </padding>
+
+            <Label text="Clientes" style="-fx-font-size:18px; -fx-font-weight:bold;"/>
+
+            <HBox spacing="10">
+                <TextField fx:id="campoBuscaCliente" promptText="Buscar cliente..."/>
+                <Button text="Buscar" fx:id="botaoBuscarCliente"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Button text="Novo Cliente" fx:id="botaoNovoCliente"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Tabela -->
+    <center>
+        <TableView fx:id="tabelaClientes">
+
+            <columns>
+
+                <TableColumn text="ID" fx:id="colunaId" prefWidth="80"/>
+
+                <TableColumn text="Nome" fx:id="colunaNome" prefWidth="250"/>
+
+                <TableColumn text="Telefone" fx:id="colunaTelefone" prefWidth="150"/>
+
+                <TableColumn text="Fiado Atual" fx:id="colunaFiadoAtual" prefWidth="120"/>
+
+                <TableColumn text="Ver Fiado" fx:id="colunaVerFiado" prefWidth="120"/>
+
+                <TableColumn text="Editar" fx:id="colunaEditar" prefWidth="100"/>
+
+            </columns>
+
+        </TableView>
+    </center>
+
+</BorderPane>
+
