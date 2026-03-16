@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml">
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController">
 
     <!-- Menu superior -->
     <top>
@@ -44,11 +44,12 @@
                     GridPane.rowIndex="0"
                     GridPane.columnIndex="0"/>
 
-            <Button text="Cadastrar Produtos"
+            <Button text="Cadastrar Produtos (F2)"
                     fx:id="botaoProdutos"
                     prefWidth="220"
                     prefHeight="120"
                     GridPane.rowIndex="0"
+                    onAction="#onBotaoProdutosAction"
                     GridPane.columnIndex="1"/>
 
             <Button text="Consultar Produtos"
