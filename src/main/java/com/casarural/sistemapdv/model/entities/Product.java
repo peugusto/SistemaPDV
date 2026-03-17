@@ -9,11 +9,21 @@ public class Product {
     private double precoProduto;
     private int estoque;
 
+    public Product(){}
+
     public Product(String codBarras, String nomeProduto, double precoProduto, int estoque) {
         this.codBarras = codBarras;
         this.nomeProduto = nomeProduto;
         this.precoProduto = precoProduto;
         this.estoque = estoque;
+    }
+
+    public int getIdProduto() {
+        return idProduto;
+    }
+
+    public void setIdProduto(int idProduto) {
+        this.idProduto = idProduto;
     }
 
     public String getCodBarras() {

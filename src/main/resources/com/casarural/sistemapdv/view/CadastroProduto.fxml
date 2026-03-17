@@ -24,16 +24,20 @@
             </padding>
 
             <Label text="Código de Barras:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <TextField fx:id="campoCodigoBarras" prefWidth="250"
+            <TextField fx:id="txtCodBarras" prefWidth="250"
                        GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
             <Label text="Nome do Produto:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <TextField fx:id="campoNomeProduto" prefWidth="350"
+            <TextField fx:id="txtNome" prefWidth="350"
                        GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
             <Label text="Preço Unitário:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <TextField fx:id="campoPrecoUnitario" prefWidth="150"
+            <TextField fx:id="txtPreco" prefWidth="150"
                        GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+            <Label text="Estoque:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtEstoque" prefWidth="150"
+                       GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
         </GridPane>
     </center>
@@ -45,8 +49,8 @@
                 <Insets top="10" right="20" bottom="20" left="20"/>
             </padding>
 
-            <Button text="Salvar" fx:id="botaoSalvar"/>
-            <Button text="Limpar" fx:id="botaoLimpar"/>
+            <Button text="Salvar" fx:id="botaoSalvar" onAction="#onBotaoSalvarAction"/>
+            <Button text="Limpar " fx:id="botaoLimpar"/>
             <Button text="Cancelar" fx:id="botaoCancelar" onAction="#onBotaoCancelarAction"/>
         </HBox>
     </bottom>

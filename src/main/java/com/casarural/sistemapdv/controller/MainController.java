@@ -1,5 +1,8 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.ViewLoader;
 import javafx.fxml.FXML;
@@ -20,7 +23,11 @@ public class MainController {
     public void onButtonProductAction() {
         ViewLoader.showView(
                 "/com/casarural/sistemapdv/view/CadastroProduto.fxml",
-                "Cadastro de Produto"
+                "Cadastro de Produto",
+                (CadastroProdutosController controller) -> {
+                    controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
+                    controller.setProduct(new Product());
+                }
         );
     }
 
