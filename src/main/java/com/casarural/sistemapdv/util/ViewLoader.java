@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 
 public class ViewLoader {
 
-    public static <T> void showView(String fxmlPath, String title, Consumer<T> controllerAction) {
+    public static <T> void showView(Boolean isFullScreen, String fxmlPath, String title, Consumer<T> controllerAction) {
         try {
             FXMLLoader loader = new FXMLLoader(ViewLoader.class.getResource(fxmlPath));
             Parent root = loader.load();
@@ -40,10 +40,16 @@ public class ViewLoader {
             });
 
             stage.setScene(scene);
-            stage.setResizable(false);
             stage.initModality(Modality.APPLICATION_MODAL);
 
-            stage.show();
+            if (isFullScreen) {
+                stage.setResizable(true);
+                stage.setMaximized(true);
+            } else {
+                stage.setResizable(false);
+            }
+
+            stage.showAndWait();
 
         } catch (IOException e) {
             Alerts.showAlert("Erro Crítico", "Erro ao carregar a tela", e.getMessage(), AlertType.ERROR);
@@ -54,7 +60,7 @@ public class ViewLoader {
         }
     }
 
-    public static void showView(String fxmlPath, String title) {
-        showView(fxmlPath, title, null);
+    public static void showView( Boolean isFullScreen, String fxmlPath, String title) {
+        showView(isFullScreen,fxmlPath, title, null);
     }
 }

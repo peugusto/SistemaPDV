@@ -130,14 +130,14 @@ public class ProductDaoJdbc implements ProductDao {
         }
     }
 
-    // Método auxiliar para não repetir código de criação de objeto
+
     private Product instantiateProduct(ResultSet rs) throws SQLException {
         Product prod = new Product();
         prod.setIdProduto(rs.getInt("id_produto"));
         prod.setCodBarras(rs.getString("cod_barras"));
         prod.setNomeProduto(rs.getString("nome_produto"));
         prod.setPrecoProduto(rs.getDouble("preco_produto"));
-        // Usando setEstoque direto, ou ajuste conforme sua lógica de incremento
+
         prod.setEstoque(rs.getInt("estoque"));
         return prod;
     }

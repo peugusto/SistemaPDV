@@ -24,6 +24,7 @@ public class MainController {
     @FXML
     public void onButtonProductAction() {
         ViewLoader.showView(
+                false,
                 "/com/casarural/sistemapdv/view/CadastroProduto.fxml",
                 "Cadastro de Produto",
                 (CadastroProdutosController controller) -> {
@@ -37,6 +38,7 @@ public class MainController {
     @FXML
     public void onButtonCustomerAction() {
         ViewLoader.showView(
+                false,
                 "/com/casarural/sistemapdv/view/RegisterCustomer.fxml",
                 "Cadastro de Cliente",
                 (RegisterCustomerController controller) -> {
@@ -48,6 +50,7 @@ public class MainController {
 
     public void onButtonCustomerListAction() {
         ViewLoader.showView(
+                true,
                 "/com/casarural/sistemapdv/view/customer_list.fxml",
                 "Lista de Cliente",
                 (CustomerListController controller) -> {
@@ -59,6 +62,7 @@ public class MainController {
 
     public void onButtonProductListAction() {
         ViewLoader.showView(
+                true,
                 "/com/casarural/sistemapdv/view/product_list.fxml",
                 "Lista de Cliente",
                 (ProductListController controller) -> {
@@ -71,7 +75,7 @@ public class MainController {
 
     @FXML
     public void onBotaoPDVAction() {
-        ViewLoader.showView("/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto");
+        ViewLoader.showView(true,"/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto");
     }
 }
 

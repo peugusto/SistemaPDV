@@ -27,7 +27,9 @@ public class Main extends Application {
             switch (event.getCode()) {
                 case F1 -> controller.onBotaoPDVAction();
                 case F2 -> controller.onButtonProductAction();
-                case F3 -> controller.onButtonCustomerAction();
+                case F3 -> controller.onButtonProductListAction();
+                case F4 -> controller.onButtonCustomerAction();
+                case F5 -> controller.onButtonCustomerListAction();
                 case ESCAPE -> {
                 }
                 default -> { return; }
@@ -36,6 +38,7 @@ public class Main extends Application {
         });
 
         stage.setTitle("Casa Rural");
+        stage.setMaximized(true);
         stage.setScene(scene);
         stage.show();
     }
