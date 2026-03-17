@@ -24,13 +24,17 @@
             </padding>
 
             <Label text="Nome Completo:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtName" prefWidth="350"
+            <TextField fx:id="txtNome" prefWidth="350"
                        GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
             <Label text="Celular / WhatsApp:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
             <TextField fx:id="txtPhoneNumber" prefWidth="200"
                        GridPane.rowIndex="1" GridPane.columnIndex="1"
                        promptText="(00) 00000-0000"/>
+
+            <Label text="Limite de Credito (inicial):" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtLimite" prefWidth="350"
+                       GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
         </GridPane>
     </center>
@@ -41,7 +45,7 @@
                 <Insets top="10" right="20" bottom="20" left="20"/>
             </padding>
 
-            <Button text="Salvar" fx:id="btnSave"/>
+            <Button text="Salvar" fx:id="btnSave" onAction="#onBtnSaveAction"/>
             <Button text="Limpar" fx:id="btnClear"/>
             <Button text="Cancelar" fx:id="btnCancel" onAction="#onBtnCancelAction"/>
         </HBox>

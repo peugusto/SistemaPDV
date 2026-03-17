@@ -1,4 +1,6 @@
 package com.casarural.sistemapdv.model.dao;
 
-public interface CustomerDao {
+import com.casarural.sistemapdv.model.entities.Customer;
+
+public interface CustomerDao extends GenericDao<Customer,Integer>{
 }

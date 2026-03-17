@@ -3,7 +3,7 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
-import com.casarural.sistemapdv.util.Constrains;
+import com.casarural.sistemapdv.util.Constraints;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
@@ -82,14 +82,20 @@ public class CadastroProdutosController implements Initializable {
 
     @FXML
     public void onBotaoCancelarAction() {
+        if (Alerts.showConfirmation("Sair", "Deseja voltar ao menu?", "Dados não salvos serão perdidos.")) {
+            closeStage();
+        }
+    }
+
+    private void closeStage() {
         Stage stage = (Stage) botaoCancelar.getScene().getWindow();
         stage.close();
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Constrains.setTextFieldInteger(txtEstoque);
-        Constrains.setTextFieldDouble(txtPreco);
-        Constrains.setTextFieldMaxLength(txtNome,20);
+        Constraints.setTextFieldInteger(txtEstoque);
+        Constraints.setTextFieldDouble(txtPreco);
+        Constraints.setTextFieldMaxLength(txtNome,20);
     }
 }

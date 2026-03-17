@@ -1,7 +1,9 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.ViewLoader;
@@ -38,7 +40,8 @@ public class MainController {
                 "/com/casarural/sistemapdv/view/RegisterCustomer.fxml",
                 "Cadastro de Cliente",
                 (RegisterCustomerController controller) -> {
-
+                    controller.setCustomerService(new CustomerService(DaoFactory.createCustomerDAO()));
+                    controller.setCustomer(new Customer());
                 }
         );
     }
