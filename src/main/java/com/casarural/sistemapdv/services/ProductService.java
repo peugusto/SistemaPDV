@@ -12,12 +12,12 @@ public class ProductService {
         this.dao = dao;
     }
 
-    public void saveOrUpdate(Product obj) {
-        if (obj.getIdProduto() == 0) {
-            dao.insert(obj);
-        } else {
-            dao.update(obj);
-        }
+    public void insert(Product obj){
+        dao.insert(obj);
+    }
+
+    public void delete(Integer id){
+        dao.deleteById(id);
     }
 
     public List<Product> findAll() {
