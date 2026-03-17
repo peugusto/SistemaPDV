@@ -26,7 +26,15 @@ public class Main extends Application {
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.F2) {
-                controller.onBotaoProdutosAction();
+                controller.onButtonProductAction();
+                event.consume();
+            }
+            if (event.getCode() == KeyCode.F3) {
+                controller.onButtonProductAction();
+                event.consume();
+            }
+            if (event.getCode() == KeyCode.F1) {
+                controller.onBotaoPDVAction();
                 event.consume();
             }
         });

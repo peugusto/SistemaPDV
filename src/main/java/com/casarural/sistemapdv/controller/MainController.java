@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.ViewLoader;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -13,28 +14,34 @@ import java.io.IOException;
 
 public class MainController {
 
-    @FXML
-    private Button botaoProdutos;
+
+    @FXML private Button botaoProdutos;
+    @FXML private Button botaoClientes;
 
     @FXML
-    public void onBotaoProdutosAction() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/CadastroProduto.fxml"));
-            Parent root = loader.load();
+    public void onButtonProductAction() {
+        ViewLoader.showView(
+                "/com/casarural/sistemapdv/view/CadastroProduto.fxml",
+                "Cadastro de Produto"
+        );
+    }
 
-            Stage stage = new Stage();
-            stage.setTitle("Cadastro de Produto");
 
-            stage.setScene(new Scene(root));
+    @FXML
+    public void onButtonCustomerAction() {
+        ViewLoader.showView(
+                "/com/casarural/sistemapdv/view/RegisterCustomer.fxml",
+                "Cadastro de Cliente",
+                (RegisterCustomerController controller) -> {
 
-            stage.setResizable(false);
-            stage.initModality(Modality.APPLICATION_MODAL);
+                }
+        );
+    }
 
-            stage.show();
 
-        } catch (IOException e) {
-            Alerts.showAlert("Erro", null, e.getMessage(), AlertType.ERROR);
-            e.printStackTrace();
-        }
+    @FXML
+    public void onBotaoPDVAction() {
+        ViewLoader.showView("/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto");
     }
 }
+

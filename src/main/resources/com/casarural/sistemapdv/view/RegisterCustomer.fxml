@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" 
+            fx:controller="com.casarural.sistemapdv.controller.RegisterCustomerController">
+
+    <top>
+        <HBox alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Cadastro de Cliente" style="-fx-font-size:18px; -fx-font-weight:bold;"/>
+        </HBox>
+    </top>
+
+    <center>
+        <GridPane hgap="10" vgap="15">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <Label text="Nome Completo:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtName" prefWidth="350"
+                       GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+            <Label text="Celular / WhatsApp:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtPhoneNumber" prefWidth="200"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1"
+                       promptText="(00) 00000-0000"/>
+
+        </GridPane>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <padding>
+                <Insets top="10" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <Button text="Salvar" fx:id="btnSave"/>
+            <Button text="Limpar" fx:id="btnClear"/>
+            <Button text="Cancelar" fx:id="btnCancel" onAction="#onBtnCancelAction"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>

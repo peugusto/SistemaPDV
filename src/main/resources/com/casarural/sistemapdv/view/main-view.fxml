@@ -28,7 +28,7 @@
         </MenuBar>
     </top>
 
-    <!-- Área central -->
+
     <center>
         <GridPane hgap="25" vgap="25" alignment="CENTER">
 
@@ -36,20 +36,20 @@
                 <Insets top="30" right="30" bottom="30" left="30"/>
             </padding>
 
-            <!-- Linha 1 -->
-            <Button text="PDV"
+            <Button text="Venda (F1)"
                     fx:id="botaoPDV"
                     prefWidth="220"
                     prefHeight="120"
                     GridPane.rowIndex="0"
-                    GridPane.columnIndex="0"/>
+                    GridPane.columnIndex="0"
+                    onAction="#onBotaoPDVAction"/>
 
             <Button text="Cadastrar Produtos (F2)"
                     fx:id="botaoProdutos"
                     prefWidth="220"
                     prefHeight="120"
                     GridPane.rowIndex="0"
-                    onAction="#onBotaoProdutosAction"
+                    onAction="#onButtonProductAction"
                     GridPane.columnIndex="1"/>
 
             <Button text="Consultar Produtos"
@@ -59,10 +59,10 @@
                     GridPane.rowIndex="0"
                     GridPane.columnIndex="2"/>
 
-            <!-- Linha 2 -->
-            <Button text="Cadastrar Clientes"
+            <Button text="Cadastrar Clientes (F3)"
                     fx:id="botaoClientes"
                     prefWidth="220"
+                    onAction="#onButtonCustomerAction"
                     prefHeight="120"
                     GridPane.rowIndex="1"
                     GridPane.columnIndex="0"/>
