@@ -6,7 +6,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml">
 
-    <!-- Barra superior -->
+
     <top>
         <HBox spacing="10">
             <padding>
@@ -23,7 +23,7 @@
         </HBox>
     </top>
 
-    <!-- Tabela de itens -->
+
     <center>
         <TableView fx:id="tabelaItens">
             <columns>
@@ -36,7 +36,7 @@
         </TableView>
     </center>
 
-    <!-- Painel lateral -->
+
     <right>
         <VBox spacing="10">
             <padding>
@@ -68,7 +68,7 @@
         </VBox>
     </right>
 
-    <!-- Rodapé -->
+
     <bottom>
         <HBox spacing="10">
             <padding>
