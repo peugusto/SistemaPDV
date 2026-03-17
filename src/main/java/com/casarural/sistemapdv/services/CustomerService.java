@@ -18,6 +18,11 @@ public class CustomerService {
         dao.insert(obj);
     }
 
+    public void deleteById(Integer id){
+        dao.deleteById(id);
+    }
+
+
     public List<Customer> findAll() {
         return dao.findAll();
     }

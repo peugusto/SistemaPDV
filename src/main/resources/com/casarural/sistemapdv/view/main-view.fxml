@@ -44,7 +44,7 @@
                     GridPane.columnIndex="0"
                     onAction="#onBotaoPDVAction"/>
 
-            <Button text="Cadastrar Produtos (F2)"
+            <Button text="Cadastrar/Fornecer Produtos (F2)"
                     fx:id="botaoProdutos"
                     prefWidth="220"
                     prefHeight="120"
@@ -52,14 +52,15 @@
                     onAction="#onButtonProductAction"
                     GridPane.columnIndex="1"/>
 
-            <Button text="Consultar Produtos"
+            <Button text="Estoque de Produtos (F3)"
                     fx:id="botaoConsultarProdutos"
                     prefWidth="220"
                     prefHeight="120"
+                    onAction="#onButtonProductListAction"
                     GridPane.rowIndex="0"
                     GridPane.columnIndex="2"/>
 
-            <Button text="Cadastrar Clientes (F3)"
+            <Button text="Cadastrar Clientes (F4)"
                     fx:id="botaoClientes"
                     prefWidth="220"
                     onAction="#onButtonCustomerAction"
@@ -67,14 +68,15 @@
                     GridPane.rowIndex="1"
                     GridPane.columnIndex="0"/>
 
-            <Button text="Consultar Fiados"
+            <Button text="Consultar Clientes (F5)"
                     fx:id="botaoFiados"
+                    onAction="#onButtonCustomerListAction"
                     prefWidth="220"
                     prefHeight="120"
                     GridPane.rowIndex="1"
                     GridPane.columnIndex="1"/>
 
-            <Button text="Histórico de Compras"
+            <Button text="Histórico de Vendas"
                     fx:id="botaoHistorico"
                     prefWidth="220"
                     prefHeight="120"

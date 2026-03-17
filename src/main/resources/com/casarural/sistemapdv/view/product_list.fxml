@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.image.*?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.ProductListController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Estoque de Produtos" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Pesquise pelo nome ou codigo de barras..." HBox.hgrow="ALWAYS" prefHeight="30"/>
+        <Button fx:id="searchButton" text="Search" prefHeight="30" style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+    </HBox>
+
+    <TableView fx:id="productTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="idColumn" text="ID" prefWidth="50" />
+            <TableColumn fx:id="barcodeColumn" text="Código de Barras" prefWidth="120" />
+            <TableColumn fx:id="nameColumn" text="Nome do Produto" prefWidth="200" />
+            <TableColumn fx:id="priceColumn" text="Preço" prefWidth="100" />
+            <TableColumn fx:id="stockColumn" text="Estoque" prefWidth="80" />
+            
+            <TableColumn fx:id="actionsColumn" text="" prefWidth="150" />
+        </columns>
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+        </columnResizePolicy>
+    </TableView>
+</VBox>

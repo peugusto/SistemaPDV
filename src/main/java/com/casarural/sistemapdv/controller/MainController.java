@@ -46,6 +46,28 @@ public class MainController {
         );
     }
 
+    public void onButtonCustomerListAction() {
+        ViewLoader.showView(
+                "/com/casarural/sistemapdv/view/customer_list.fxml",
+                "Lista de Cliente",
+                (CustomerListController controller) -> {
+                    controller.setCustomerService(new CustomerService(DaoFactory.createCustomerDAO()));
+                    controller.updateTableView();
+                }
+        );
+    }
+
+    public void onButtonProductListAction() {
+        ViewLoader.showView(
+                "/com/casarural/sistemapdv/view/product_list.fxml",
+                "Lista de Cliente",
+                (ProductListController controller) -> {
+                    controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
+                    controller.updateTableView();
+                }
+        );
+    }
+
 
     @FXML
     public void onBotaoPDVAction() {
