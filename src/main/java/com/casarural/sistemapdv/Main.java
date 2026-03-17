@@ -2,7 +2,9 @@ package com.casarural.sistemapdv;
 
 import com.casarural.sistemapdv.controller.MainController;
 import com.casarural.sistemapdv.db.DB;
+import com.casarural.sistemapdv.util.Alerts;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
@@ -25,18 +27,15 @@ public class Main extends Application {
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (event.getCode() == KeyCode.F2) {
-                controller.onButtonProductAction();
-                event.consume();
+            switch (event.getCode()) {
+                case F1 -> controller.onBotaoPDVAction();
+                case F2 -> controller.onButtonProductAction();
+                case F3 -> controller.onButtonCustomerAction();
+                case ESCAPE -> {
+                }
+                default -> { return; }
             }
-            if (event.getCode() == KeyCode.F3) {
-                controller.onButtonProductAction();
-                event.consume();
-            }
-            if (event.getCode() == KeyCode.F1) {
-                controller.onBotaoPDVAction();
-                event.consume();
-            }
+            event.consume();
         });
 
         stage.setTitle("Casa Rural");
