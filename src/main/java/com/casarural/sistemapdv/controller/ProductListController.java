@@ -42,7 +42,7 @@ public class ProductListController implements Initializable {
 
     private ObservableList<Product> obsList;
 
-    // Injeção do serviço (pode ser feita via uma classe utilitária ou Main)
+
     public void setProductService(ProductService service) {
         this.service = service;
     }
@@ -53,16 +53,14 @@ public class ProductListController implements Initializable {
     }
 
     private void initializeNodes() {
-        // Liga as colunas aos atributos da classe Product
+
         idColumn.setCellValueFactory(new PropertyValueFactory<>("idProduto"));
         barcodeColumn.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
 
-        // Ajuste para a tabela ocupar o espaço disponível
-//        Stage stage = (Stage) productTable.getScene().getWindow();
-//        productTable.prefHeightProperty().bind(stage.heightProperty());
+
     }
 
     public void updateTableView() {
@@ -72,7 +70,7 @@ public class ProductListController implements Initializable {
         List<Product> list = service.findAll();
         obsList = FXCollections.observableArrayList(list);
 
-        // Configuração da busca (Filtro)
+
         FilteredList<Product> filteredData = new FilteredList<>(obsList, p -> true);
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -101,8 +99,6 @@ public class ProductListController implements Initializable {
 
             {
                 pane.setAlignment(Pos.CENTER);
-                editBtn.setStyle("-fx-background-color: #f1c40f; -fx-text-fill: white; -fx-cursor: hand;");
-                deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-cursor: hand;");
 
                 editBtn.setOnAction(event -> {
                     Product obj = getTableView().getItems().get(getIndex());
@@ -125,7 +121,7 @@ public class ProductListController implements Initializable {
 
     private void onEditAction(Product obj) {
         System.out.println("Abrir formulário de edição para: " + obj.getNomeProduto());
-        // Aqui você chamaria o método para abrir a janela de cadastro preenchida
+
     }
 
     private void onDeleteAction(Product obj) {

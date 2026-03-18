@@ -55,8 +55,10 @@ public class Product {
     }
 
     public void setEstoque(int estoque) {
-        this.estoque += estoque;
+        this.estoque = estoque;
     }
+
+    public void adicionarEstoque(int quantidade) { this.estoque += quantidade;}
 
     @Override
     public boolean equals(Object o) {

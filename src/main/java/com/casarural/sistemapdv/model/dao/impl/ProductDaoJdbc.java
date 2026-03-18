@@ -141,4 +141,24 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setEstoque(rs.getInt("estoque"));
         return prod;
     }
+
+    @Override
+    public Optional<Product> findByCodBarras(String codBarras) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+        try {
+            st = conn.prepareStatement("SELECT * FROM produto WHERE cod_barras = ?");
+            st.setString(1, codBarras);
+            rs = st.executeQuery();
+            if (rs.next()) {
+                return Optional.of(instantiateProduct(rs));
+            }
+            return Optional.empty();
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeStatement(st);
+            DB.closeResultSet(rs);
+        }
+    }
 }

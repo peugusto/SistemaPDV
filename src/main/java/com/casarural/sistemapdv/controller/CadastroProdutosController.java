@@ -29,6 +29,7 @@ public class CadastroProdutosController implements Initializable {
     @FXML private Button botaoSalvar;
     @FXML private Button botaoCancelar;
 
+    private boolean isExistingProduct = false;
 
     public void setProductService(ProductService service) {
         this.service = service;
@@ -39,24 +40,6 @@ public class CadastroProdutosController implements Initializable {
         this.entity = entity;
     }
 
-    @FXML
-    public void onBotaoSalvarAction() {
-        if (service == null) {
-            throw new IllegalStateException("Service estava nulo");
-        }
-
-        try {
-
-            Product obj = getFormData();
-            service.insert(obj);
-
-            Alerts.showAlert("Sucesso", null, "Produto salvo com sucesso!", AlertType.INFORMATION);
-            onBotaoCancelarAction();
-
-        } catch (Exception e) {
-            Alerts.showAlert("Erro ao salvar", null, e.getMessage(), AlertType.ERROR);
-        }
-    }
 
     private Product getFormData() {
 
@@ -92,10 +75,84 @@ public class CadastroProdutosController implements Initializable {
         stage.close();
     }
 
+    private void onSearchProduct() {
+        String code = txtCodBarras.getText();
+        if (code.trim().isEmpty()) return;
+
+        service.findByCodBarras(code).ifPresentOrElse(
+                product -> {
+                    this.entity = product;
+                    isExistingProduct = true;
+
+                    txtNome.setText(product.getNomeProduto());
+                    txtPreco.setText(String.valueOf(product.getPrecoProduto()));
+                    
+
+                    txtNome.setEditable(false);
+                    txtPreco.setEditable(false);
+                    txtEstoque.requestFocus();
+                },
+                () -> {
+
+                    if (Alerts.showConfirmation("Novo Produto", null, "Código não encontrado. Deseja cadastrar um novo produto?")) {
+                        clearFormExceptBarcode();
+                        enableFields();
+                        txtNome.requestFocus();
+                    } else {
+                        txtCodBarras.clear();
+                    }
+                }
+        );
+    }
+
+    @FXML
+    public void onBotaoSalvarAction() {
+        try {
+            updateEntityFromForm();
+            service.saveOrUpdate(entity);
+            Alerts.showAlert("Sucesso", null, "Operação realizada!", AlertType.INFORMATION);
+            closeStage();
+        } catch (Exception e) {
+            Alerts.showAlert("Erro", null, e.getMessage(), AlertType.ERROR);
+        }
+    }
+
+    private void updateEntityFromForm() {
+        if (entity == null) entity = new Product();
+
+        entity.setCodBarras(txtCodBarras.getText());
+        entity.setNomeProduto(txtNome.getText());
+        entity.setPrecoProduto(Double.parseDouble(txtPreco.getText().replace(",", ".")));
+
+        int qtdInformada = Integer.parseInt(txtEstoque.getText());
+
+        if (isExistingProduct) {
+            entity.adicionarEstoque(qtdInformada);
+        } else {
+            entity.setEstoque(qtdInformada);
+        }
+    }
+
+    private void enableFields() {
+        isExistingProduct = false;
+        txtNome.setEditable(true);
+        txtPreco.setEditable(true);
+        txtNome.setStyle("");
+        txtPreco.setStyle("");
+    }
+
+    private void clearFormExceptBarcode() {
+        txtNome.clear();
+        txtPreco.clear();
+        txtEstoque.clear();
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         Constraints.setTextFieldInteger(txtEstoque);
         Constraints.setTextFieldDouble(txtPreco);
         Constraints.setTextFieldMaxLength(txtNome,20);
+
+        txtCodBarras.setOnAction(event -> onSearchProduct());
     }
 }

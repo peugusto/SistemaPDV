@@ -14,7 +14,7 @@ public class CustomerService {
     }
 
     public void insert(Customer obj){
-        obj.setSituacaoFiado(CustomerStatus.AVAILABLE);
+        obj.setSituacaoFiado(CustomerStatus.DISPONIVEL);
         dao.insert(obj);
     }
 
