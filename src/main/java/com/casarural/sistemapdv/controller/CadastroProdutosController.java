@@ -86,7 +86,7 @@ public class CadastroProdutosController implements Initializable {
 
                     txtNome.setText(product.getNomeProduto());
                     txtPreco.setText(String.valueOf(product.getPrecoProduto()));
-                    
+
 
                     txtNome.setEditable(false);
                     txtPreco.setEditable(false);

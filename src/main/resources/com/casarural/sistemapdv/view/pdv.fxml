@@ -16,9 +16,6 @@
             <Label text="Código"/>
             <TextField fx:id="campoCodigoProduto" prefWidth="200"/>
 
-            <Label text="Qtd"/>
-            <TextField fx:id="campoQuantidade" prefWidth="80"/>
-
             <Button text="Adicionar" fx:id="botaoAdicionar"/>
         </HBox>
     </top>
@@ -27,7 +24,7 @@
     <center>
         <TableView fx:id="tabelaItens">
             <columns>
-                <TableColumn text="Código" fx:id="colunaCodigo" prefWidth="120"/>
+                <TableColumn text="Código" fx:id="colunaCodigo" prefWidth="200"/>
                 <TableColumn text="Produto" fx:id="colunaProduto" prefWidth="300"/>
                 <TableColumn text="Qtd" fx:id="colunaQuantidade" prefWidth="80"/>
                 <TableColumn text="Preço" fx:id="colunaPreco" prefWidth="120"/>
@@ -38,35 +35,47 @@
 
 
     <right>
-        <VBox spacing="10">
+        <VBox spacing="15" prefWidth="300" minWidth="250" style="-fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 0 0 0 1;">
             <padding>
-                <Insets top="10" right="10" bottom="10" left="10"/>
+                <Insets top="20" right="20" bottom="20" left="20"/>
             </padding>
 
-            <Label text="Resumo"/>
+            <Label text="RESUMO DA VENDA" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+            <Separator/>
 
-            <HBox spacing="10">
-                <Label text="Subtotal"/>
-                <Label fx:id="labelSubtotal"/>
-            </HBox>
+            <VBox spacing="10" VBox.vgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT">
+                    <Label text="Subtotal:"/>
+                    <Pane HBox.hgrow="ALWAYS" /> <Label fx:id="labelSubtotal" text="R$ 0,00" style="-fx-font-weight: bold;"/>
+                </HBox>
 
-            <HBox spacing="10">
-                <Label text="Desconto"/>
-                <Label fx:id="labelDesconto"/>
-            </HBox>
+                <HBox alignment="CENTER_LEFT">
+                    <Label text="Desconto:"/>
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Label fx:id="labelDesconto" text="R$ 0,00" style="-fx-text-fill: red;"/>
+                </HBox>
 
-            <HBox spacing="10">
-                <Label text="Total"/>
-                <Label fx:id="labelTotal"/>
-            </HBox>
+                <HBox alignment="CENTER_LEFT">
+                    <Label text="Total:" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Label fx:id="labelTotal" text="R$ 0,00" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: green;"/>
+                </HBox>
+            </VBox>
 
             <Separator/>
 
-            <Button text="Finalizar Venda" fx:id="botaoFinalizar" maxWidth="Infinity"/>
-            <Button text="Cancelar Venda" fx:id="botaoCancelar" maxWidth="Infinity"/>
+            <VBox spacing="10">
+                <Button text="Finalizar Venda (F1)" fx:id="botaoFinalizar"
+                        maxWidth="Infinity" prefHeight="50"
+                        style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;"/>
 
+                <Button text="Cancelar Venda (Esc)" fx:id="botaoCancelar"
+                        maxWidth="Infinity" prefHeight="40"
+                        style="-fx-background-color: #dc3545; -fx-text-fill: white;"/>
+            </VBox>
         </VBox>
     </right>
+
 
 
     <bottom>

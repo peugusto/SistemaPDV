@@ -17,6 +17,29 @@ target/
 *.db
 *.properties
 
+# Logs
+*.log
+/logs/
+temp/
+
+# IntelliJ Personal Styles/Layouts
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.xml
+.idea/shelf/
+.idea/contentModel.xml
+.idea/dataSources.xml
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+
+# JavaFX / Native Distributions
+/dist/
+/out/
+
+
+maven-unit-tests.log
+dump.txt
+
 ### Eclipse ###
 .apt_generated
 .classpath
