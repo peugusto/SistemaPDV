@@ -3,6 +3,7 @@ package com.casarural.sistemapdv.services;
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Product;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +22,7 @@ public class ProductService {
         return dao.findByCodBarras(codBarras);
     }
 
-    public void saveOrUpdate(Product obj) {
+    public void saveOrUpdate(Product obj) throws SQLException {
         if (obj.getIdProduto() > 0) {
             dao.update(obj);
         } else {

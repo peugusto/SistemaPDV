@@ -1,29 +1,33 @@
 package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.model.dao.OrderDao;
+import com.casarural.sistemapdv.model.dao.PaymentDao;
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.Payment;
 
 import java.util.List;
 import java.util.Optional;
 
-public class PaymentDaoJdbc implements OrderDao {
+public class PaymentDaoJdbc implements PaymentDao {
+
     @Override
-    public void insert(Order obj) {
+    public void insert(Payment obj) {
 
     }
 
     @Override
-    public Optional<Order> findById(Integer id) {
+    public Optional<Payment> findById(Integer id) {
         return Optional.empty();
     }
 
     @Override
-    public List<Order> findAll() {
+    public List<Payment> findAll() {
         return List.of();
     }
 
+
     @Override
-    public void update(Order obj) {
+    public void update(Payment obj) {
 
     }
 

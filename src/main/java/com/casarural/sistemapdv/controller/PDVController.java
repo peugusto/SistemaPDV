@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
@@ -10,6 +11,9 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -32,6 +36,7 @@ public class PDVController implements Initializable {
     @FXML private Label labelTotal;
     @FXML private Button botaoRemover;
     @FXML private Button botaoLimpar;
+    @FXML private Button botaoFinalizar;
 
     public void setProductService(ProductService productService) {
         this.productService = productService;
@@ -43,7 +48,6 @@ public class PDVController implements Initializable {
     }
 
     private void initializeNodes() {
-
         colunaCodigo.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
         colunaProduto.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
         colunaQuantidade.setCellValueFactory(new PropertyValueFactory<>("qtd"));
@@ -52,12 +56,66 @@ public class PDVController implements Initializable {
 
         tabelaItens.setItems(itensVenda);
 
-
         campoCodigoProduto.setOnAction(event -> onAdicionarItem());
-
-
         botaoRemover.setOnAction(event -> onRemoverItem());
         botaoLimpar.setOnAction(event -> onLimparVenda());
+        botaoFinalizar.setOnAction(event -> onFinalizarVenda());
+
+        tabelaItens.sceneProperty().addListener((observable, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.F1) {
+                        onFinalizarVenda();
+                        event.consume();
+                    }
+                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                        onLimparVenda();
+                        event.consume();
+                    }
+                });
+            }
+        });
+    }
+
+    private void onFinalizarVenda() {
+
+        if (itensVenda.isEmpty()) {
+            Alerts.showAlert("Aviso", "Carrinho Vazio", "Adicione produtos antes de finalizar a venda.", Alert.AlertType.WARNING);
+            return;
+        }
+
+
+        Order order = new Order();
+
+
+        double total = itensVenda.stream()
+                .mapToDouble(OrderItem::getSubtotal)
+                .sum();
+
+        order.setValorTotal(total);
+
+        order.setItemPedido(new java.util.ArrayList<>(itensVenda));
+
+
+        order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
+
+        com.casarural.sistemapdv.util.ViewLoader.showView(
+                true,
+                "/com/casarural/sistemapdv/view/FechamentoVenda.fxml",
+                "Finalizar Pagamento - Casa Rural",
+                (PaymentController controller) -> {
+
+                    controller.setDadosVenda(
+                            order,
+                            new com.casarural.sistemapdv.services.OrderService(),
+                            new com.casarural.sistemapdv.services.CustomerService(com.casarural.sistemapdv.model.dao.DaoFactory.createCustomerDAO())
+                    );
+                }
+        );
+
+        itensVenda.clear();
+        atualizarTotalVenda();
+        campoCodigoProduto.requestFocus();
     }
 
     private void onAdicionarItem() {

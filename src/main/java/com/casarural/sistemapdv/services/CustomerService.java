@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.model.dao.CustomerDao;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 
+import java.sql.SQLException;
 import java.util.List;
 
 public class CustomerService {
@@ -13,7 +14,7 @@ public class CustomerService {
         this.dao = dao;
     }
 
-    public void insert(Customer obj){
+    public void insert(Customer obj) throws SQLException {
         obj.setSituacaoFiado(CustomerStatus.DISPONIVEL);
         dao.insert(obj);
     }

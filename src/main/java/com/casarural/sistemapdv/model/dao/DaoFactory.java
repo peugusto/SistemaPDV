@@ -12,5 +12,6 @@ public class DaoFactory {
 
     public static ProductDao createProductDAO() { return new ProductDaoJdbc(DB.getConnection()); }
 
-    public static OrderDao createProductDao() {return new OrderDaoJdbc(DB.getConnection());}
+    public static OrderDao createOrderDAO() {return new OrderDaoJdbc(DB.getConnection());}
+
 }

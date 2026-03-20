@@ -63,11 +63,5 @@ public class Customer {
 
     @Override
     public String toString() {
-        return "Customer{" +
-                "idCliente=" + idCliente +
-                ", nomeCliente='" + nomeCliente + '\'' +
-                ", limiteCredito=" + limiteCredito +
-                ", situacaoFiado=" + situacaoFiado +
-                '}';
-    }
-}
+        return nomeCliente;
+}}

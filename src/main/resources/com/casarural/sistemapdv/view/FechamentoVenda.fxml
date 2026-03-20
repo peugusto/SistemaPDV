@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20" alignment="TOP_CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PaymentController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <VBox alignment="CENTER" spacing="5">
+        <Label text="TOTAL A PAGAR" style="-fx-font-size: 14px;"/>
+        <Label fx:id="labelTotalPagamento" text="R$ 0,00" 
+               style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #28a745;"/>
+    </VBox>
+
+    <Separator/>
+
+    <GridPane hgap="10" vgap="15">
+        <columnConstraints>
+            <ColumnConstraints minWidth="120" halignment="RIGHT"/>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="200"/>
+        </columnConstraints>
+
+        <children>
+            <Label text="Forma de Pagamento:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <HBox spacing="10" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <RadioButton fx:id="radioDinheiro" text="Dinheiro" selected="true">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="grupoPagamento"/>
+                    </toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="radioCartao" text="Cartão" toggleGroup="$grupoPagamento"/>
+                <RadioButton fx:id="radioPix" text="PIX" toggleGroup="$grupoPagamento"/>
+                <RadioButton fx:id="radioFiado" text="Fiado" toggleGroup="$grupoPagamento"/>
+            </HBox>
+
+            <Label text="Cliente (Fiado):" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <ComboBox fx:id="comboCliente" maxWidth="Infinity" promptText="Selecione o cliente..." 
+                      GridPane.columnIndex="1" GridPane.rowIndex="1" disable="true"/>
+
+            <Label text="Valor Recebido:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <TextField fx:id="txtValorRecebido" promptText="0,00" 
+                       GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+            <Label text="Troco:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            <Label fx:id="labelTroco" text="R$ 0,00" style="-fx-font-weight: bold;" 
+                   GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+        </children>
+    </GridPane>
+
+    <Separator/>
+
+    <HBox spacing="15" alignment="CENTER_RIGHT">
+        <Button fx:id="btnCancelar" text="Voltar (Esc)" prefWidth="120" prefHeight="40"/>
+        <Button fx:id="btnConfirmar" text="Confirmar Baixa" prefWidth="150" prefHeight="40"
+                style="-fx-base: #28a745; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
+
+</VBox>

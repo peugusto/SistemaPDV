@@ -1,9 +1,12 @@
 package com.casarural.sistemapdv.model.dao.impl;
 
+import com.casarural.sistemapdv.db.DB;
+import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.OrderItem;
 
-import java.sql.Connection;
+import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,7 +19,88 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public void insert(Order obj) {
+        PreparedStatement st = null;
+        try {
+            conn.setAutoCommit(false);
 
+            st = conn.prepareStatement(
+                    "INSERT INTO pedido (id_cliente, valor_total, status) VALUES (?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS);
+
+            if (obj.getCostumer() != null) {
+                st.setInt(1, obj.getCostumer().getIdCliente());
+            } else {
+                st.setNull(1, Types.INTEGER);
+            }
+            st.setDouble(2, obj.getValorTotal());
+            st.setString(3, obj.getStatus().toString());
+
+            int rowsAffected = st.executeUpdate();
+
+            if (rowsAffected > 0) {
+                ResultSet rs = st.getGeneratedKeys();
+                if (rs.next()) {
+                    int idPedido = rs.getInt(1);
+                    obj.setIdPedido(idPedido);
+
+
+                    inserirItensEBaixarEstoque(obj.getItemPedido(), idPedido);
+
+
+                    inserirPagamento(obj, idPedido);
+                }
+            }
+
+            conn.commit();
+
+        } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException rollbackEx) {
+                throw new DbException("Erro crítico no Rollback: " + rollbackEx.getMessage());
+            }
+            throw new DbException("Erro ao finalizar venda: " + e.getMessage());
+        } finally {
+
+            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+            DB.closeStatement(st);
+        }
+    }
+
+    private void inserirItensEBaixarEstoque(List<OrderItem> itens, int idPedido) throws SQLException {
+        String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)";
+        String sqlEstoque = "UPDATE produto SET estoque = estoque - ? WHERE id_produto = ?";
+
+        try (PreparedStatement stItem = conn.prepareStatement(sqlItem);
+             PreparedStatement stEstoque = conn.prepareStatement(sqlEstoque)) {
+
+            for (OrderItem item : itens) {
+
+                stItem.setInt(1, idPedido);
+                stItem.setInt(2, item.getProduto().getIdProduto());
+                stItem.setInt(3, item.getQtd());
+                stItem.setDouble(4, item.getPrecoUnitario());
+                stItem.addBatch();
+
+
+                stEstoque.setInt(1, item.getQtd());
+                stEstoque.setInt(2, item.getProduto().getIdProduto());
+                stEstoque.addBatch();
+            }
+
+            stItem.executeBatch();
+            stEstoque.executeBatch();
+        }
+    }
+
+    private void inserirPagamento(Order obj, int idPedido) throws SQLException {
+        String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, ?)";
+        try (PreparedStatement st = conn.prepareStatement(sql)) {
+            st.setInt(1, idPedido);
+            st.setDouble(2, obj.getValorTotal());
+            st.setString(3, obj.getStatus().toString());
+            st.executeUpdate();
+        }
     }
 
     @Override
@@ -38,4 +122,5 @@ public class OrderDaoJdbc implements OrderDao {
     public void deleteById(Integer id) {
 
     }
+
 }
