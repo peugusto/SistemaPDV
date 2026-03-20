@@ -5,13 +5,8 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.ProductService;
-import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.ViewLoader;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 
 
