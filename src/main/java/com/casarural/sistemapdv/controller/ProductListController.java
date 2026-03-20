@@ -11,34 +11,23 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.stage.Stage;
-
-
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
 public class ProductListController implements Initializable {
 
-    // Dependência do Serviço
+
     private ProductService service;
 
-    @FXML
-    private TextField searchField;
-    @FXML
-    private TableView<Product> productTable;
-    @FXML
-    private TableColumn<Product, Integer> idColumn;
-    @FXML
-    private TableColumn<Product, String> barcodeColumn;
-    @FXML
-    private TableColumn<Product, String> nameColumn;
-    @FXML
-    private TableColumn<Product, Double> priceColumn;
-    @FXML
-    private TableColumn<Product, Integer> stockColumn;
-    @FXML
-    private TableColumn<Product, Void> actionsColumn;
+    @FXML private TextField searchField;
+    @FXML private TableView<Product> productTable;
+    @FXML private TableColumn<Product, Integer> idColumn;
+    @FXML private TableColumn<Product, String> barcodeColumn;
+    @FXML private TableColumn<Product, String> nameColumn;
+    @FXML private TableColumn<Product, Double> priceColumn;
+    @FXML private TableColumn<Product, Integer> stockColumn;
+    @FXML private TableColumn<Product, Void> actionsColumn;
 
     private ObservableList<Product> obsList;
 

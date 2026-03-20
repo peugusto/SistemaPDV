@@ -40,15 +40,11 @@ public class CustomerListController implements Initializable {
     }
 
     private void initializeNodes() {
-        // Liga as colunas aos atributos da classe Customer
+
         idColumn.setCellValueFactory(new PropertyValueFactory<>("idCliente"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeCliente"));
         creditStatusColumn.setCellValueFactory(new PropertyValueFactory<>("situacaoFiado"));
         creditLimitColumn.setCellValueFactory(new PropertyValueFactory<>("limiteCredito"));
-
-        // Faz a tabela acompanhar a altura da janela
-//        Stage stage = (Stage) customerTable.getScene().getWindow();
-//        customerTable.prefHeightProperty().bind(stage.heightProperty());
 
         initButtons();
     }
