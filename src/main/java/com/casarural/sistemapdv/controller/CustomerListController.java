@@ -93,8 +93,6 @@ public class CustomerListController implements Initializable {
     }
 
     private void onEditAction(Customer obj) {
-        // Aqui você chamará o ViewLoader para abrir a tela de cadastro
-        // passando o objeto 'obj' para o setCustomer(obj)
         System.out.println("Editando: " + obj.getNomeCliente());
     }
 

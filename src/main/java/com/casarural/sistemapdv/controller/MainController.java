@@ -70,7 +70,13 @@ public class MainController {
 
     @FXML
     public void onBotaoPDVAction() {
-        ViewLoader.showView(true,"/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto");
+        ViewLoader.showView(true,"/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto",
+                (PDVController controller) -> {
+
+                    controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
+                }
+        );
+    };
     }
-}
+
 

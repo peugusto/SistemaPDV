@@ -61,7 +61,6 @@ public class RegisterCustomerController implements Initializable {
 
         entity.setNomeCliente(txtNome.getText());
 
-        // Se o limite estiver vazio, assume 0.0
         String limiteStr = txtLimite.getText().replace(",", ".");
         entity.setLimiteCredito(limiteStr.isEmpty() ? 0.0 : Double.parseDouble(limiteStr));
 

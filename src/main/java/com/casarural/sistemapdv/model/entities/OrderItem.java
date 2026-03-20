@@ -38,11 +38,20 @@ public class OrderItem {
         this.precoUnitario = precoUnitario;
     }
 
-    public double getSubtotal() {
-        return subtotal;
-    }
-
     public void setSubtotal(double subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public double getSubtotal() {
+        return qtd * precoUnitario;
+    }
+
+
+    public String getNomeProduto() {
+        return produto != null ? produto.getNomeProduto() : "";
+    }
+
+    public String getCodBarras() {
+        return produto != null ? produto.getCodBarras() : "";
     }
 }

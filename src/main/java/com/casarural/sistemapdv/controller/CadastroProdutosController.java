@@ -16,10 +16,8 @@ import java.util.ResourceBundle;
 
 public class CadastroProdutosController implements Initializable {
 
-    // Dependência do Service
-    private ProductService service;
 
-    // Entidade que será salva
+    private ProductService service;
     private Product entity;
 
     @FXML private TextField txtCodBarras;

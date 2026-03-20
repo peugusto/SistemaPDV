@@ -2,6 +2,7 @@ package com.casarural.sistemapdv.model.dao;
 
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.model.dao.impl.CustomerDaoJdbc;
+import com.casarural.sistemapdv.model.dao.impl.OrderDaoJdbc;
 import com.casarural.sistemapdv.model.dao.impl.ProductDaoJdbc;
 
 public class DaoFactory {
@@ -11,4 +12,5 @@ public class DaoFactory {
 
     public static ProductDao createProductDAO() { return new ProductDaoJdbc(DB.getConnection()); }
 
+    public static OrderDao createProductDao() {return new OrderDaoJdbc(DB.getConnection());}
 }
