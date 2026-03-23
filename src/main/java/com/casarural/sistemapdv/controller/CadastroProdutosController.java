@@ -33,7 +33,6 @@ public class CadastroProdutosController implements Initializable {
         this.service = service;
     }
 
-
     public void setProduct(Product entity) {
         this.entity = entity;
     }

@@ -2,6 +2,7 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
+import com.casarural.sistemapdv.util.Alerts;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -48,7 +49,6 @@ public class ProductListController implements Initializable {
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
-
 
     }
 
@@ -114,16 +114,11 @@ public class ProductListController implements Initializable {
     }
 
     private void onDeleteAction(Product obj) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirmação");
-        alert.setHeaderText("Deseja excluir o produto?");
-        alert.setContentText(obj.getNomeProduto());
+        
+        if(Alerts.showConfirmation("Confirmação","Deseja excluir o produto?",obj.getNomeProduto())){
+            service.delete(obj.getIdProduto());
+            updateTableView();
+        }
 
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                service.delete(obj.getIdProduto());
-                updateTableView();
-            }
-        });
     }
 }
