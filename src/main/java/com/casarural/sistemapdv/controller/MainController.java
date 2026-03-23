@@ -56,7 +56,6 @@ public class MainController {
     public void onBotaoPDVAction() {
         ViewLoader.showView(true, "/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto",
                 (PDVController controller) -> {
-                    // Importante: Injetando o serviço de produtos para o PDV funcionar
                     controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
                 }
         );

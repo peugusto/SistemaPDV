@@ -68,6 +68,19 @@ public class PaymentController implements Initializable {
             RadioButton selecionado = (RadioButton) grupoPagamento.getSelectedToggle();
             String metodo = selecionado.getText().toUpperCase();
 
+            if (metodo.equals("DINHEIRO")) {
+                try {
+                    double recebido = Double.parseDouble(txtValorRecebido.getText().replace(",", "."));
+                    if (recebido < order.getValorTotal()) {
+                        Alerts.showAlert("Valor Insuficiente", null, "O valor recebido é menor que o total da venda!", Alert.AlertType.ERROR);
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Alerts.showAlert("Erro", null, "Digite um valor válido para o dinheiro recebido!", Alert.AlertType.ERROR);
+                    return;
+                }
+            }
+
             if (metodo.equals("FIADO")) {
                 Customer c = comboCliente.getValue();
                 if (c == null) {
