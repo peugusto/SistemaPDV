@@ -96,7 +96,6 @@ public class PDVController implements Initializable {
 
         order.setItemPedido(new java.util.ArrayList<>(itensVenda));
 
-
         order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
 
         com.casarural.sistemapdv.util.ViewLoader.showView(

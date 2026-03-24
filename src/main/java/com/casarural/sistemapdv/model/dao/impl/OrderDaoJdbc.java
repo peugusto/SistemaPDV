@@ -5,7 +5,6 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
-
 import java.sql.*;
 import java.util.List;
 import java.util.Optional;
@@ -43,10 +42,7 @@ public class OrderDaoJdbc implements OrderDao {
                     int idPedido = rs.getInt(1);
                     obj.setIdPedido(idPedido);
 
-
                     inserirItensEBaixarEstoque(obj.getItemPedido(), idPedido);
-
-
                     inserirPagamento(obj, idPedido);
                 }
             }
@@ -61,7 +57,6 @@ public class OrderDaoJdbc implements OrderDao {
             }
             throw new DbException("Erro ao finalizar venda: " + e.getMessage());
         } finally {
-
             try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
             DB.closeStatement(st);
         }
@@ -100,6 +95,8 @@ public class OrderDaoJdbc implements OrderDao {
             st.setDouble(2, obj.getValorTotal());
             st.setString(3, obj.getStatus().toString());
             st.executeUpdate();
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
         }
     }
 
@@ -121,6 +118,11 @@ public class OrderDaoJdbc implements OrderDao {
     @Override
     public void deleteById(Integer id) {
 
+    }
+
+    @Override
+    public Order instantiate(ResultSet rs) throws SQLException {
+        return null;
     }
 
 }

@@ -58,7 +58,7 @@ public class CustomerDaoJdbc implements CustomerDao {
             st.setInt(1, id);
             rs = st.executeQuery();
             if (rs.next()) {
-                return Optional.of(instantiateCustomer(rs));
+                return Optional.of(instantiate(rs));
             }
             return Optional.empty();
         } catch (SQLException e) {
@@ -78,7 +78,7 @@ public class CustomerDaoJdbc implements CustomerDao {
             rs = st.executeQuery();
             List<Customer> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(instantiateCustomer(rs));
+                list.add(instantiate(rs));
             }
             return list;
         } catch (SQLException e) {
@@ -123,7 +123,7 @@ public class CustomerDaoJdbc implements CustomerDao {
         }
     }
 
-    private Customer instantiateCustomer(ResultSet rs) throws SQLException {
+    public Customer instantiate(ResultSet rs) throws SQLException {
         Customer obj = new Customer();
         obj.setIdCliente(rs.getInt("id_cliente"));
         obj.setNomeCliente(rs.getString("nome_cliente"));

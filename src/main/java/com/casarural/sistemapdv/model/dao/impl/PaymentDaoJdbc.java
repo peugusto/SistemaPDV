@@ -5,6 +5,8 @@ import com.casarural.sistemapdv.model.dao.PaymentDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.Payment;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,5 +36,10 @@ public class PaymentDaoJdbc implements PaymentDao {
     @Override
     public void deleteById(Integer id) {
 
+    }
+
+    @Override
+    public Payment instantiate(ResultSet rs) throws SQLException {
+        return null;
     }
 }

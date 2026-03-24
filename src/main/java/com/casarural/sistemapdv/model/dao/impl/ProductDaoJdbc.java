@@ -63,7 +63,7 @@ public class ProductDaoJdbc implements ProductDao {
             st.setInt(1, id);
             rs = st.executeQuery();
             if (rs.next()) {
-                return Optional.of(instantiateProduct(rs));
+                return Optional.of(instantiate(rs));
             }
             return Optional.empty();
         } catch (SQLException e) {
@@ -84,7 +84,7 @@ public class ProductDaoJdbc implements ProductDao {
 
             List<Product> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(instantiateProduct(rs));
+                list.add(instantiate(rs));
             }
             return list;
         } catch (SQLException e) {
@@ -131,7 +131,7 @@ public class ProductDaoJdbc implements ProductDao {
     }
 
 
-    private Product instantiateProduct(ResultSet rs) throws SQLException {
+    public Product instantiate(ResultSet rs) throws SQLException {
         Product prod = new Product();
         prod.setIdProduto(rs.getInt("id_produto"));
         prod.setCodBarras(rs.getString("cod_barras"));
@@ -151,7 +151,7 @@ public class ProductDaoJdbc implements ProductDao {
             st.setString(1, codBarras);
             rs = st.executeQuery();
             if (rs.next()) {
-                return Optional.of(instantiateProduct(rs));
+                return Optional.of(instantiate(rs));
             }
             return Optional.empty();
         } catch (SQLException e) {
