@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
@@ -13,6 +14,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -114,10 +116,15 @@ public class ProductListController implements Initializable {
     }
 
     private void onDeleteAction(Product obj) {
-        
+
         if(Alerts.showConfirmation("Confirmação","Deseja excluir o produto?",obj.getNomeProduto())){
-            service.delete(obj.getIdProduto());
-            updateTableView();
+            try{
+                service.delete(obj.getIdProduto());
+                updateTableView();
+            }catch(DbException e){
+                Alerts.showAlert("ERROR",null, e.getMessage(),Alert.AlertType.ERROR);
+            }
+
         }
 
     }
