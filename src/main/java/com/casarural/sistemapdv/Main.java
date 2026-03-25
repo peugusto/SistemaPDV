@@ -9,6 +9,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 
 import java.sql.Connection;
+import java.util.Objects;
 
 public class Main extends Application {
     @Override
@@ -22,7 +23,8 @@ public class Main extends Application {
 
         MainController controller = new MainController();
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
-
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/com/casarural/sistemapdv/css/style.css")).toExternalForm());
+        stage.setScene(scene);
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             switch (event.getCode()) {
                 case F1 -> controller.onBotaoPDVAction();

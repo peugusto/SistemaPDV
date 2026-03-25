@@ -60,4 +60,9 @@ public class MainController {
                 }
         );
     }
+    @FXML
+    public void onBotaoHistoricoAction() {
+        ViewLoader.showView(true, "/com/casarural/sistemapdv/view/order-list.fxml", "Historico de Vendas"
+        );
+    }
 }

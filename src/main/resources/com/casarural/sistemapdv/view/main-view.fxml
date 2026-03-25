@@ -79,6 +79,7 @@
             <Button text="Histórico de Vendas"
                     fx:id="botaoHistorico"
                     prefWidth="220"
+                    onAction="#onBotaoHistoricoAction"
                     prefHeight="120"
                     GridPane.rowIndex="1"
                     GridPane.columnIndex="2"/>
