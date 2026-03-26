@@ -49,11 +49,13 @@
 
         <TableView fx:id="tableViewItens" VBox.vgrow="ALWAYS">
             <columns>
+                <TableColumn fx:id="columnDataHora" prefWidth="150.0" text="Data/Hora" />
+                <TableColumn fx:id="columnVendaId" prefWidth="80.0" text="Nº Venda" />
                 <TableColumn fx:id="columnCodBarras" prefWidth="120.0" text="Cód. Barras" />
-                <TableColumn fx:id="columnProduto" prefWidth="300.0" text="Nome do Produto" />
-                <TableColumn fx:id="columnQtdTotal" prefWidth="100.0" text="Qtd. Vendida" />
-                <TableColumn fx:id="columnPrecoMedio" prefWidth="120.0" text="Preço Unit. (Médio)" />
-                <TableColumn fx:id="columnSubtotal" prefWidth="130.0" text="Total Arrecadado" />
+                <TableColumn fx:id="columnProduto" prefWidth="250.0" text="Produto" />
+                <TableColumn fx:id="columnPreco" prefWidth="100.0" text="Preço Unit." />
+                <TableColumn fx:id="columnQtd" prefWidth="80.0" text="Qtd." />
+                <TableColumn fx:id="columnTotal" prefWidth="120.0" text="Total" />
             </columns>
             <columnResizePolicy>
                 <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
