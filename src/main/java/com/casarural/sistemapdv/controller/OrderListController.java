@@ -25,6 +25,7 @@ public class OrderListController implements Initializable {
     @FXML private Button btnFiltrar;
     @FXML private TableView<OrderItem> tableViewItens;
     @FXML private TableColumn<OrderItem, LocalDateTime> columnDataHora;
+    @FXML private TableColumn<OrderItem, String> columnCodBarras;
     @FXML private TableColumn<OrderItem, Integer> columnVendaId;
     @FXML private TableColumn<OrderItem, String> columnProduto;
     @FXML private TableColumn<OrderItem, Double> columnPreco;
@@ -48,7 +49,9 @@ public class OrderListController implements Initializable {
 
     private void initializeNodes() {
 
+        columnDataHora.setCellValueFactory(new PropertyValueFactory<>("dataPedido"));
         columnVendaId.setCellValueFactory(new PropertyValueFactory<>("idPedido"));
+        columnCodBarras.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
         columnProduto.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
         columnPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
         columnQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));

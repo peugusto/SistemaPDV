@@ -1,5 +1,7 @@
 package com.casarural.sistemapdv.model.entities;
 
+import java.time.LocalDateTime;
+
 public class OrderItem {
     private Product produto;
     private Order pedido;
@@ -21,6 +23,14 @@ public class OrderItem {
 
     public Integer getIdPedido() {
         return (pedido != null) ? pedido.getIdPedido() : null;
+    }
+
+    public String getcodBarras() {
+        return (produto != null) ? produto.getCodBarras() : null;
+    }
+
+    public LocalDateTime getDataPedido(){
+        return (pedido != null) ? pedido.getDataPedido() : null;
     }
 
     public void setPedido(Order pedido) {
