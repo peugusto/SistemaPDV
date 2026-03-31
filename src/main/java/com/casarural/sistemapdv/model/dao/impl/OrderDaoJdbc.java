@@ -5,7 +5,12 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.Product;
+
 import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -125,4 +130,61 @@ public class OrderDaoJdbc implements OrderDao {
         return null;
     }
 
+    public OrderItem instantiateOI(ResultSet rs) throws SQLException {
+        OrderItem obj = new OrderItem();
+        obj.setQtd(rs.getInt("quantidade"));
+        obj.setPrecoUnitario(rs.getDouble("preco_unitario"));
+
+        Product prod = new Product();
+        prod.setCodBarras(rs.getString("cod_barras"));
+        prod.setNomeProduto(rs.getString("nome_produto"));
+        obj.setProduto(prod);
+
+        Order ped = new Order();
+        ped.setIdPedido(rs.getInt("id_pedido"));
+        ped.setDataPedido(rs.getObject("data_pedido",LocalDateTime.class));
+
+        obj.setPedido(ped);
+
+        return obj;
+    }
+
+    @Override
+    public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+
+        String sql = "SELECT \n" +
+                "    p.data_pedido, \n" +
+                "    p.id_pedido, \n" +
+                "    prod.nome_produto, \n" +
+                "    prod.cod_barras,\n" +
+                "    i.quantidade, \n" +
+                "    i.preco_unitario, \n" +
+                "    (i.quantidade * i.preco_unitario) AS subtotal\n" +
+                "FROM itempedido i\n" +
+                "JOIN pedido p ON i.id_pedido = p.id_pedido\n" +
+                "JOIN produto prod ON i.id_produto = prod.id_produto\n" +
+                "WHERE p.data_pedido BETWEEN ? AND ?\n" +
+                "ORDER BY p.data_pedido DESC;";
+
+        try{
+           st = conn.prepareStatement(sql);
+           st.setDate(1,Date.valueOf(inicio));
+           st.setDate(2, Date.valueOf(fim));
+
+            rs = st.executeQuery();
+            List<OrderItem> oiList = new ArrayList<>();
+
+            while(rs.next()){
+                oiList.add(instantiateOI(rs));
+            }
+            return oiList;
+
+        }catch (SQLException e){
+            throw new DbException(e.getMessage());
+        }finally {
+            DB.closeStatement(st);
+        }
+    }
 }

@@ -3,7 +3,10 @@ package com.casarural.sistemapdv.services;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.OrderItem;
+
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,5 +30,9 @@ public class OrderService {
 
     public Optional<Order> findById(Integer id) {
         return dao.findById(id);
+    }
+
+    public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
+        return dao.findItemsByDate(inicio,fim);
     }
 }

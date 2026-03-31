@@ -14,6 +14,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class OrderListController implements Initializable {
@@ -65,8 +66,8 @@ public class OrderListController implements Initializable {
         LocalDate inicio = dpDataInicio.getValue();
         LocalDate fim = dpDataFim.getValue();
 
-        // List<OrderItem> list = service.findItemsByDate(inicio, fim);
-        // obsList = FXCollections.observableArrayList(list);
+         List<OrderItem> list = service.findItemsByDate(inicio, fim);
+         obsList = FXCollections.observableArrayList(list);
 
         tableViewItens.setItems(obsList);
 

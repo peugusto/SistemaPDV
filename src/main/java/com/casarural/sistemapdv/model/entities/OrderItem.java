@@ -2,6 +2,7 @@ package com.casarural.sistemapdv.model.entities;
 
 public class OrderItem {
     private Product produto;
+    private Order pedido;
     private int qtd;
     private double precoUnitario;
     private double subtotal;
@@ -12,6 +13,18 @@ public class OrderItem {
         this.qtd = qtd;
         this.precoUnitario = precoUnitario;
         this.subtotal = subtotal;
+    }
+
+    public Order getPedido() {
+        return pedido;
+    }
+
+    public Integer getIdPedido() {
+        return (pedido != null) ? pedido.getIdPedido() : null;
+    }
+
+    public void setPedido(Order pedido) {
+        this.pedido = pedido;
     }
 
     public Product getProduto() {
