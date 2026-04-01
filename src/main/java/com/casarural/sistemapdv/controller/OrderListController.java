@@ -57,8 +57,7 @@ public class OrderListController implements Initializable {
         columnQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
         columnTotal.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
 
-        columnPreco.setStyle("-fx-alignment: CENTER-RIGHT;");
-        columnTotal.setStyle("-fx-alignment: CENTER-RIGHT;");
+        columnProduto.setStyle("-fx-alignment: CENTER;");
     }
 
     public void atualizarTabela() {
