@@ -7,7 +7,7 @@
 
 <VBox prefHeight="600.0" prefWidth="800.0" spacing="10.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.OrderListController">
     <children>
-        <HBox alignment="CENTER_LEFT" style="-fx-background-color: #2c3e50;">
+        <HBox alignment="CENTER" style="-fx-background-color: #2c3e50;">
             <children>
                 <Label text="Relatório de Produtos Vendidos" textFill="WHITE">
                     <font>
