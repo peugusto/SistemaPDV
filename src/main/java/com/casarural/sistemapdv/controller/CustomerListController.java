@@ -46,6 +46,10 @@ public class CustomerListController implements Initializable {
         creditStatusColumn.setCellValueFactory(new PropertyValueFactory<>("situacaoFiado"));
         creditLimitColumn.setCellValueFactory(new PropertyValueFactory<>("limiteCredito"));
 
+        idColumn.setStyle("-fx-alignment: CENTER;");
+        nameColumn.setStyle("-fx-alignment: CENTER;");
+        creditStatusColumn.setStyle("-fx-alignment: CENTER;");
+        creditLimitColumn.setStyle("-fx-alignment: CENTER;");
         initButtons();
     }
 

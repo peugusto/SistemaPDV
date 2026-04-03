@@ -52,6 +52,11 @@ public class ProductListController implements Initializable {
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
 
+        idColumn.setStyle("-fx-alignment: CENTER;");
+        barcodeColumn.setStyle("-fx-alignment: CENTER;");
+        nameColumn.setStyle("-fx-alignment: CENTER;");
+        priceColumn.setStyle("-fx-alignment: CENTER;");
+        stockColumn.setStyle("-fx-alignment: CENTER;");
     }
 
     public void updateTableView() {
