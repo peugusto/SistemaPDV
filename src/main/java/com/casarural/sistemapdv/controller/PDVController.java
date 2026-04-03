@@ -54,6 +54,12 @@ public class PDVController implements Initializable {
         colunaPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
         colunaTotal.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
 
+        colunaCodigo.setStyle("-fx-alignment: CENTER;");
+        colunaProduto.setStyle("-fx-alignment: CENTER;");
+        colunaQuantidade.setStyle("-fx-alignment: CENTER;");
+        colunaPreco.setStyle("-fx-alignment: CENTER;");
+        colunaTotal.setStyle("-fx-alignment: CENTER;");
+
         tabelaItens.setItems(itensVenda);
 
         campoCodigoProduto.setOnAction(event -> onAdicionarItem());

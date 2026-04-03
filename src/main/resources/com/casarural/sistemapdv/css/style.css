@@ -87,13 +87,13 @@
     -fx-background-radius: 5;
 }
 
-#botaoCancelar, #btnCancel, #botaoLimpar, #btnClear {
+#botaoCancelar, #btnCancel, #botaoLimpar, #btnClear , #botaoRemover{
     -fx-background-color: #bdc3c7;
     -fx-text-fill: #2c3e50;
     -fx-font-weight: normal;
 }
 
-#botaoCancelar:hover, #btnCancel:hover {
+#botaoCancelar:hover, #btnCancel:hover , #botaoRemover:hover{
     -fx-background-color: -fx-error-color;
     -fx-text-fill: white;
 }
