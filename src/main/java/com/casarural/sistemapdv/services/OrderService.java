@@ -35,4 +35,8 @@ public class OrderService {
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
         return dao.findItemsByDate(inicio,fim);
     }
+
+    public List<Order> findByCustomerPending(int idCliente) {
+        return dao.findByCustomerPending(idCliente);
+    }
 }

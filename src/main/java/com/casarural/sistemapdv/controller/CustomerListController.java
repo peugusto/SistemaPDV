@@ -2,14 +2,19 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.services.CustomerService;
+import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
@@ -50,7 +55,41 @@ public class CustomerListController implements Initializable {
         nameColumn.setStyle("-fx-alignment: CENTER;");
         creditStatusColumn.setStyle("-fx-alignment: CENTER;");
         creditLimitColumn.setStyle("-fx-alignment: CENTER;");
+
+
+        customerTable.setRowFactory(tv -> {
+            TableRow<Customer> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    Customer selectedCustomer = row.getItem();
+                    showFiadoDetails(selectedCustomer);
+                }
+            });
+            return row;
+        });
+
         initButtons();
+    }
+
+
+    private void showFiadoDetails(Customer customer) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/FiadoList.fxml"));
+            Parent parent = loader.load();
+
+            FiadoListController controller = loader.getController();
+            controller.setCustomerData(customer, new OrderService());
+
+            Stage stage = new Stage();
+            stage.setTitle("Detalhamento de Fiado - " + customer.getNomeCliente());
+            stage.setScene(new Scene(parent));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.show();
+
+        } catch (Exception e) {
+            Alerts.showAlert("Erro", "Erro ao abrir detalhes", e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace(); // Ajuda a debugar se o FXML não carregar
+        }
     }
 
     public void updateTableView() {

@@ -6,6 +6,7 @@ import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -148,6 +149,35 @@ public class OrderDaoJdbc implements OrderDao {
 
         return obj;
     }
+    @Override
+    public List<Order> findByCustomerPending(Integer idCliente) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+        try {
+            st = conn.prepareStatement(
+                    "SELECT * FROM pedido WHERE id_cliente = ? AND status = 'FIADO' ORDER BY data_pedido DESC"
+            );
+            st.setInt(1, idCliente);
+            rs = st.executeQuery();
+
+            List<Order> list = new ArrayList<>();
+            while (rs.next()) {
+                Order obj = new Order();
+                obj.setIdPedido(rs.getInt("id_pedido"));
+                obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                obj.setValorTotal(rs.getDouble("valor_total"));
+                 obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
+                list.add(obj);
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeResultSet(rs);
+            DB.closeStatement(st);
+        }
+    }
+
 
     @Override
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {

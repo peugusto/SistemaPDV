@@ -14,6 +14,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -33,7 +34,7 @@ public class OrderListController implements Initializable {
     @FXML private TableColumn<OrderItem, Double> columnTotal;
     @FXML private TableColumn<OrderItem, Void> actionsColumn;
     @FXML private Label labelFaturamentoTotal;
-
+    private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private ObservableList<OrderItem> obsList = FXCollections.observableArrayList();
     private OrderService service = new OrderService();
 
