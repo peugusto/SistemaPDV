@@ -28,9 +28,10 @@
                 <TableView fx:id="tableFiados" VBox.vgrow="ALWAYS">
                     <columns>
                         <TableColumn fx:id="columnData" prefWidth="120" text="Data da Venda" />
-                        <TableColumn fx:id="columnVendaId" prefWidth="100" text="Nº Venda" />
-                        <TableColumn fx:id="columnValor" prefWidth="120" text="Valor Original" />
-                        <TableColumn fx:id="columnStatus" prefWidth="120" text="Status" />
+                        <TableColumn fx:id="columnProduto" prefWidth="200" text="Produto" />
+                        <TableColumn fx:id="columnQtd" prefWidth="80" text="Qtd" />
+                        <TableColumn fx:id="columnPrecoUnit" prefWidth="100" text="Vl. Unitário" />
+                        <TableColumn fx:id="columnSubtotal" prefWidth="120" text="Subtotal" />
                     </columns>
                     <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -39,4 +39,12 @@ public class OrderService {
     public List<Order> findByCustomerPending(int idCliente) {
         return dao.findByCustomerPending(idCliente);
     }
+
+    public List<OrderItem> findItemsByCustomerPending(int idCliente) {
+        return dao.findItemsByCustomerPending(idCliente);
+    }
+
+    public void payFullDebt(Integer idCliente) {
+        dao.payFullDebt(idCliente);
+    }
 }

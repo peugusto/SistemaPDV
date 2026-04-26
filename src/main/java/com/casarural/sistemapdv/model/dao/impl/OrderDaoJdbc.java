@@ -131,6 +131,56 @@ public class OrderDaoJdbc implements OrderDao {
         return null;
     }
 
+    @Override
+    public void payFullDebt(Integer idCliente) {
+        PreparedStatement st = null;
+        try {
+            st = conn.prepareStatement(
+                    "UPDATE pedido SET status = 'PAGO' WHERE id_cliente = ? AND status = 'FIADO'"
+            );
+
+            st.setInt(1, idCliente);
+            st.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new DbException("Erro ao liquidar dívida no banco: " + e.getMessage());
+        } finally {
+            DB.closeStatement(st);
+        }
+    }
+
+    @Override
+    public List<OrderItem> findItemsByCustomerPending(Integer idCliente) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+
+
+        String sql = "SELECT p.id_pedido, p.data_pedido, prod.nome_produto, prod.cod_barras, " +
+                "i.quantidade, i.preco_unitario " +
+                "FROM itempedido i " +
+                "JOIN pedido p ON i.id_pedido = p.id_pedido " +
+                "JOIN produto prod ON i.id_produto = prod.id_produto " +
+                "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
+                "ORDER BY p.data_pedido DESC";
+
+        try {
+            st = conn.prepareStatement(sql);
+            st.setInt(1, idCliente);
+            rs = st.executeQuery();
+
+            List<OrderItem> list = new ArrayList<>();
+            while (rs.next()) {
+                list.add(instantiateOI(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeResultSet(rs);
+            DB.closeStatement(st);
+        }
+    }
+
     public OrderItem instantiateOI(ResultSet rs) throws SQLException {
         OrderItem obj = new OrderItem();
         obj.setQtd(rs.getInt("quantidade"));

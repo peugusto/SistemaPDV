@@ -9,4 +9,6 @@ import java.util.List;
 public interface OrderDao extends GenericDao<Order> {
     List<Order> findByCustomerPending(Integer idCliente);
     List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim);
+    List<OrderItem> findItemsByCustomerPending(Integer idCliente);
+    void payFullDebt(Integer idCliente);
 }
