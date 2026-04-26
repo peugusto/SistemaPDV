@@ -9,9 +9,6 @@ public class DaoFactory {
     public static CustomerDao createCustomerDAO() {
         return new CustomerDaoJdbc(DB.getConnection());
     }
-
     public static ProductDao createProductDAO() { return new ProductDaoJdbc(DB.getConnection()); }
-
     public static OrderDao createOrderDAO() {return new OrderDaoJdbc(DB.getConnection());}
-
 }

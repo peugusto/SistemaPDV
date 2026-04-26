@@ -47,4 +47,16 @@ public class OrderService {
     public void payFullDebt(Integer idCliente) {
         dao.payFullDebt(idCliente);
     }
+
+    public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
+
+        List<Order> orders = dao.findPaidOrdersByCustomer(idCliente);
+
+        for (Order order : orders) {
+            List<OrderItem> items = dao.findItemsByOrderId(order.getIdPedido());
+            order.setItemPedido(items);
+        }
+
+        return orders;
+    }
 }

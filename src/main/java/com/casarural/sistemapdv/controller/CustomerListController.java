@@ -18,6 +18,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -88,7 +89,7 @@ public class CustomerListController implements Initializable {
 
         } catch (Exception e) {
             Alerts.showAlert("Erro", "Erro ao abrir detalhes", e.getMessage(), Alert.AlertType.ERROR);
-            e.printStackTrace(); // Ajuda a debugar se o FXML não carregar
+            e.printStackTrace();
         }
     }
 
@@ -101,10 +102,30 @@ public class CustomerListController implements Initializable {
         customerTable.setItems(obsList);
     }
 
+    private void showFiadoHistory(Customer customer) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/FiadoHistory.fxml"));
+            Parent parent = loader.load();
+
+            FiadoHistoryController controller = loader.getController();
+            // Passa o cliente e o service
+            controller.setHistoryData(customer, new OrderService());
+
+            Stage stage = new Stage();
+            stage.setTitle("Histórico de Pagamentos - " + customer.getNomeCliente());
+            stage.setScene(new Scene(parent));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.show();
+        } catch (IOException e) {
+            Alerts.showAlert("Erro", "Erro ao carregar histórico", e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
     private void initButtons() {
         actionsColumn.setCellFactory(param -> new TableCell<>() {
             private final Button btnEdit = new Button("Editar");
             private final Button btnDelete = new Button("Excluir");
+            private final Button btnFiado = new Button("Ver Histórico");
 
             @Override
             protected void updateItem(Void item, boolean empty) {
@@ -114,6 +135,10 @@ public class CustomerListController implements Initializable {
                     setGraphic(null);
                     return;
                 }
+
+                btnFiado.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand;");
+                btnEdit.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-cursor: hand;");
+                btnDelete.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-cursor: hand;");
 
                 btnEdit.setOnAction(event -> {
                     Customer obj = getTableView().getItems().get(getIndex());
@@ -125,11 +150,19 @@ public class CustomerListController implements Initializable {
                     onDeleteAction(obj);
                 });
 
-                HBox pane = new HBox(10, btnEdit, btnDelete);
+                btnFiado.setOnAction(event -> {
+                    Customer obj = getTableView().getItems().get(getIndex());
+                    showFiadoHistory(obj);
+                });
+
+                HBox pane = new HBox(5, btnEdit, btnDelete, btnFiado);
+                pane.setStyle("-fx-alignment: CENTER;");
                 setGraphic(pane);
             }
         });
     }
+
+
 
     private void onEditAction(Customer obj) {
         System.out.println("Editando: " + obj.getNomeCliente());

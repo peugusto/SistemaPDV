@@ -44,7 +44,7 @@ public class FiadoListController implements Initializable {
     }
 
     private void initializeNodes() {
-        // Nome do Produto (acessando o objeto Product dentro de OrderItem)
+
         columnProduto.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getProduto().getNomeProduto()));
 
@@ -52,15 +52,15 @@ public class FiadoListController implements Initializable {
 
         columnPrecoUnit.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
 
-        // Cálculo do Subtotal (Quantidade * Preço Unitário)
+
         columnSubtotal.setCellValueFactory(cellData ->
                 new SimpleObjectProperty<>(cellData.getValue().getQtd() * cellData.getValue().getPrecoUnitario()));
 
-        // Data da Venda (acessando o objeto Order dentro de OrderItem)
+
         columnData.setCellValueFactory(cellData ->
                 new SimpleObjectProperty<>(cellData.getValue().getPedido().getDataPedido()));
 
-        // Formatação da Data na Coluna
+
         columnData.setCellFactory(col -> new TableCell<OrderItem, LocalDateTime>() {
             @Override
             protected void updateItem(LocalDateTime item, boolean empty) {
@@ -73,7 +73,7 @@ public class FiadoListController implements Initializable {
             }
         });
 
-        // Alinhamentos visuais
+
         columnProduto.setStyle("-fx-alignment: CENTER-LEFT;");
         columnQtd.setStyle("-fx-alignment: CENTER;");
         columnPrecoUnit.setStyle("-fx-alignment: CENTER-RIGHT;");

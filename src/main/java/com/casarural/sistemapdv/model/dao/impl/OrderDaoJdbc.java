@@ -228,6 +228,63 @@ public class OrderDaoJdbc implements OrderDao {
         }
     }
 
+    @Override
+    public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+        try {
+            st = conn.prepareStatement(
+                    "SELECT * FROM pedido WHERE id_cliente = ? AND status = 'PAGO' ORDER BY data_pedido DESC"
+            );
+            st.setInt(1, idCliente);
+            rs = st.executeQuery();
+
+            List<Order> list = new ArrayList<>();
+            while (rs.next()) {
+                Order obj = new Order();
+                obj.setIdPedido(rs.getInt("id_pedido"));
+                obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                obj.setValorTotal(rs.getDouble("valor_total"));
+                obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
+                list.add(obj);
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeResultSet(rs);
+            DB.closeStatement(st);
+        }
+    }
+
+
+    @Override
+    public List<OrderItem> findItemsByOrderId(int idPedido) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+        try {
+            st = conn.prepareStatement(
+                    "SELECT i.*, p.nome_produto, p.cod_barras, ped.data_pedido " +
+                            "FROM itempedido i " +
+                            "JOIN produto p ON i.id_produto = p.id_produto " +
+                            "JOIN pedido ped ON i.id_pedido = ped.id_pedido " +
+                            "WHERE i.id_pedido = ?"
+            );
+            st.setInt(1, idPedido);
+            rs = st.executeQuery();
+
+            List<OrderItem> list = new ArrayList<>();
+            while (rs.next()) {
+                list.add(instantiateOI(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeResultSet(rs);
+            DB.closeStatement(st);
+        }
+    }
 
     @Override
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {

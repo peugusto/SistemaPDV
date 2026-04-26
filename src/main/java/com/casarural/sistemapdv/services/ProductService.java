@@ -29,7 +29,6 @@ public class ProductService {
             dao.insert(obj);
         }
     }
-
     public List<Product> findAll() {
         return dao.findAll();
     }
