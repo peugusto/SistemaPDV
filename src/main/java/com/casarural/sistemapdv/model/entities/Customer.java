@@ -9,6 +9,7 @@ public class Customer {
     private String nomeCliente;
     private double limiteCredito;
     private CustomerStatus situacaoFiado;
+    private Double totalDevendo;
 
     public Customer(){}
     public Customer(String nomeCliente, double limiteCredito, CustomerStatus situacaoFiado) {
@@ -49,6 +50,12 @@ public class Customer {
         this.situacaoFiado = situacaoFiado;
     }
 
+    public Double getTotalDevendo() {
+        return totalDevendo;
+    }
+    public void setTotalDevendo(Double totalDevendo){
+        this.totalDevendo = totalDevendo;
+    }
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

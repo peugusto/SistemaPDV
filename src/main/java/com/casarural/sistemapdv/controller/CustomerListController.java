@@ -32,6 +32,7 @@ public class CustomerListController implements Initializable {
     @FXML private TableColumn<Customer, String> nameColumn;
     @FXML private TableColumn<Customer, String> creditStatusColumn;
     @FXML private TableColumn<Customer, Double> creditLimitColumn;
+    @FXML private TableColumn<Customer, Double> totalDebtColumn;
     @FXML private TableColumn<Customer, Void> actionsColumn;
 
     private ObservableList<Customer> obsList;
@@ -51,11 +52,33 @@ public class CustomerListController implements Initializable {
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeCliente"));
         creditStatusColumn.setCellValueFactory(new PropertyValueFactory<>("situacaoFiado"));
         creditLimitColumn.setCellValueFactory(new PropertyValueFactory<>("limiteCredito"));
+        totalDebtColumn.setCellValueFactory(new PropertyValueFactory<>("totalDevendo"));
 
         idColumn.setStyle("-fx-alignment: CENTER;");
         nameColumn.setStyle("-fx-alignment: CENTER;");
         creditStatusColumn.setStyle("-fx-alignment: CENTER;");
         creditLimitColumn.setStyle("-fx-alignment: CENTER;");
+        totalDebtColumn.setStyle("-fx-aligment: CENTER;");
+
+        totalDebtColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setText(null);
+                    setGraphic(null);
+
+                } else {
+                    if (item == null) {
+                        setText("R$ 0,00");
+                        setStyle("-fx-alignment: CENTER; -fx-text-fill: black;");
+                    } else {
+                        setText(String.format("R$ %.2f", item));
+                        setStyle("-fx-alignment: CENTER; -fx-text-fill: #c0392b; -fx-font-weight: bold;");
+                    }
+                }
+            }
+        });
 
 
         customerTable.setRowFactory(tv -> {

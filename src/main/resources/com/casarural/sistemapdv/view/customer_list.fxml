@@ -18,7 +18,6 @@
             <TableColumn fx:id="creditStatusColumn" text="Situação Fiado" prefWidth="100" />
             <TableColumn fx:id="creditLimitColumn" text="Limite Credito" prefWidth="100" />
             <TableColumn fx:id="totalDebtColumn" text="Total Devendo" prefWidth="100" />
-            
             <TableColumn fx:id="actionsColumn" text="" prefWidth="150" />
         </columns>
         <columnResizePolicy>

@@ -74,6 +74,51 @@
     -fx-border-width: 2;
 }
 
+#historyContainer {
+    -fx-background-color: #f4f4f4;
+}
+
+#historyContainer .label {
+    -fx-text-fill: #2c3e50;
+}
+
+#historyContainer .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+#historyContainer .titled-pane > .title {
+    -fx-background-color: white;
+    -fx-text-fill: #2c3e50;
+}
+
+#historyContainer .titled-pane:expanded > .title {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+}
+
+/* Garante a visibilidade do texto no cabeçalho da tabela */
+#historyContainer .table-view .column-header .label {
+    -fx-text-fill: #2c3e50;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+}
+
+#historyContainer .table-view .column-header {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dcdde1;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Garante a visibilidade do texto nas células */
+#historyContainer .table-view .table-cell {
+    -fx-text-fill: #2c3e50;
+}
+
+#historyContainer .table-row-cell:selected .table-cell {
+    -fx-text-fill: #27ae60;
+}
+
+
 /* --- botoes de ação --- */
 .button {
     -fx-cursor: hand;

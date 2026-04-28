@@ -7,7 +7,11 @@
 <?import javafx.scene.layout.*?>
 
 <?import javafx.geometry.Insets?>
-<VBox prefHeight="600.0" prefWidth="500.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.FiadoHistoryController">
+<VBox fx:id="historyContainer" prefHeight="600.0" prefWidth="500.0"
+      stylesheets="@../css/style.css"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.casarural.sistemapdv.controller.FiadoHistoryController">
     <children>
         <Label text="Histórico de Pedidos Pagos" style="-fx-font-size: 18; -fx-font-weight: bold;">
             <padding><Insets bottom="10" left="10" right="10" top="10" /></padding>

@@ -74,11 +74,17 @@ public class CustomerDaoJdbc implements CustomerDao {
         PreparedStatement st = null;
         ResultSet rs = null;
         try {
-            st = conn.prepareStatement("SELECT * FROM cliente ORDER BY nome_cliente");
+            st = conn.prepareStatement(
+                    "SELECT c.*, " +
+                            "(SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO') as total_devendo " +
+                            "FROM cliente c ORDER BY nome_cliente"
+            );
             rs = st.executeQuery();
             List<Customer> list = new ArrayList<>();
             while (rs.next()) {
-                list.add(instantiate(rs));
+                Customer obj = instantiate(rs);
+                obj.setTotalDevendo(rs.getDouble("total_devendo"));
+                list.add(obj);
             }
             return list;
         } catch (SQLException e) {
