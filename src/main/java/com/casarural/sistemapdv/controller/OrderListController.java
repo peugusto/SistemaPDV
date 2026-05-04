@@ -1,9 +1,9 @@
 package com.casarural.sistemapdv.controller;
 
-import com.casarural.sistemapdv.model.entities.Customer;
-import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.services.OrderService;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,7 +20,6 @@ import java.util.ResourceBundle;
 
 public class OrderListController implements Initializable {
 
-
     @FXML private DatePicker dpDataInicio;
     @FXML private DatePicker dpDataFim;
     @FXML private Button btnFiltrar;
@@ -32,46 +31,66 @@ public class OrderListController implements Initializable {
     @FXML private TableColumn<OrderItem, Double> columnPreco;
     @FXML private TableColumn<OrderItem, Integer> columnQtd;
     @FXML private TableColumn<OrderItem, Double> columnTotal;
-    @FXML private TableColumn<OrderItem, Void> actionsColumn;
     @FXML private Label labelFaturamentoTotal;
+
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private ObservableList<OrderItem> obsList = FXCollections.observableArrayList();
     private OrderService service = new OrderService();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-
         dpDataInicio.setValue(LocalDate.now());
         dpDataFim.setValue(LocalDate.now());
 
-        btnFiltrar.setOnAction(event -> atualizarTabela());
         initializeNodes();
+
+        btnFiltrar.setOnAction(event -> atualizarTabela());
+
+        atualizarTabela();
     }
 
     private void initializeNodes() {
+        columnDataHora.setCellValueFactory(cellData ->
+                new SimpleObjectProperty<>(cellData.getValue().getPedido().getDataPedido()));
 
-        columnDataHora.setCellValueFactory(new PropertyValueFactory<>("dataPedido"));
-        columnVendaId.setCellValueFactory(new PropertyValueFactory<>("idPedido"));
-        columnCodBarras.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
-        columnProduto.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
+        columnDataHora.setCellFactory(col -> new TableCell<OrderItem, LocalDateTime>() {
+            @Override
+            protected void updateItem(LocalDateTime item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(dtf.format(item));
+                }
+            }
+        });
+
+        columnVendaId.setCellValueFactory(cellData ->
+                new SimpleObjectProperty<>(cellData.getValue().getPedido().getIdPedido()));
+
+        columnCodBarras.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getProduto().getCodBarras()));
+
+        columnProduto.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getProduto().getNomeProduto()));
+
         columnPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
         columnQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
         columnTotal.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
 
-        columnProduto.setStyle("-fx-alignment: CENTER;");
+        columnProduto.setStyle("-fx-alignment: CENTER-LEFT;");
     }
 
     public void atualizarTabela() {
         if (service == null) {
-            throw new IllegalStateException("Service estava nulo");
+            service = new OrderService();
         }
 
         LocalDate inicio = dpDataInicio.getValue();
         LocalDate fim = dpDataFim.getValue();
 
-         List<OrderItem> list = service.findItemsByDate(inicio, fim);
-         obsList = FXCollections.observableArrayList(list);
-
+        List<OrderItem> list = service.findItemsByDate(inicio, fim);
+        obsList = FXCollections.observableArrayList(list);
         tableViewItens.setItems(obsList);
 
         atualizarFaturamentoTotal();

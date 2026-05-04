@@ -1,8 +1,10 @@
 package com.casarural.sistemapdv.model.entities;
 
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
+import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -13,8 +15,23 @@ public class Order {
     private double valorTotal;
     private List<OrderItem> itemPedido;
     private OrderStatus status;
+    private List<PaymentSlice> pagamentos = new ArrayList<>();
+
+    public static class PaymentSlice {
+        private Double valor;
+        private PaymentMethod metodo;
+
+        public PaymentSlice(Double valor, PaymentMethod metodo) {
+            this.valor = valor;
+            this.metodo = metodo;
+        }
+
+        public Double getValor() { return valor; }
+        public PaymentMethod getMetodo() { return metodo; }
+    }
 
     public Order(){}
+
     public Order(int idPedido, Customer costumer, LocalDateTime dataPedido, double valorTotal, List<OrderItem> itemPedido, OrderStatus status) {
         this.idPedido = idPedido;
         this.costumer = costumer;
@@ -70,6 +87,10 @@ public class Order {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public List<PaymentSlice> getPagamentos() {
+        return pagamentos;
     }
 
     @Override
