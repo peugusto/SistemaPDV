@@ -131,7 +131,6 @@ public class CustomerListController implements Initializable {
             Parent parent = loader.load();
 
             FiadoHistoryController controller = loader.getController();
-            // Passa o cliente e o service
             controller.setHistoryData(customer, new OrderService());
 
             Stage stage = new Stage();
@@ -188,7 +187,25 @@ public class CustomerListController implements Initializable {
 
 
     private void onEditAction(Customer obj) {
-        System.out.println("Editando: " + obj.getNomeCliente());
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/CustomerForm.fxml"));
+            Parent parent = loader.load();
+
+            CustomerFormController controller = loader.getController();
+            controller.setCustomer(obj);
+            controller.setServices(this.service, this);
+            controller.updateFormData();
+
+            Stage stage = new Stage();
+            stage.setTitle("Editar Cliente - " + obj.getNomeCliente());
+            stage.setScene(new Scene(parent));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+
+        } catch (IOException e) {
+            Alerts.showAlert("Erro", "Erro ao carregar formulário", e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
     }
 
     private void onDeleteAction(Customer obj) {
