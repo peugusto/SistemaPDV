@@ -17,7 +17,6 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -60,6 +59,8 @@ public class ProductListController implements Initializable {
         nameColumn.setStyle("-fx-alignment: CENTER;");
         priceColumn.setStyle("-fx-alignment: CENTER;");
         stockColumn.setStyle("-fx-alignment: CENTER;");
+
+
     }
 
     public void updateTableView() {
@@ -92,22 +93,26 @@ public class ProductListController implements Initializable {
 
     private void initEditButtons() {
         actionsColumn.setCellFactory(param -> new TableCell<>() {
-            private final Button editBtn = new Button("Editar");
-            private final Button deleteBtn = new Button("Excluir");
-            private final HBox pane = new HBox(10, editBtn, deleteBtn);
+            private final Button btnEdit = new Button("Editar");
+            private final Button btnDelete = new Button("Excluir");
+            private final HBox pane = new HBox(10, btnEdit, btnDelete);
 
             {
                 pane.setAlignment(Pos.CENTER);
 
-                editBtn.setOnAction(event -> {
+                btnEdit.setOnAction(event -> {
                     Product obj = getTableView().getItems().get(getIndex());
                     onEditAction(obj);
                 });
 
-                deleteBtn.setOnAction(event -> {
+                btnDelete.setOnAction(event -> {
                     Product obj = getTableView().getItems().get(getIndex());
                     onDeleteAction(obj);
                 });
+
+                btnEdit.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-cursor: hand;");
+                btnDelete.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-cursor: hand;");
+
             }
 
             @Override
