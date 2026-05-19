@@ -23,9 +23,6 @@ public class OrderService {
             throw new IllegalArgumentException("Não é possível salvar um pedido sem itens.");
         }
 
-        if (obj.getCostumer().getSituacaoFiado() == CustomerStatus.BLOQUEADO){
-            throw new IllegalStateException("Cliente BLOQUEADO");
-        }
 
         dao.insert(obj);
     }

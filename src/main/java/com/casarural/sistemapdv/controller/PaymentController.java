@@ -103,9 +103,20 @@ public class PaymentController implements Initializable {
             return;
         }
 
-        if (metodo == PaymentMethod.FIADO && comboCliente.getValue() == null) {
-            Alerts.showAlert("Aviso", null, "Selecione o cliente!", Alert.AlertType.WARNING);
-            return;
+        if (metodo == PaymentMethod.FIADO) {
+            Customer clienteSelecionado = comboCliente.getValue();
+
+            if (clienteSelecionado == null) {
+                Alerts.showAlert("Aviso", null, "Selecione o cliente para a venda no Fiado!", Alert.AlertType.WARNING);
+                return;
+            }
+
+            if (clienteSelecionado.getSituacaoFiado() == CustomerStatus.BLOQUEADO) {
+                Alerts.showAlert("Venda Recusada", "Operação não autorizada",
+                        String.format("O cliente '%s' está com o cadastro BLOQUEADO para compras fiadas.",
+                                clienteSelecionado.getNomeCliente()), Alert.AlertType.ERROR);
+                return;
+            }
         }
 
         double valorEfetivo = Math.min(valor, saldoRestante);
