@@ -1,9 +1,11 @@
 package com.casarural.sistemapdv.services;
 
+import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -19,6 +21,10 @@ public class OrderService {
 
         if (obj.getItemPedido().isEmpty()) {
             throw new IllegalArgumentException("Não é possível salvar um pedido sem itens.");
+        }
+
+        if (obj.getCostumer().getSituacaoFiado() == CustomerStatus.BLOQUEADO){
+            throw new IllegalStateException("Cliente BLOQUEADO");
         }
 
         dao.insert(obj);
