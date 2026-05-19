@@ -8,11 +8,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.stage.Stage;
+
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
@@ -116,8 +119,25 @@ public class ProductListController implements Initializable {
     }
 
     private void onEditAction(Product obj) {
-        System.out.println("Abrir formulário de edição para: " + obj.getNomeProduto());
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/ProductForm.fxml"));
+            javafx.scene.Parent parent = loader.load();
 
+            ProductFormController controller = loader.getController();
+            controller.setProduct(obj);
+            controller.setServices(this.service, this);
+            controller.updateFormData();
+
+            Stage stage = new Stage();
+            stage.setTitle("Editar Produto - " + obj.getNomeProduto());
+            stage.setScene(new javafx.scene.Scene(parent));
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+
+        } catch (java.io.IOException e) {
+            Alerts.showAlert("Erro", "Erro ao carregar o formulário de edição", e.getMessage(), Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
     }
 
     private void onDeleteAction(Product obj) {
