@@ -11,6 +11,8 @@ public interface OrderDao extends GenericDao<Order> {
     List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim);
     List<OrderItem> findItemsByCustomerPending(Integer idCliente);
     void payFullDebt(Integer idCliente);
+    double getCustomerDebt(Integer idCliente);
+    void registerPartialPayment(Integer idCliente, double valorPago);
     List<Order> findPaidOrdersByCustomer(Integer idCliente);
     List<OrderItem> findItemsByOrderId(int idPedido);
 }

@@ -1,11 +1,9 @@
 package com.casarural.sistemapdv.services;
 
-import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
-import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -14,16 +12,12 @@ import java.util.Optional;
 
 public class OrderService {
 
-
     private OrderDao dao = DaoFactory.createOrderDAO();
 
     public void insert(Order obj) throws SQLException {
-
         if (obj.getItemPedido().isEmpty()) {
             throw new IllegalArgumentException("Não é possível salvar um pedido sem itens.");
         }
-
-
         dao.insert(obj);
     }
 
@@ -36,7 +30,7 @@ public class OrderService {
     }
 
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
-        return dao.findItemsByDate(inicio,fim);
+        return dao.findItemsByDate(inicio, fim);
     }
 
     public List<Order> findByCustomerPending(int idCliente) {
@@ -51,15 +45,20 @@ public class OrderService {
         dao.payFullDebt(idCliente);
     }
 
+    public double getCustomerDebt(Integer idCliente) {
+        return dao.getCustomerDebt(idCliente);
+    }
+
+    public void registerPartialPayment(Integer idCliente, double valorPago) {
+        dao.registerPartialPayment(idCliente, valorPago);
+    }
+
     public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
-
         List<Order> orders = dao.findPaidOrdersByCustomer(idCliente);
-
         for (Order order : orders) {
             List<OrderItem> items = dao.findItemsByOrderId(order.getIdPedido());
             order.setItemPedido(items);
         }
-
         return orders;
     }
 }

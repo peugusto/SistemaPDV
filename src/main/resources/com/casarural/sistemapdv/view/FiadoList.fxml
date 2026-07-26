@@ -3,34 +3,30 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 
-<VBox prefHeight="500.0" prefWidth="700.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.FiadoListController">
+<VBox prefHeight="600.0" prefWidth="800.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.FiadoListController"
+      style="-fx-background-color: #2c3e50;" stylesheets="@seu_arquivo.css">
     <children>
-        <HBox alignment="CENTER" style="-fx-background-color: #2c3e50;">
+        <HBox alignment="CENTER_LEFT" style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 0 0 1 0; -fx-border-color: rgba(255,255,255,0.1);">
             <children>
-                <Label fx:id="labelTitulo" text="Detalhamento de Fiado: [Nome do Cliente]" textFill="WHITE">
-                    <font>
-                        <Font name="System Bold" size="18.0" />
-                    </font>
-                </Label>
+                <Label fx:id="labelTitulo" text="DETALHAMENTO DE FIADO: [NOME DO CLIENTE]" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
             </children>
             <padding>
-                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
             </padding>
         </HBox>
 
-        <VBox spacing="10.0" VBox.vgrow="ALWAYS">
+        <VBox spacing="15.0" VBox.vgrow="ALWAYS">
             <padding>
                 <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
             </padding>
             <children>
-                <TableView fx:id="tableFiados" VBox.vgrow="ALWAYS">
+                <TableView fx:id="tableFiados" VBox.vgrow="ALWAYS" style="-fx-font-size: 14px; -fx-background-color: transparent;">
                     <columns>
                         <TableColumn fx:id="columnData" prefWidth="120" text="Data da Venda" />
-                        <TableColumn fx:id="columnProduto" prefWidth="200" text="Produto" />
+                        <TableColumn fx:id="columnProduto" prefWidth="250" text="Produto" />
                         <TableColumn fx:id="columnQtd" prefWidth="80" text="Qtd" />
-                        <TableColumn fx:id="columnPrecoUnit" prefWidth="100" text="Vl. Unitário" />
+                        <TableColumn fx:id="columnPrecoUnit" prefWidth="120" text="Vl. Unitário" />
                         <TableColumn fx:id="columnSubtotal" prefWidth="120" text="Subtotal" />
                     </columns>
                     <columnResizePolicy>
@@ -38,23 +34,21 @@
                     </columnResizePolicy>
                 </TableView>
 
-                <HBox alignment="CENTER_RIGHT" spacing="20.0" style="-fx-background-color: #ecf0f1; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;">
+                <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 8;">
                     <padding>
-                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                     </padding>
                     <children>
-                        <Label text="Dívida Total:">
-                            <font>
-                                <Font name="System Bold" size="16.0" />
-                            </font>
-                        </Label>
-                        <Label fx:id="labelTotalDevendo" text="R$ 0,00" textFill="#c0392b">
-                            <font>
-                                <Font name="System Bold" size="22.0" />
-                            </font>
-                        </Label>
-                        <Button fx:id="btnPagar" onAction="#onPagarAction" prefHeight="40.0" prefWidth="150.0"
-                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"
+                        <Label text="Dívida Total:" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                        <Label fx:id="labelTotalDevendo" text="R$ 0,00" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;" />
+
+                        <Pane HBox.hgrow="ALWAYS" />
+
+                        <Label text="Valor (R$):" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                        <TextField fx:id="campoValorPagamento" promptText="0,00" prefWidth="120" prefHeight="40" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+
+                        <Button fx:id="btnPagar" onAction="#onPagarAction" prefHeight="40.0" prefWidth="180.0"
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;"
                                 text="RECEBER PAGAMENTO" />
                     </children>
                 </HBox>

@@ -7,6 +7,7 @@ import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
+import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -93,6 +94,94 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     @Override
+    public void registerPartialPayment(Integer idCliente, double valorPago) {
+        PreparedStatement stSelect = null;
+        PreparedStatement stInsert = null;
+        PreparedStatement stUpdate = null;
+        ResultSet rs = null;
+
+        try {
+            conn.setAutoCommit(false);
+
+            stSelect = conn.prepareStatement(
+                    "SELECT p.id_pedido, p.valor_total, " +
+                            "COALESCE((SELECT SUM(valor_pago) FROM pagamento WHERE id_pedido = p.id_pedido AND metodo_pagamento <> 'FIADO'), 0) AS ja_pago " +
+                            "FROM pedido p " +
+                            "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
+                            "ORDER BY p.data_pedido ASC"
+            );
+            stSelect.setInt(1, idCliente);
+            rs = stSelect.executeQuery();
+
+            stInsert = conn.prepareStatement("INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, 'DINHEIRO')");
+            stUpdate = conn.prepareStatement("UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?");
+
+            double valorRestante = valorPago;
+
+            while (rs.next() && valorRestante > 0) {
+                int idPedido = rs.getInt("id_pedido");
+                double valorTotalPedido = rs.getDouble("valor_total");
+                double jaPago = rs.getDouble("ja_pago");
+                double saldoPedido = valorTotalPedido - jaPago;
+
+                if (saldoPedido > 0) {
+                    double valorAbater = Math.min(valorRestante, saldoPedido);
+
+                    stInsert.setInt(1, idPedido);
+                    stInsert.setDouble(2, valorAbater);
+                    stInsert.executeUpdate();
+
+                    valorRestante -= valorAbater;
+
+                    if (Math.abs(saldoPedido - valorAbater) < 0.009) {
+                        stUpdate.setInt(1, idPedido);
+                        stUpdate.executeUpdate();
+                    }
+                }
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            try { conn.rollback(); } catch (SQLException ex) { throw new DbException(ex.getMessage()); }
+            throw new DbException(e.getMessage());
+        } finally {
+            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+            DB.closeResultSet(rs);
+            DB.closeStatement(stSelect);
+            DB.closeStatement(stInsert);
+            DB.closeStatement(stUpdate);
+        }
+    }
+
+    @Override
+    public double getCustomerDebt(Integer idCliente) {
+        PreparedStatement st = null;
+        ResultSet rs = null;
+        try {
+            st = conn.prepareStatement(
+                    "SELECT " +
+                            "COALESCE((SELECT SUM(valor_total) FROM pedido WHERE id_cliente = ? AND status = 'FIADO'), 0) " +
+                            "- " +
+                            "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = ? AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
+                            "AS divida_total"
+            );
+            st.setInt(1, idCliente);
+            st.setInt(2, idCliente);
+            rs = st.executeQuery();
+
+            if (rs.next()) {
+                return rs.getDouble("divida_total");
+            }
+            return 0.0;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeResultSet(rs);
+            DB.closeStatement(st);
+        }
+    }
+
+    @Override
     public Optional<Order> findById(Integer id) { return Optional.empty(); }
     @Override
     public List<Order> findAll() { return List.of(); }
@@ -105,13 +194,11 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public void payFullDebt(Integer idCliente) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement("UPDATE pedido SET status = 'PAGO' WHERE id_cliente = ? AND status = 'FIADO'");
-            st.setInt(1, idCliente);
-            st.executeUpdate();
-        } catch (SQLException e) { throw new DbException(e.getMessage()); }
-        finally { DB.closeStatement(st); }
+        List<OrderItem> pendentes = findItemsByCustomerPending(idCliente);
+        double totalDevendo = getCustomerDebt(idCliente);
+        if (totalDevendo > 0) {
+            registerPartialPayment(idCliente, totalDevendo);
+        }
     }
 
     @Override
@@ -224,7 +311,6 @@ public class OrderDaoJdbc implements OrderDao {
             st.setDate(2, java.sql.Date.valueOf(fim));
 
             rs = st.executeQuery();
-
             List<OrderItem> list = new ArrayList<>();
 
             while (rs.next()) {

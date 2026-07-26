@@ -3,7 +3,6 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.OrderItem;
-import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
 import javafx.beans.property.SimpleObjectProperty;
@@ -19,13 +18,14 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class FiadoListController implements Initializable {
 
     @FXML private Label labelTitulo;
     @FXML private Label labelTotalDevendo;
+    @FXML private TextField campoValorPagamento;
+    @FXML private Button btnPagar;
 
     @FXML private TableView<OrderItem> tableFiados;
     @FXML private TableColumn<OrderItem, String> columnProduto;
@@ -37,6 +37,7 @@ public class FiadoListController implements Initializable {
     private Customer customer;
     private OrderService orderService;
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private double dividaAtual = 0.0;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -44,22 +45,17 @@ public class FiadoListController implements Initializable {
     }
 
     private void initializeNodes() {
-
         columnProduto.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getProduto().getNomeProduto()));
 
         columnQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
-
         columnPrecoUnit.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
-
 
         columnSubtotal.setCellValueFactory(cellData ->
                 new SimpleObjectProperty<>(cellData.getValue().getQtd() * cellData.getValue().getPrecoUnitario()));
 
-
         columnData.setCellValueFactory(cellData ->
                 new SimpleObjectProperty<>(cellData.getValue().getPedido().getDataPedido()));
-
 
         columnData.setCellFactory(col -> new TableCell<OrderItem, LocalDateTime>() {
             @Override
@@ -73,7 +69,6 @@ public class FiadoListController implements Initializable {
             }
         });
 
-
         columnProduto.setStyle("-fx-alignment: CENTER-LEFT;");
         columnQtd.setStyle("-fx-alignment: CENTER;");
         columnPrecoUnit.setStyle("-fx-alignment: CENTER-RIGHT;");
@@ -84,48 +79,61 @@ public class FiadoListController implements Initializable {
     public void setCustomerData(Customer customer, OrderService service) {
         this.customer = customer;
         this.orderService = service;
-        labelTitulo.setText("Histórico de Itens (Fiado): " + customer.getNomeCliente());
+        labelTitulo.setText("DETALHAMENTO DE FIADO: " + customer.getNomeCliente().toUpperCase());
         loadFiadoData();
     }
 
     private void loadFiadoData() {
         if (orderService == null || customer == null) return;
 
-
         List<OrderItem> list = orderService.findItemsByCustomerPending(customer.getIdCliente());
-
         ObservableList<OrderItem> obsList = FXCollections.observableArrayList(list);
         tableFiados.setItems(obsList);
 
-
-        double total = list.stream()
-                .mapToDouble(i -> i.getQtd() * i.getPrecoUnitario())
-                .sum();
-
-        labelTotalDevendo.setText(String.format("Total Pendente: R$ %.2f", total));
+        dividaAtual = orderService.getCustomerDebt(customer.getIdCliente());
+        labelTotalDevendo.setText(String.format("R$ %.2f", dividaAtual));
     }
 
     @FXML
     public void onPagarAction() {
-        if (customer == null || tableFiados.getItems().isEmpty()) {
+        if (customer == null || dividaAtual <= 0) {
             Alerts.showAlert("Aviso", null, "Não existem pendências.", Alert.AlertType.WARNING);
             return;
         }
 
+        double valorPago;
+        String input = campoValorPagamento.getText();
+
+        if (input == null || input.trim().isEmpty()) {
+            valorPago = dividaAtual;
+        } else {
+            try {
+                valorPago = Double.parseDouble(input.replace(",", "."));
+            } catch (NumberFormatException e) {
+                Alerts.showAlert("Erro", null, "Valor inválido!", Alert.AlertType.ERROR);
+                return;
+            }
+        }
+
+        if (valorPago <= 0 || valorPago > dividaAtual + 0.01) {
+            Alerts.showAlert("Aviso", null, "Valor de pagamento inválido ou maior que a dívida.", Alert.AlertType.WARNING);
+            return;
+        }
+
         boolean confirmou = Alerts.showConfirmation(
-                "Confirmar Pagamento Total",
-                "Liquidação de Dívida",
-                "Deseja confirmar o recebimento de " + labelTotalDevendo.getText() +
-                        " de " + customer.getNomeCliente() + "?"
+                "Confirmar Pagamento",
+                "Recebimento Parcial / Total",
+                String.format("Deseja registrar o pagamento de R$ %.2f de %s?", valorPago, customer.getNomeCliente())
         );
 
         if (confirmou) {
             try {
-                orderService.payFullDebt(customer.getIdCliente());
-                Alerts.showAlert("Sucesso", null, "Dívida quitada!", Alert.AlertType.INFORMATION);
+                orderService.registerPartialPayment(customer.getIdCliente(), valorPago);
+                campoValorPagamento.clear();
+                Alerts.showAlert("Sucesso", null, "Pagamento registrado com sucesso!", Alert.AlertType.INFORMATION);
                 loadFiadoData();
             } catch (DbException e) {
-                Alerts.showAlert("Erro", "Erro ao pagar", e.getMessage(), Alert.AlertType.ERROR);
+                Alerts.showAlert("Erro", "Erro ao processar pagamento", e.getMessage(), Alert.AlertType.ERROR);
             }
         }
     }
