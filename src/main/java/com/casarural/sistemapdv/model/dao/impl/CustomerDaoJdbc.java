@@ -76,7 +76,10 @@ public class CustomerDaoJdbc implements CustomerDao {
         try {
             st = conn.prepareStatement(
                     "SELECT c.*, " +
-                            "(SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO') as total_devendo " +
+                            "COALESCE((SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO'), 0) " +
+                            "- " +
+                            "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
+                            "AS total_devendo " +
                             "FROM cliente c ORDER BY nome_cliente"
             );
             rs = st.executeQuery();
