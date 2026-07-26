@@ -22,8 +22,12 @@ public class PaymentController implements Initializable {
     @FXML private Label labelTotalPagamento;
     @FXML private ComboBox<Customer> comboCliente;
     @FXML private ToggleGroup grupoPagamento;
-    @FXML private RadioButton radioDinheiro;
-    @FXML private RadioButton radioFiado;
+
+    @FXML private ToggleButton btnDinheiro;
+    @FXML private ToggleButton btnCartao;
+    @FXML private ToggleButton btnPix;
+    @FXML private ToggleButton btnFiado;
+
     @FXML private TextField txtValorRecebido;
     @FXML private Label labelTroco;
     @FXML private Button btnConfirmar;
@@ -50,12 +54,14 @@ public class PaymentController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        radioFiado.selectedProperty().addListener((obs, was, isSelected) -> {
+        configurarVisualBotoesPagamento();
+
+        btnFiado.selectedProperty().addListener((obs, was, isSelected) -> {
             comboCliente.setDisable(!isSelected);
         });
 
         txtValorRecebido.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (radioDinheiro.isSelected()) {
+            if (btnDinheiro.isSelected()) {
                 try {
                     double recebido = Double.parseDouble(newVal.replace(",", "."));
                     labelTroco.setText(String.format("R$ %.2f", Math.max(0, recebido - saldoRestante)));
@@ -70,6 +76,27 @@ public class PaymentController implements Initializable {
         txtValorRecebido.setOnAction(event -> adicionarPagamentoManual());
         btnConfirmar.setOnAction(event -> realizarBaixaAutomatica());
         btnCancelar.setOnAction(event -> fecharJanela());
+    }
+
+    private void configurarVisualBotoesPagamento() {
+        ToggleButton[] botoes = {btnDinheiro, btnCartao, btnPix, btnFiado};
+        String estiloBase = "-fx-font-size: 16px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 8; -fx-border-radius: 8; ";
+
+        for (ToggleButton btn : botoes) {
+            btn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+                if (isSelected) {
+                    btn.setStyle(estiloBase + "-fx-background-color: #27ae60; -fx-text-fill: white; -fx-border-color: #27ae60;");
+                } else {
+                    btn.setStyle(estiloBase + "-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2);");
+                }
+            });
+
+            if (btn.isSelected()) {
+                btn.setStyle(estiloBase + "-fx-background-color: #27ae60; -fx-text-fill: white; -fx-border-color: #27ae60;");
+            } else {
+                btn.setStyle(estiloBase + "-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2);");
+            }
+        }
     }
 
     private void adicionarPagamentoManual() {
@@ -90,7 +117,7 @@ public class PaymentController implements Initializable {
     }
 
     private void processarPagamento(double valor) {
-        RadioButton selecionado = (RadioButton) grupoPagamento.getSelectedToggle();
+        ToggleButton selecionado = (ToggleButton) grupoPagamento.getSelectedToggle();
         String textoOriginal = selecionado.getText().toUpperCase();
 
         String textoNormalizado = java.text.Normalizer.normalize(textoOriginal, java.text.Normalizer.Form.NFD)

@@ -4,58 +4,62 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox spacing="20" alignment="TOP_CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PaymentController">
+<VBox spacing="25" alignment="TOP_CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PaymentController"
+      style="-fx-background-color: -fx-secondary-color;" stylesheets="@seu_arquivo.css">
+
     <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
+        <Insets top="30" right="40" bottom="30" left="40"/>
     </padding>
 
-    <VBox alignment="CENTER" spacing="5">
-        <Label text="TOTAL A PAGAR" style="-fx-font-size: 14px;"/>
-        <Label fx:id="labelTotalPagamento" text="R$ 0,00" 
-               style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #28a745;"/>
+    <VBox alignment="CENTER" spacing="5" style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 20; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 8;">
+        <Label text="TOTAL A PAGAR" style="-fx-font-size: 16px; -fx-text-fill: #bdc3c7; -fx-font-weight: bold;"/>
+        <Label fx:id="labelTotalPagamento" text="R$ 0,00"
+               style="-fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: #2ecc71;"/>
     </VBox>
 
-    <Separator/>
+    <fx:define>
+        <ToggleGroup fx:id="grupoPagamento"/>
+    </fx:define>
 
-    <GridPane hgap="10" vgap="15">
+    <HBox spacing="15" alignment="CENTER">
+        <ToggleButton fx:id="btnDinheiro" text="DINHEIRO" toggleGroup="$grupoPagamento" selected="true"
+                      prefWidth="120" prefHeight="90"/>
+
+        <ToggleButton fx:id="btnCartao" text="CARTÃO" toggleGroup="$grupoPagamento"
+                      prefWidth="120" prefHeight="90"/>
+
+        <ToggleButton fx:id="btnPix" text="PIX" toggleGroup="$grupoPagamento"
+                      prefWidth="120" prefHeight="90"/>
+
+        <ToggleButton fx:id="btnFiado" text="FIADO" toggleGroup="$grupoPagamento"
+                      prefWidth="120" prefHeight="90"/>
+    </HBox>
+
+    <GridPane hgap="15" vgap="20" alignment="CENTER">
         <columnConstraints>
-            <ColumnConstraints minWidth="120" halignment="RIGHT"/>
-            <ColumnConstraints hgrow="ALWAYS" minWidth="200"/>
+            <ColumnConstraints minWidth="180" halignment="RIGHT"/>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="280"/>
         </columnConstraints>
 
-        <children>
-            <Label text="Forma de Pagamento:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-            <HBox spacing="10" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                <RadioButton fx:id="radioDinheiro" text="Dinheiro" selected="true">
-                    <toggleGroup>
-                        <ToggleGroup fx:id="grupoPagamento"/>
-                    </toggleGroup>
-                </RadioButton>
-                <RadioButton fx:id="radioCartao" text="Cartão" toggleGroup="$grupoPagamento"/>
-                <RadioButton fx:id="radioPix" text="PIX" toggleGroup="$grupoPagamento"/>
-                <RadioButton fx:id="radioFiado" text="Fiado" toggleGroup="$grupoPagamento"/>
-            </HBox>
+        <Label text="Cliente (Fiado):" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <ComboBox fx:id="comboCliente" maxWidth="Infinity" prefHeight="40" promptText="Selecione o cliente..."
+                  GridPane.columnIndex="1" GridPane.rowIndex="0" disable="true" style="-fx-font-size: 14px;"/>
 
-            <Label text="Cliente (Fiado):" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-            <ComboBox fx:id="comboCliente" maxWidth="Infinity" promptText="Selecione o cliente..." 
-                      GridPane.columnIndex="1" GridPane.rowIndex="1" disable="true"/>
+        <Label text="Valor Recebido (R$):" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <TextField fx:id="txtValorRecebido" promptText="0,00" prefHeight="40"
+                   GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
 
-            <Label text="Valor Recebido:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-            <TextField fx:id="txtValorRecebido" promptText="0,00" 
-                       GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-
-            <Label text="Troco:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-            <Label fx:id="labelTroco" text="R$ 0,00" style="-fx-font-weight: bold;" 
-                   GridPane.columnIndex="1" GridPane.rowIndex="3"/>
-        </children>
+        <Label text="Troco:" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <Label fx:id="labelTroco" text="R$ 0,00" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"
+               GridPane.columnIndex="1" GridPane.rowIndex="2"/>
     </GridPane>
 
-    <Separator/>
+    <Pane VBox.vgrow="ALWAYS"/>
 
-    <HBox spacing="15" alignment="CENTER_RIGHT">
-        <Button fx:id="btnCancelar" text="Voltar (Esc)" prefWidth="120" prefHeight="40"/>
-        <Button fx:id="btnConfirmar" text="Confirmar Baixa" prefWidth="150" prefHeight="40"
-                style="-fx-base: #28a745; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    <HBox spacing="20" alignment="CENTER_RIGHT">
+        <Button fx:id="btnCancelar" text="Voltar (Esc)" prefWidth="150" prefHeight="50" style="-fx-font-size: 16px;"/>
+        <Button fx:id="btnConfirmar" text="Confirmar Pagamento" prefWidth="250" prefHeight="50"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;"/>
     </HBox>
 
 </VBox>

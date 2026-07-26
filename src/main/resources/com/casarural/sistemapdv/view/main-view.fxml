@@ -4,86 +4,87 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController">
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController"
+            style="-fx-background-color: -fx-secondary-color;" stylesheets="@seu_arquivo.css">
 
-    <!-- Menu superior -->
     <top>
-        <MenuBar fx:id="menuPrincipal">
+        <VBox>
+            <MenuBar fx:id="menuPrincipal" style="-fx-background-color: rgba(0,0,0,0.3);">
+                <Menu text="Arquivo">
+                    <MenuItem text="Novo"/>
+                    <MenuItem text="Abrir"/>
+                    <MenuItem text="Sair" fx:id="menuSair"/>
+                </Menu>
+                <Menu text="Sistema">
+                    <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
+                    <MenuItem text="Atualizar Dados"/>
+                </Menu>
+                <Menu text="Ajuda">
+                    <MenuItem text="Sobre"/>
+                </Menu>
+            </MenuBar>
 
-            <Menu text="Arquivo">
-                <MenuItem text="Novo"/>
-                <MenuItem text="Abrir"/>
-                <MenuItem text="Sair" fx:id="menuSair"/>
-            </Menu>
-
-            <Menu text="Sistema">
-                <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
-                <MenuItem text="Atualizar Dados"/>
-            </Menu>
-
-            <Menu text="Ajuda">
-                <MenuItem text="Sobre"/>
-            </Menu>
-
-        </MenuBar>
+            <BorderPane style="-fx-background-color: rgba(0,0,0,0.2); -fx-padding: 20; -fx-border-width: 0 0 1 0; -fx-border-color: rgba(255,255,255,0.1);">
+                <left>
+                    <Label text="PDV - CasaRural" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: white;" BorderPane.alignment="CENTER_LEFT"/>
+                </left>
+                <right>
+                    <VBox alignment="CENTER_RIGHT" spacing="5">
+                        <Label fx:id="labelData" text="00/00/0000" style="-fx-font-size: 16px; -fx-text-fill: #bdc3c7;"/>
+                        <Label fx:id="labelHora" text="00:00:00" style="-fx-font-size: 20px; -fx-text-fill: #2ecc71; -fx-font-weight: bold;"/>
+                    </VBox>
+                </right>
+            </BorderPane>
+        </VBox>
     </top>
 
-
     <center>
-        <GridPane hgap="25" vgap="25" alignment="CENTER">
-
+        <GridPane hgap="30" vgap="30" alignment="CENTER">
             <padding>
-                <Insets top="30" right="30" bottom="30" left="30"/>
+                <Insets top="40" right="40" bottom="40" left="40"/>
             </padding>
 
-            <Button text="Venda (F1)"
+            <Button text="Venda&#10;(F1)" textAlignment="CENTER"
                     fx:id="botaoPDV"
-                    prefWidth="220"
-                    prefHeight="120"
-                    GridPane.rowIndex="0"
-                    GridPane.columnIndex="0"
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="0" GridPane.columnIndex="0"
                     onAction="#onBotaoPDVAction"/>
 
-            <Button text="Cadastrar/Fornecer Produtos (F2)"
+            <Button text="Cadastrar/Fornecer&#10;Produtos (F2)" textAlignment="CENTER"
                     fx:id="botaoProdutos"
-                    prefWidth="220"
-                    prefHeight="120"
-                    GridPane.rowIndex="0"
-                    onAction="#onButtonProductAction"
-                    GridPane.columnIndex="1"/>
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="0" GridPane.columnIndex="1"
+                    onAction="#onButtonProductAction"/>
 
-            <Button text="Estoque de Produtos (F3)"
+            <Button text="Estoque de&#10;Produtos (F3)" textAlignment="CENTER"
                     fx:id="botaoConsultarProdutos"
-                    prefWidth="220"
-                    prefHeight="120"
-                    onAction="#onButtonProductListAction"
-                    GridPane.rowIndex="0"
-                    GridPane.columnIndex="2"/>
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="0" GridPane.columnIndex="2"
+                    onAction="#onButtonProductListAction"/>
 
-            <Button text="Cadastrar Clientes (F4)"
+            <Button text="Cadastrar&#10;Clientes (F4)" textAlignment="CENTER"
                     fx:id="botaoClientes"
-                    prefWidth="220"
-                    onAction="#onButtonCustomerAction"
-                    prefHeight="120"
-                    GridPane.rowIndex="1"
-                    GridPane.columnIndex="0"/>
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="1" GridPane.columnIndex="0"
+                    onAction="#onButtonCustomerAction"/>
 
-            <Button text="Consultar Clientes (F5)"
+            <Button text="Consultar&#10;Clientes (F5)" textAlignment="CENTER"
                     fx:id="botaoFiados"
-                    onAction="#onButtonCustomerListAction"
-                    prefWidth="220"
-                    prefHeight="120"
-                    GridPane.rowIndex="1"
-                    GridPane.columnIndex="1"/>
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="1" GridPane.columnIndex="1"
+                    onAction="#onButtonCustomerListAction"/>
 
-            <Button text="Histórico de Vendas"
+            <Button text="Histórico de&#10;Vendas" textAlignment="CENTER"
                     fx:id="botaoHistorico"
-                    prefWidth="220"
-                    onAction="#onBotaoHistoricoAction"
-                    prefHeight="120"
-                    GridPane.rowIndex="1"
-                    GridPane.columnIndex="2"/>
-
+                    prefWidth="200" prefHeight="180"
+                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
+                    GridPane.rowIndex="1" GridPane.columnIndex="2"
+                    onAction="#onBotaoHistoricoAction"/>
         </GridPane>
     </center>
 
