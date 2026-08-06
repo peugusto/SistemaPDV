@@ -118,7 +118,23 @@ public class ProductListController implements Initializable {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : pane);
+
+                if (empty) {
+                    setGraphic(null);
+                    if (getTableRow() != null) {
+                        getTableRow().setStyle("");
+                    }
+                } else {
+                    setGraphic(pane);
+
+                    Product produto = (Product) getTableRow().getItem();
+
+                    if (produto != null) {
+                        if (produto.getEstoque() <= 15) {
+                            stockColumn.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                        }
+                    }
+                }
             }
         });
     }
