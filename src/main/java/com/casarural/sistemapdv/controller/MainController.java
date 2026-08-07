@@ -135,6 +135,11 @@ public class MainController implements Initializable {
     }
 
     @FXML
+    public void onMenuDashboardVendasAction() {
+        ViewLoader.showView(true, "/com/casarural/sistemapdv/view/dashboard_vendas.fxml", "Dashboard de Vendas");
+    }
+
+    @FXML
     public void onBotaoHistoricoAction() {
         ViewLoader.showView(true, "/com/casarural/sistemapdv/view/order-list.fxml", "Historico de Vendas"
         );

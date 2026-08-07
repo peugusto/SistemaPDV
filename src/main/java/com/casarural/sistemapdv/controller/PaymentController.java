@@ -133,6 +133,8 @@ public class PaymentController implements Initializable {
         if (metodo == PaymentMethod.FIADO) {
             Customer clienteSelecionado = comboCliente.getValue();
 
+
+
             if (clienteSelecionado == null) {
                 Alerts.showAlert("Aviso", null, "Selecione o cliente para a venda no Fiado!", Alert.AlertType.WARNING);
                 return;

@@ -10,17 +10,18 @@
     <top>
         <VBox>
             <MenuBar fx:id="menuPrincipal" style="-fx-background-color: rgba(0,0,0,0.3);">
-                <Menu text="Arquivo">
-                    <MenuItem text="Novo"/>
-                    <MenuItem text="Abrir"/>
-                    <MenuItem text="Sair" fx:id="menuSair"/>
-                </Menu>
+
                 <Menu text="Sistema">
                     <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
                     <MenuItem text="Atualizar Dados"/>
                 </Menu>
                 <Menu text="Ajuda">
+                    <MenuItem text="Manual"/>
                     <MenuItem text="Sobre"/>
+                </Menu>
+                <Menu text="Extras">
+                    <MenuItem text="Lista de Compras"/>
+                    <MenuItem fx:id="menuDashboardVendas" text="Dashboard de Vendas" onAction="#onMenuDashboardVendasAction"/>
                 </Menu>
             </MenuBar>
 
