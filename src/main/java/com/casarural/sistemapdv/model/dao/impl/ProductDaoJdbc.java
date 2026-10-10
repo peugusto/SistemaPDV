@@ -16,19 +16,12 @@ import java.util.Optional;
 
 public class ProductDaoJdbc implements ProductDao {
 
-    private Connection conn;
-
-    public ProductDaoJdbc(Connection conn) {
-        this.conn = conn;
-    }
-
     @Override
     public void insert(Product obj) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement(
-                    "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque) VALUES (?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS);
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque) VALUES (?, ?, ?, ?)",
+                     Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
@@ -38,49 +31,40 @@ public class ProductDaoJdbc implements ProductDao {
             int rowsAffected = st.executeUpdate();
 
             if (rowsAffected > 0) {
-                ResultSet rs = st.getGeneratedKeys();
-                if (rs.next()) {
-                    int id = rs.getInt(1);
-                    obj.setIdProduto(id);
+                try (ResultSet rs = st.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        obj.setIdProduto(rs.getInt(1));
+                    }
                 }
-                DB.closeResultSet(rs);
             } else {
                 throw new DbException("Erro inesperado! Nenhuma linha alterada.");
             }
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 
     @Override
     public Optional<Product> findById(Integer id) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM produto WHERE id_produto = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT * FROM produto WHERE id_produto = ?")) {
             st.setInt(1, id);
-            rs = st.executeQuery();
-            if (rs.next()) {
-                return Optional.of(instantiate(rs));
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(instantiate(rs));
+                }
+                return Optional.empty();
             }
-            return Optional.empty();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
         }
     }
 
     @Override
     public List<Product> findAll() {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM produto ORDER BY nome_produto");
-            rs = st.executeQuery();
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT * FROM produto ORDER BY nome_produto");
+             ResultSet rs = st.executeQuery()) {
 
             List<Product> list = new ArrayList<>();
             while (rs.next()) {
@@ -89,18 +73,14 @@ public class ProductDaoJdbc implements ProductDao {
             return list;
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
         }
     }
 
     @Override
     public void update(Product obj) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement(
-                    "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ? WHERE id_produto = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ? WHERE id_produto = ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
@@ -108,25 +88,20 @@ public class ProductDaoJdbc implements ProductDao {
             st.setInt(4, obj.getEstoque());
             st.setInt(5, obj.getIdProduto());
 
-             st.executeUpdate();
+            st.executeUpdate();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 
     @Override
     public void deleteById(Integer id) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement("DELETE FROM produto WHERE id_produto = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("DELETE FROM produto WHERE id_produto = ?")) {
             st.setInt(1, id);
             st.executeUpdate();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 
@@ -144,21 +119,17 @@ public class ProductDaoJdbc implements ProductDao {
 
     @Override
     public Optional<Product> findByCodBarras(String codBarras) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM produto WHERE cod_barras = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT * FROM produto WHERE cod_barras = ?")) {
             st.setString(1, codBarras);
-            rs = st.executeQuery();
-            if (rs.next()) {
-                return Optional.of(instantiate(rs));
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(instantiate(rs));
+                }
+                return Optional.empty();
             }
-            return Optional.empty();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
         }
     }
 }

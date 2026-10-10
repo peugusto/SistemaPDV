@@ -13,19 +13,12 @@ import java.util.Optional;
 
 public class CustomerDaoJdbc implements CustomerDao {
 
-    private Connection conn;
-
-    public CustomerDaoJdbc(Connection conn) {
-        this.conn = conn;
-    }
-
     @Override
     public void insert(Customer obj) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement(
-                    "INSERT INTO cliente (nome_cliente, limite_credito, situacao_fiado) VALUES (?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS);
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "INSERT INTO cliente (nome_cliente, limite_credito, situacao_fiado) VALUES (?, ?, ?)",
+                     Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getNomeCliente());
             st.setDouble(2, obj.getLimiteCredito());
@@ -34,55 +27,47 @@ public class CustomerDaoJdbc implements CustomerDao {
             int rowsAffected = st.executeUpdate();
 
             if (rowsAffected > 0) {
-                ResultSet rs = st.getGeneratedKeys();
-                if (rs.next()) {
-                    obj.setIdCliente(rs.getInt(1));
+                try (ResultSet rs = st.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        obj.setIdCliente(rs.getInt(1));
+                    }
                 }
-                DB.closeResultSet(rs);
             } else {
                 throw new DbException("Erro inesperado! Nenhum cliente inserido.");
             }
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 
     @Override
     public Optional<Customer> findById(Integer id) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM cliente WHERE id_cliente = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT * FROM cliente WHERE id_cliente = ?")) {
             st.setInt(1, id);
-            rs = st.executeQuery();
-            if (rs.next()) {
-                return Optional.of(instantiate(rs));
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(instantiate(rs));
+                }
+                return Optional.empty();
             }
-            return Optional.empty();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
         }
     }
 
     @Override
     public List<Customer> findAll() {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement(
-                    "SELECT c.*, " +
-                            "COALESCE((SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO'), 0) " +
-                            "- " +
-                            "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
-                            "AS total_devendo " +
-                            "FROM cliente c ORDER BY nome_cliente"
-            );
-            rs = st.executeQuery();
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "SELECT c.*, " +
+                             "COALESCE((SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO'), 0) " +
+                             "- " +
+                             "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
+                             "AS total_devendo " +
+                             "FROM cliente c ORDER BY nome_cliente");
+             ResultSet rs = st.executeQuery()) {
+
             List<Customer> list = new ArrayList<>();
             while (rs.next()) {
                 Customer obj = instantiate(rs);
@@ -92,18 +77,14 @@ public class CustomerDaoJdbc implements CustomerDao {
             return list;
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
         }
     }
 
     @Override
     public void update(Customer obj) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement(
-                    "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ? WHERE id_cliente = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ? WHERE id_cliente = ?")) {
 
             st.setString(1, obj.getNomeCliente());
             st.setDouble(2, obj.getLimiteCredito());
@@ -113,22 +94,17 @@ public class CustomerDaoJdbc implements CustomerDao {
             st.executeUpdate();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 
     @Override
     public void deleteById(Integer id) {
-        PreparedStatement st = null;
-        try {
-            st = conn.prepareStatement("DELETE FROM cliente WHERE id_cliente = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("DELETE FROM cliente WHERE id_cliente = ?")) {
             st.setInt(1, id);
             st.executeUpdate();
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
         }
     }
 

@@ -7,7 +7,6 @@ import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
-import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -17,50 +16,48 @@ import java.util.List;
 import java.util.Optional;
 
 public class OrderDaoJdbc implements OrderDao {
-    private Connection conn;
-
-    public OrderDaoJdbc(Connection conn) {
-        this.conn = conn;
-    }
 
     @Override
     public void insert(Order obj) {
-        PreparedStatement st = null;
-        try {
+        // Uma única conexão do início ao fim da transação: pedido + itens + estoque + pagamentos
+        try (Connection conn = DB.getConnection()) {
             conn.setAutoCommit(false);
-            st = conn.prepareStatement(
+            try (PreparedStatement st = conn.prepareStatement(
                     "INSERT INTO pedido (id_cliente, valor_total, status) VALUES (?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS);
+                    Statement.RETURN_GENERATED_KEYS)) {
 
-            if (obj.getCostumer() != null) {
-                st.setInt(1, obj.getCostumer().getIdCliente());
-            } else {
-                st.setNull(1, Types.INTEGER);
-            }
-            st.setDouble(2, obj.getValorTotal());
-            st.setString(3, obj.getStatus().toString());
-
-            int rowsAffected = st.executeUpdate();
-            if (rowsAffected > 0) {
-                ResultSet rs = st.getGeneratedKeys();
-                if (rs.next()) {
-                    int idPedido = rs.getInt(1);
-                    obj.setIdPedido(idPedido);
-                    inserirItensEBaixarEstoque(obj.getItemPedido(), idPedido);
-                    inserirPagamento(obj, idPedido);
+                if (obj.getCostumer() != null) {
+                    st.setInt(1, obj.getCostumer().getIdCliente());
+                } else {
+                    st.setNull(1, Types.INTEGER);
                 }
+                st.setDouble(2, obj.getValorTotal());
+                st.setString(3, obj.getStatus().toString());
+
+                int rowsAffected = st.executeUpdate();
+                if (rowsAffected > 0) {
+                    try (ResultSet rs = st.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            int idPedido = rs.getInt(1);
+                            obj.setIdPedido(idPedido);
+                            inserirItensEBaixarEstoque(conn, obj.getItemPedido(), idPedido);
+                            inserirPagamento(conn, obj, idPedido);
+                        }
+                    }
+                }
+                conn.commit();
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
-            conn.commit();
         } catch (SQLException e) {
-            try { conn.rollback(); } catch (SQLException rb) { throw new DbException(rb.getMessage()); }
             throw new DbException(e.getMessage());
-        } finally {
-            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
-            DB.closeStatement(st);
         }
     }
 
-    private void inserirItensEBaixarEstoque(List<OrderItem> itens, int idPedido) throws SQLException {
+    private void inserirItensEBaixarEstoque(Connection conn, List<OrderItem> itens, int idPedido) throws SQLException {
         String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)";
         String sqlEstoque = "UPDATE produto SET estoque = estoque - ? WHERE id_produto = ? AND estoque >= ?";
         try (PreparedStatement stItem = conn.prepareStatement(sqlItem);
@@ -84,7 +81,7 @@ public class OrderDaoJdbc implements OrderDao {
         }
     }
 
-    private void inserirPagamento(Order obj, int idPedido) throws SQLException {
+    private void inserirPagamento(Connection conn, Order obj, int idPedido) throws SQLException {
         String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, ?)";
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             for (Order.PaymentSlice fatia : obj.getPagamentos()) {
@@ -99,89 +96,78 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public void registerPartialPayment(Integer idCliente, double valorPago) {
-        PreparedStatement stSelect = null;
-        PreparedStatement stInsert = null;
-        PreparedStatement stUpdate = null;
-        ResultSet rs = null;
-
-        try {
+        try (Connection conn = DB.getConnection()) {
             conn.setAutoCommit(false);
+            try (PreparedStatement stSelect = conn.prepareStatement(
+                         "SELECT p.id_pedido, p.valor_total, " +
+                                 "COALESCE((SELECT SUM(valor_pago) FROM pagamento WHERE id_pedido = p.id_pedido AND metodo_pagamento <> 'FIADO'), 0) AS ja_pago " +
+                                 "FROM pedido p " +
+                                 "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
+                                 "ORDER BY p.data_pedido ASC");
+                 PreparedStatement stInsert = conn.prepareStatement(
+                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, 'DINHEIRO')");
+                 PreparedStatement stUpdate = conn.prepareStatement(
+                         "UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?")) {
 
-            stSelect = conn.prepareStatement(
-                    "SELECT p.id_pedido, p.valor_total, " +
-                            "COALESCE((SELECT SUM(valor_pago) FROM pagamento WHERE id_pedido = p.id_pedido AND metodo_pagamento <> 'FIADO'), 0) AS ja_pago " +
-                            "FROM pedido p " +
-                            "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
-                            "ORDER BY p.data_pedido ASC"
-            );
-            stSelect.setInt(1, idCliente);
-            rs = stSelect.executeQuery();
+                stSelect.setInt(1, idCliente);
 
-            stInsert = conn.prepareStatement("INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, 'DINHEIRO')");
-            stUpdate = conn.prepareStatement("UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?");
+                try (ResultSet rs = stSelect.executeQuery()) {
+                    double valorRestante = valorPago;
 
-            double valorRestante = valorPago;
+                    while (rs.next() && valorRestante > 0) {
+                        int idPedido = rs.getInt("id_pedido");
+                        double valorTotalPedido = rs.getDouble("valor_total");
+                        double jaPago = rs.getDouble("ja_pago");
+                        double saldoPedido = valorTotalPedido - jaPago;
 
-            while (rs.next() && valorRestante > 0) {
-                int idPedido = rs.getInt("id_pedido");
-                double valorTotalPedido = rs.getDouble("valor_total");
-                double jaPago = rs.getDouble("ja_pago");
-                double saldoPedido = valorTotalPedido - jaPago;
+                        if (saldoPedido > 0) {
+                            double valorAbater = Math.min(valorRestante, saldoPedido);
 
-                if (saldoPedido > 0) {
-                    double valorAbater = Math.min(valorRestante, saldoPedido);
+                            stInsert.setInt(1, idPedido);
+                            stInsert.setDouble(2, valorAbater);
+                            stInsert.executeUpdate();
 
-                    stInsert.setInt(1, idPedido);
-                    stInsert.setDouble(2, valorAbater);
-                    stInsert.executeUpdate();
+                            valorRestante -= valorAbater;
 
-                    valorRestante -= valorAbater;
-
-                    if (Math.abs(saldoPedido - valorAbater) < 0.009) {
-                        stUpdate.setInt(1, idPedido);
-                        stUpdate.executeUpdate();
+                            if (Math.abs(saldoPedido - valorAbater) < 0.009) {
+                                stUpdate.setInt(1, idPedido);
+                                stUpdate.executeUpdate();
+                            }
+                        }
                     }
                 }
+                conn.commit();
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
-
-            conn.commit();
         } catch (SQLException e) {
-            try { conn.rollback(); } catch (SQLException ex) { throw new DbException(ex.getMessage()); }
             throw new DbException(e.getMessage());
-        } finally {
-            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
-            DB.closeResultSet(rs);
-            DB.closeStatement(stSelect);
-            DB.closeStatement(stInsert);
-            DB.closeStatement(stUpdate);
         }
     }
 
     @Override
     public double getCustomerDebt(Integer idCliente) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement(
-                    "SELECT " +
-                            "COALESCE((SELECT SUM(valor_total) FROM pedido WHERE id_cliente = ? AND status = 'FIADO'), 0) " +
-                            "- " +
-                            "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = ? AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
-                            "AS divida_total"
-            );
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "SELECT " +
+                             "COALESCE((SELECT SUM(valor_total) FROM pedido WHERE id_cliente = ? AND status = 'FIADO'), 0) " +
+                             "- " +
+                             "COALESCE((SELECT SUM(pg.valor_pago) FROM pagamento pg INNER JOIN pedido p ON pg.id_pedido = p.id_pedido WHERE p.id_cliente = ? AND p.status = 'FIADO' AND pg.metodo_pagamento <> 'FIADO'), 0) " +
+                             "AS divida_total")) {
             st.setInt(1, idCliente);
             st.setInt(2, idCliente);
-            rs = st.executeQuery();
 
-            if (rs.next()) {
-                return rs.getDouble("divida_total");
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("divida_total");
+                }
+                return 0.0;
             }
-            return 0.0;
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeResultSet(rs);
-            DB.closeStatement(st);
         }
     }
 
@@ -198,7 +184,6 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public void payFullDebt(Integer idCliente) {
-        List<OrderItem> pendentes = findItemsByCustomerPending(idCliente);
         double totalDevendo = getCustomerDebt(idCliente);
         if (totalDevendo > 0) {
             registerPartialPayment(idCliente, totalDevendo);
@@ -207,20 +192,18 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public List<OrderItem> findItemsByCustomerPending(Integer idCliente) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
         String sql = "SELECT p.id_pedido, p.data_pedido, prod.nome_produto, prod.cod_barras, i.quantidade, i.preco_unitario " +
                 "FROM itempedido i JOIN pedido p ON i.id_pedido = p.id_pedido JOIN produto prod ON i.id_produto = prod.id_produto " +
                 "WHERE p.id_cliente = ? AND p.status = 'FIADO' ORDER BY p.data_pedido DESC";
-        try {
-            st = conn.prepareStatement(sql);
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql)) {
             st.setInt(1, idCliente);
-            rs = st.executeQuery();
-            List<OrderItem> list = new ArrayList<>();
-            while (rs.next()) { list.add(instantiateOI(rs)); }
-            return list;
+            try (ResultSet rs = st.executeQuery()) {
+                List<OrderItem> list = new ArrayList<>();
+                while (rs.next()) { list.add(instantiateOI(rs)); }
+                return list;
+            }
         } catch (SQLException e) { throw new DbException(e.getMessage()); }
-        finally { DB.closeResultSet(rs); DB.closeStatement(st); }
     }
 
     public OrderItem instantiateOI(ResultSet rs) throws SQLException {
@@ -240,106 +223,86 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public List<Order> findByCustomerPending(Integer idCliente) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM pedido WHERE id_cliente = ? AND status = 'FIADO' ORDER BY data_pedido DESC");
-            st.setInt(1, idCliente);
-            rs = st.executeQuery();
-            List<Order> list = new ArrayList<>();
-            while (rs.next()) {
-                Order obj = new Order();
-                obj.setIdPedido(rs.getInt("id_pedido"));
-                obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                obj.setValorTotal(rs.getDouble("valor_total"));
-                obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
-                list.add(obj);
-            }
-            return list;
-        } catch (SQLException e) { throw new DbException(e.getMessage()); }
-        finally { DB.closeResultSet(rs); DB.closeStatement(st); }
+        return findOrdersByCustomerAndStatus(idCliente, OrderStatus.FIADO);
     }
 
     @Override
     public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT * FROM pedido WHERE id_cliente = ? AND status = 'PAGO' ORDER BY data_pedido DESC");
+        return findOrdersByCustomerAndStatus(idCliente, OrderStatus.PAGO);
+    }
+
+    private List<Order> findOrdersByCustomerAndStatus(Integer idCliente, OrderStatus status) {
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "SELECT * FROM pedido WHERE id_cliente = ? AND status = ? ORDER BY data_pedido DESC")) {
             st.setInt(1, idCliente);
-            rs = st.executeQuery();
-            List<Order> list = new ArrayList<>();
-            while (rs.next()) {
-                Order obj = new Order();
-                obj.setIdPedido(rs.getInt("id_pedido"));
-                obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                obj.setValorTotal(rs.getDouble("valor_total"));
-                obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
-                list.add(obj);
+            st.setString(2, status.toString());
+            try (ResultSet rs = st.executeQuery()) {
+                List<Order> list = new ArrayList<>();
+                while (rs.next()) {
+                    Order obj = new Order();
+                    obj.setIdPedido(rs.getInt("id_pedido"));
+                    obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                    obj.setValorTotal(rs.getDouble("valor_total"));
+                    obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
+                    list.add(obj);
+                }
+                return list;
             }
-            return list;
         } catch (SQLException e) { throw new DbException(e.getMessage()); }
-        finally { DB.closeResultSet(rs); DB.closeStatement(st); }
     }
 
     @Override
     public List<OrderItem> findItemsByOrderId(int idPedido) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement("SELECT i.*, p.nome_produto, p.cod_barras, ped.data_pedido FROM itempedido i " +
-                    "JOIN produto p ON i.id_produto = p.id_produto JOIN pedido ped ON i.id_pedido = ped.id_pedido WHERE i.id_pedido = ?");
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT i.*, p.nome_produto, p.cod_barras, ped.data_pedido FROM itempedido i " +
+                     "JOIN produto p ON i.id_produto = p.id_produto JOIN pedido ped ON i.id_pedido = ped.id_pedido WHERE i.id_pedido = ?")) {
             st.setInt(1, idPedido);
-            rs = st.executeQuery();
-            List<OrderItem> list = new ArrayList<>();
-            while (rs.next()) { list.add(instantiateOI(rs)); }
-            return list;
+            try (ResultSet rs = st.executeQuery()) {
+                List<OrderItem> list = new ArrayList<>();
+                while (rs.next()) { list.add(instantiateOI(rs)); }
+                return list;
+            }
         } catch (SQLException e) { throw new DbException(e.getMessage()); }
-        finally { DB.closeResultSet(rs); DB.closeStatement(st); }
     }
 
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
-        PreparedStatement st = null;
-        ResultSet rs = null;
-        try {
-            st = conn.prepareStatement(
-                    "SELECT itempedido.*, produto.nome_produto, produto.cod_barras, pedido.data_pedido " +
-                            "FROM itempedido " +
-                            "INNER JOIN produto ON itempedido.id_produto = produto.id_produto " +
-                            "INNER JOIN pedido ON itempedido.id_pedido = pedido.id_pedido " +
-                            "WHERE DATE(pedido.data_pedido) BETWEEN ? AND ? " +
-                            "ORDER BY pedido.data_pedido DESC"
-            );
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "SELECT itempedido.*, produto.nome_produto, produto.cod_barras, pedido.data_pedido " +
+                             "FROM itempedido " +
+                             "INNER JOIN produto ON itempedido.id_produto = produto.id_produto " +
+                             "INNER JOIN pedido ON itempedido.id_pedido = pedido.id_pedido " +
+                             "WHERE DATE(pedido.data_pedido) BETWEEN ? AND ? " +
+                             "ORDER BY pedido.data_pedido DESC")) {
 
             st.setDate(1, java.sql.Date.valueOf(inicio));
             st.setDate(2, java.sql.Date.valueOf(fim));
 
-            rs = st.executeQuery();
-            List<OrderItem> list = new ArrayList<>();
+            try (ResultSet rs = st.executeQuery()) {
+                List<OrderItem> list = new ArrayList<>();
 
-            while (rs.next()) {
-                OrderItem item = new OrderItem();
-                item.setPrecoUnitario(rs.getDouble("preco_unitario"));
-                item.setQtd(rs.getInt("quantidade"));
+                while (rs.next()) {
+                    OrderItem item = new OrderItem();
+                    item.setPrecoUnitario(rs.getDouble("preco_unitario"));
+                    item.setQtd(rs.getInt("quantidade"));
 
-                Product prod = new Product();
-                prod.setNomeProduto(rs.getString("nome_produto"));
-                prod.setCodBarras(rs.getString("cod_barras"));
-                item.setProduto(prod);
+                    Product prod = new Product();
+                    prod.setNomeProduto(rs.getString("nome_produto"));
+                    prod.setCodBarras(rs.getString("cod_barras"));
+                    item.setProduto(prod);
 
-                Order pedido = new Order();
-                pedido.setIdPedido(rs.getInt("id_pedido"));
-                pedido.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                item.setPedido(pedido);
+                    Order pedido = new Order();
+                    pedido.setIdPedido(rs.getInt("id_pedido"));
+                    pedido.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                    item.setPedido(pedido);
 
-                list.add(item);
+                    list.add(item);
+                }
+                return list;
             }
-            return list;
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        } finally {
-            DB.closeResultSet(rs);
-            DB.closeStatement(st);
         }
     }
 }

@@ -2,9 +2,12 @@ package com.casarural.sistemapdv;
 
 import com.casarural.sistemapdv.controller.MainController;
 import com.casarural.sistemapdv.db.DB;
+import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.util.Alerts;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 
@@ -16,9 +19,12 @@ public class Main extends Application {
     public void start(Stage stage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/casarural/sistemapdv/view/main-view.fxml"));
 
-        Connection conn = DB.getConnection();
-        if (conn != null) {
+        // Testa a conexão ao abrir; se o MySQL estiver fora, avisa mas abre o sistema
+        // (o pool tenta conectar de novo na próxima operação)
+        try (Connection conn = DB.getConnection()) {
             System.out.println("Banco de dados conectado com sucesso!");
+        } catch (DbException e) {
+            Alerts.showAlert("Banco de Dados", "Sem conexão com o banco", e.getMessage(), Alert.AlertType.WARNING);
         }
 
         MainController controller = new MainController();
@@ -43,6 +49,11 @@ public class Main extends Application {
         stage.setMaximized(true);
         stage.setScene(scene);
         stage.show();
+    }
+
+    @Override
+    public void stop() {
+        DB.closeDataSource();
     }
 
     public static void main(String[] args) {
