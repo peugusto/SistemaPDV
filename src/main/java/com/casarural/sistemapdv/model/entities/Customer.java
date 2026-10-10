@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Customer {
+    /** Tamanho da coluna cliente.nome_cliente (migração V2). Se mudar no banco, mude aqui. */
+    public static final int TAMANHO_MAX_NOME = 100;
+
     private int idCliente;
     private String nomeCliente;
     private BigDecimal limiteCredito = Money.ZERO;

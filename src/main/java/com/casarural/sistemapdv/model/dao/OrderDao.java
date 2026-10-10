@@ -2,18 +2,19 @@ package com.casarural.sistemapdv.model.dao;
 
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 public interface OrderDao extends GenericDao<Order> {
-    List<Order> findByCustomerPending(Integer idCliente);
     List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim);
-    List<OrderItem> findItemsByCustomerPending(Integer idCliente);
-    void payFullDebt(Integer idCliente);
     BigDecimal getCustomerDebt(Integer idCliente);
-    void registerPartialPayment(Integer idCliente, BigDecimal valorPago);
+    void registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo);
+    List<Order> findOpenFiadoOrders(Integer idCliente);
+    List<Payment> findFiadoReceipts(Integer idCliente);
     List<Order> findPaidOrdersByCustomer(Integer idCliente);
     List<OrderItem> findItemsByOrderId(int idPedido);
 }

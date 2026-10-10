@@ -40,7 +40,7 @@ public class ProductDaoJdbc implements ProductDao {
                 throw new DbException("Erro inesperado! Nenhuma linha alterada.");
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -56,7 +56,7 @@ public class ProductDaoJdbc implements ProductDao {
                 return Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -72,7 +72,7 @@ public class ProductDaoJdbc implements ProductDao {
             }
             return list;
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -90,7 +90,7 @@ public class ProductDaoJdbc implements ProductDao {
 
             st.executeUpdate();
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -101,7 +101,7 @@ public class ProductDaoJdbc implements ProductDao {
             st.setInt(1, id);
             st.executeUpdate();
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -129,7 +129,7 @@ public class ProductDaoJdbc implements ProductDao {
                 return Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 }

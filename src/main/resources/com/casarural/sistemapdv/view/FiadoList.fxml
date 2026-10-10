@@ -4,55 +4,143 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox prefHeight="600.0" prefWidth="800.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.FiadoListController"
+<!--
+  Conta de fiado do cliente.
+  Aba 1: compras em aberto (quanto foi pago na compra, quanto foi pago depois e quanto falta) + itens do pedido selecionado
+  Aba 2: pagamentos recebidos (quando, como e quais pedidos foram abatidos)
+  Aba 3: compras quitadas + itens
+  Rodapé: receber pagamento, escolhendo a forma (dinheiro, PIX ou cartão)
+-->
+<VBox prefHeight="700.0" prefWidth="1040.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.casarural.sistemapdv.controller.FiadoListController"
       style="-fx-background-color: #2c3e50;">
     <children>
-        <HBox alignment="CENTER_LEFT" style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 0 0 1 0; -fx-border-color: rgba(255,255,255,0.1);">
+        <!-- Cabeçalho -->
+        <HBox alignment="CENTER_LEFT" spacing="20.0" style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 0 0 1 0; -fx-border-color: rgba(255,255,255,0.1);">
+            <padding><Insets bottom="16.0" left="20.0" right="20.0" top="16.0" /></padding>
             <children>
-                <Label fx:id="labelTitulo" text="DETALHAMENTO DE FIADO: [NOME DO CLIENTE]" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label fx:id="labelTitulo" text="CONTA DE FIADO: [NOME DO CLIENTE]" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                        <Label fx:id="labelSituacao" text="Situação: - | Limite: R$ 0,00 | Disponível para fiado: R$ 0,00" style="-fx-font-size: 13px; -fx-text-fill: #bdc3c7;" />
+                    </children>
+                </VBox>
+                <VBox alignment="CENTER_RIGHT" spacing="2.0">
+                    <children>
+                        <Label text="TOTAL DEVENDO" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                        <Label fx:id="labelTotalDevendo" text="R$ 0,00" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;" />
+                    </children>
+                </VBox>
             </children>
-            <padding>
-                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-            </padding>
         </HBox>
 
-        <VBox spacing="15.0" VBox.vgrow="ALWAYS">
-            <padding>
-                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-            </padding>
+        <!-- Abas -->
+        <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" style="-fx-font-size: 14px;">
+            <tabs>
+                <Tab text="Compras em aberto">
+                    <content>
+                        <VBox spacing="10.0">
+                            <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
+                            <children>
+                                <TableView fx:id="tableAbertos" VBox.vgrow="ALWAYS" prefHeight="260.0">
+                                    <placeholder><Label text="Nenhuma compra em aberto." /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colAbertoData" prefWidth="140" text="Data da compra" />
+                                        <TableColumn fx:id="colAbertoPedido" prefWidth="80" text="Pedido" />
+                                        <TableColumn fx:id="colAbertoTotal" prefWidth="130" text="Valor da compra" />
+                                        <TableColumn fx:id="colAbertoPagoVenda" prefWidth="130" text="Pago na compra" />
+                                        <TableColumn fx:id="colAbertoPagoDepois" prefWidth="130" text="Pago depois" />
+                                        <TableColumn fx:id="colAbertoFalta" prefWidth="130" text="Falta pagar" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+                                <Label fx:id="labelItensAberto" text="Selecione uma compra para ver os produtos." style="-fx-font-size: 13px; -fx-text-fill: #bdc3c7;" />
+                                <TableView fx:id="tableItensAberto" prefHeight="170.0">
+                                    <placeholder><Label text="" /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colItemAbertoProduto" prefWidth="300" text="Produto" />
+                                        <TableColumn fx:id="colItemAbertoQtd" prefWidth="80" text="Qtd" />
+                                        <TableColumn fx:id="colItemAbertoPreco" prefWidth="130" text="Vl. Unitário" />
+                                        <TableColumn fx:id="colItemAbertoSubtotal" prefWidth="130" text="Subtotal" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+
+                <Tab text="Pagamentos recebidos">
+                    <content>
+                        <VBox spacing="10.0">
+                            <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
+                            <children>
+                                <TableView fx:id="tableRecebimentos" VBox.vgrow="ALWAYS">
+                                    <placeholder><Label text="Nenhum pagamento de fiado recebido ainda." /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colRecData" prefWidth="160" text="Data do pagamento" />
+                                        <TableColumn fx:id="colRecForma" prefWidth="120" text="Forma" />
+                                        <TableColumn fx:id="colRecValor" prefWidth="130" text="Valor" />
+                                        <TableColumn fx:id="colRecPedidos" prefWidth="260" text="Compras abatidas" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+
+                <Tab text="Compras quitadas">
+                    <content>
+                        <VBox spacing="10.0">
+                            <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
+                            <children>
+                                <TableView fx:id="tableQuitados" VBox.vgrow="ALWAYS" prefHeight="260.0">
+                                    <placeholder><Label text="Nenhuma compra quitada." /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colQuitData" prefWidth="160" text="Data da compra" />
+                                        <TableColumn fx:id="colQuitPedido" prefWidth="80" text="Pedido" />
+                                        <TableColumn fx:id="colQuitTotal" prefWidth="130" text="Valor da compra" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+                                <Label fx:id="labelItensQuitado" text="Selecione uma compra para ver os produtos." style="-fx-font-size: 13px; -fx-text-fill: #bdc3c7;" />
+                                <TableView fx:id="tableItensQuitado" prefHeight="170.0">
+                                    <placeholder><Label text="" /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colItemQuitProduto" prefWidth="300" text="Produto" />
+                                        <TableColumn fx:id="colItemQuitQtd" prefWidth="80" text="Qtd" />
+                                        <TableColumn fx:id="colItemQuitPreco" prefWidth="130" text="Vl. Unitário" />
+                                        <TableColumn fx:id="colItemQuitSubtotal" prefWidth="130" text="Subtotal" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+
+        <!-- Receber pagamento -->
+        <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 1 0 0 0; -fx-border-color: rgba(255,255,255,0.1);">
+            <padding><Insets bottom="16.0" left="20.0" right="20.0" top="16.0" /></padding>
             <children>
-                <TableView fx:id="tableFiados" VBox.vgrow="ALWAYS" style="-fx-font-size: 14px; -fx-background-color: transparent;">
-                    <columns>
-                        <TableColumn fx:id="columnData" prefWidth="120" text="Data da Venda" />
-                        <TableColumn fx:id="columnProduto" prefWidth="250" text="Produto" />
-                        <TableColumn fx:id="columnQtd" prefWidth="80" text="Qtd" />
-                        <TableColumn fx:id="columnPrecoUnit" prefWidth="120" text="Vl. Unitário" />
-                        <TableColumn fx:id="columnSubtotal" prefWidth="120" text="Subtotal" />
-                    </columns>
-                    <columnResizePolicy>
-                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-                    </columnResizePolicy>
-                </TableView>
-
-                <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 8;">
-                    <padding>
-                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-                    </padding>
+                <Label text="RECEBER PAGAMENTO" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                <fx:define><ToggleGroup fx:id="grupoForma" /></fx:define>
+                <ToggleButton fx:id="btnFormaDinheiro" text="Dinheiro" toggleGroup="$grupoForma" selected="true" prefHeight="40.0" prefWidth="100.0" />
+                <ToggleButton fx:id="btnFormaPix" text="PIX" toggleGroup="$grupoForma" prefHeight="40.0" prefWidth="80.0" />
+                <ToggleButton fx:id="btnFormaCartao" text="Cartão" toggleGroup="$grupoForma" prefHeight="40.0" prefWidth="90.0" />
+                <Pane HBox.hgrow="ALWAYS" />
+                <VBox alignment="CENTER_RIGHT" spacing="2.0">
                     <children>
-                        <Label text="Dívida Total:" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
-                        <Label fx:id="labelTotalDevendo" text="R$ 0,00" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;" />
-
-                        <Pane HBox.hgrow="ALWAYS" />
-
-                        <Label text="Valor (R$):" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                        <TextField fx:id="campoValorPagamento" promptText="0,00" prefWidth="120" prefHeight="40" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-
-                        <Button fx:id="btnPagar" onAction="#onPagarAction" prefHeight="40.0" prefWidth="180.0"
-                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;"
-                                text="RECEBER PAGAMENTO" />
+                        <TextField fx:id="campoValorPagamento" promptText="Valor (vazio = tudo)" prefWidth="170" prefHeight="40" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
                     </children>
-                </HBox>
+                </VBox>
+                <Button fx:id="btnPagar" onAction="#onPagarAction" prefHeight="40.0" prefWidth="140.0"
+                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;"
+                        text="RECEBER" />
             </children>
-        </VBox>
+        </HBox>
     </children>
 </VBox>

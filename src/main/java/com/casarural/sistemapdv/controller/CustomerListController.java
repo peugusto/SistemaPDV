@@ -158,7 +158,7 @@ public class CustomerListController implements Initializable {
             controller.setCustomerData(customer, new OrderService());
 
             Stage stage = new Stage();
-            stage.setTitle("Detalhamento de Fiado - " + customer.getNomeCliente());
+            stage.setTitle("Conta de fiado - " + customer.getNomeCliente());
             stage.setScene(new Scene(parent));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
@@ -197,29 +197,12 @@ public class CustomerListController implements Initializable {
         aplicarFiltros();
     }
 
-    private void showFiadoHistory(Customer customer) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/FiadoHistory.fxml"));
-            Parent parent = loader.load();
-
-            FiadoHistoryController controller = loader.getController();
-            controller.setHistoryData(customer, new OrderService());
-
-            Stage stage = new Stage();
-            stage.setTitle("Histórico de Pagamentos - " + customer.getNomeCliente());
-            stage.setScene(new Scene(parent));
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.show();
-        } catch (IOException e) {
-            Alerts.showAlert("Erro", "Erro ao carregar histórico", e.getMessage(), Alert.AlertType.ERROR);
-        }
-    }
-
     private void initButtons() {
         actionsColumn.setCellFactory(param -> new TableCell<>() {
             private final Button btnEdit = new Button("Editar");
             private final Button btnDelete = new Button("Excluir");
-            private final Button btnFiado = new Button("Histórico");
+            // Abre a conta de fiado (o mesmo que dar dois cliques na linha)
+            private final Button btnFiado = new Button("Fiado");
 
             @Override
             protected void updateItem(Void item, boolean empty) {
@@ -246,7 +229,7 @@ public class CustomerListController implements Initializable {
 
                 btnFiado.setOnAction(event -> {
                     Customer obj = getTableView().getItems().get(getIndex());
-                    showFiadoHistory(obj);
+                    showFiadoDetails(obj);
                 });
 
                 HBox pane = new HBox(8, btnEdit, btnDelete, btnFiado);
@@ -284,7 +267,7 @@ public class CustomerListController implements Initializable {
                 service.deleteById(obj.getIdCliente());
                 updateTableView();
             } catch (Exception e) {
-                Alerts.showAlert("Erro", "Erro ao excluir", e.getMessage(), Alert.AlertType.ERROR);
+                Alerts.showAlert("Excluir cliente", "Não foi possível excluir " + obj.getNomeCliente(), e.getMessage(), Alert.AlertType.WARNING);
             }
         }
     }

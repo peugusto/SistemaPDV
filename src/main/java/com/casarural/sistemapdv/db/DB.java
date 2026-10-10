@@ -5,6 +5,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,6 +28,8 @@ import java.util.Properties;
  * e substitui as que o MySQL derrubou (wait_timeout, reinício do serviço, queda de rede).
  */
 public class DB {
+
+    private static final Logger log = LoggerFactory.getLogger(DB.class);
 
     private static HikariDataSource dataSource;
 
@@ -60,9 +64,9 @@ public class DB {
         try {
             return getDataSource().getConnection();
         } catch (SQLException e) {
-            // Detalhe técnico vai para o console; o usuário vê só o que fazer
-            System.err.println("Falha ao conectar ao banco: " + e.getMessage());
-            throw new DbException(MENSAGEM_SEM_CONEXAO);
+            // Detalhe técnico vai para o log; o usuário vê só o que fazer
+            log.error("Falha ao conectar ao banco", e);
+            throw new DbException(MENSAGEM_SEM_CONEXAO, e);
         }
     }
 
@@ -90,7 +94,7 @@ public class DB {
         String user = props.getProperty("migracao.user");
         String password = props.getProperty("migracao.password");
         if (user == null || user.isBlank()) {
-            System.err.println("migracao.user não configurado no db.properties.");
+            log.error("migracao.user não configurado no db.properties");
             throw new DbException(MENSAGEM_ATUALIZACAO_FALHOU);
         }
 
@@ -107,11 +111,11 @@ public class DB {
                     .baselineDescription("estrutura existente antes do Flyway")
                     .load();
             MigrateResult result = flyway.migrate();
-            System.out.println("Banco na versão " + flyway.info().current().getVersion()
-                    + " (" + result.migrationsExecuted + " migração(ões) aplicada(s) agora)");
+            log.info("Banco na versão {} ({} migração(ões) aplicada(s) agora)",
+                    flyway.info().current().getVersion(), result.migrationsExecuted);
         } catch (FlywayException e) {
-            System.err.println("Falha na migração do banco: " + e.getMessage());
-            throw new DbException(isConnectionFailure(e) ? MENSAGEM_SEM_CONEXAO : MENSAGEM_ATUALIZACAO_FALHOU);
+            log.error("Falha na migração do banco", e);
+            throw new DbException(isConnectionFailure(e) ? MENSAGEM_SEM_CONEXAO : MENSAGEM_ATUALIZACAO_FALHOU, e);
         }
     }
 
@@ -157,20 +161,20 @@ public class DB {
                 try (InputStream is = Files.newInputStream(external)) {
                     props.load(is);
                 }
-                System.out.println("Configuração do banco: " + external);
+                log.info("Configuração do banco: {}", external);
             } else {
                 try (InputStream is = DB.class.getClassLoader().getResourceAsStream("db.properties")) {
                     if (is == null) {
-                        System.err.println("Nenhum db.properties encontrado (nem em " + external + " nem no projeto).");
+                        log.error("Nenhum db.properties encontrado (nem em {} nem no projeto)", external);
                         throw new DbException(MENSAGEM_SEM_CONEXAO);
                     }
                     props.load(is);
                 }
-                System.out.println("Configuração do banco: db.properties do projeto");
+                log.info("Configuração do banco: db.properties do projeto");
             }
         } catch (IOException e) {
-            System.err.println("Erro ao ler db.properties: " + e.getMessage());
-            throw new DbException(MENSAGEM_SEM_CONEXAO);
+            log.error("Erro ao ler db.properties", e);
+            throw new DbException(MENSAGEM_SEM_CONEXAO, e);
         }
         return props;
     }

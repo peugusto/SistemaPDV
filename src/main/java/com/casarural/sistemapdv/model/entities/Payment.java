@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.model.entities;
 
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
+import com.casarural.sistemapdv.model.entities.enums.PaymentOrigin;
 
 import com.casarural.sistemapdv.util.Money;
 
@@ -13,6 +14,9 @@ public class Payment {
     private BigDecimal valorPago = Money.ZERO;
     private LocalDateTime dataPagamento;
     private PaymentMethod metodo;
+    private PaymentOrigin origem = PaymentOrigin.VENDA;
+    /** Pedidos abatidos por este recebimento, ex.: "#32, #36" (um recebimento pode quitar vários). */
+    private String pedidos;
 
     public Payment(){}
     public Payment(Order order, BigDecimal valorPago, LocalDateTime dataPagamento, PaymentMethod metodo) {
@@ -60,5 +64,21 @@ public class Payment {
 
     public void setMetodo(PaymentMethod metodo) {
         this.metodo = metodo;
+    }
+
+    public PaymentOrigin getOrigem() {
+        return origem;
+    }
+
+    public void setOrigem(PaymentOrigin origem) {
+        this.origem = origem;
+    }
+
+    public String getPedidos() {
+        return pedidos;
+    }
+
+    public void setPedidos(String pedidos) {
+        this.pedidos = pedidos;
     }
 }

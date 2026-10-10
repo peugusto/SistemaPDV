@@ -42,6 +42,7 @@ public class CustomerFormController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         initializeComboBox();
         Constraints.setTextFieldMoney(txtLimite);
+        Constraints.setTextFieldMaxLength(txtNome, Customer.TAMANHO_MAX_NOME);
     }
 
     private void initializeComboBox() {

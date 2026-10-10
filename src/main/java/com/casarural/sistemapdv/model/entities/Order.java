@@ -20,6 +20,10 @@ public class Order {
     private OrderStatus status;
     private List<PaymentSlice> pagamentos = new ArrayList<>();
 
+    // Resumo de pagamentos de um pedido fiado (preenchido pela consulta da conta do cliente; não é gravado)
+    private BigDecimal pagoNaVenda = Money.ZERO;
+    private BigDecimal recebidoDepois = Money.ZERO;
+
     public static class PaymentSlice {
         private BigDecimal valor;
         private PaymentMethod metodo;
@@ -46,6 +50,29 @@ public class Order {
 
     public int getIdPedido() {
         return idPedido;
+    }
+
+    /** Parte paga na hora da compra (PIX, cartão, dinheiro), numa venda que teve parte no fiado. */
+    public BigDecimal getPagoNaVenda() {
+        return pagoNaVenda;
+    }
+
+    public void setPagoNaVenda(BigDecimal pagoNaVenda) {
+        this.pagoNaVenda = Money.of(pagoNaVenda);
+    }
+
+    /** Parte paga depois, em recebimentos de fiado. */
+    public BigDecimal getRecebidoDepois() {
+        return recebidoDepois;
+    }
+
+    public void setRecebidoDepois(BigDecimal recebidoDepois) {
+        this.recebidoDepois = Money.of(recebidoDepois);
+    }
+
+    /** Quanto ainda falta pagar deste pedido. */
+    public BigDecimal getFalta() {
+        return Money.max(Money.ZERO, valorTotal.subtract(pagoNaVenda).subtract(recebidoDepois));
     }
 
     public void setIdPedido(int idPedido) {

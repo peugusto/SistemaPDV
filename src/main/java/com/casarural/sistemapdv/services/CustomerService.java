@@ -27,7 +27,7 @@ public class CustomerService {
             try {
                 insert(obj);
             } catch (SQLException e) {
-                throw new DbException(e.getMessage());
+                throw new DbException(e.getMessage(), e);
             }
         } else {
             BigDecimal devendo = Money.of(obj.getTotalDevendo());
@@ -42,7 +42,16 @@ public class CustomerService {
         }
     }
 
+    /**
+     * Só exclui clientes sem compras. Com compras, excluir apagaria o histórico de fiado
+     * (o banco nem deixa, por causa da ligação com os pedidos); o caminho certo é bloquear.
+     */
     public void deleteById(Integer id){
+        if (dao.countOrders(id) > 0) {
+            throw new DbException("Este cliente tem compras registradas e não pode ser excluído, "
+                    + "para não perder o histórico de fiado.\n\n"
+                    + "Para que ele não compre mais fiado, clique em Editar e mude a situação para BLOQUEADO.");
+        }
         dao.deleteById(id);
     }
 

@@ -60,17 +60,18 @@
             <artifactId>flyway-mysql</artifactId>
             <version>10.20.1</version>
         </dependency>
-        <!-- Exibe no console os logs do HikariCP (erros de conexão, etc.).
-             slf4j-api fixado em 2.x: o HikariCP traz a 1.7, incompatível com o slf4j-simple 2.x -->
+        <!-- Logs: SLF4J é a interface (usada pelo sistema, HikariCP e Flyway);
+             Logback é quem grava, no console e em arquivo (configuração em src/main/resources/logback.xml).
+             slf4j-api fixado em 2.x: o HikariCP traz a 1.7, que não funciona com o Logback 1.5 -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.13</version>
+            <version>2.0.16</version>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>2.0.13</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.12</version>
         </dependency>
     </dependencies>
 

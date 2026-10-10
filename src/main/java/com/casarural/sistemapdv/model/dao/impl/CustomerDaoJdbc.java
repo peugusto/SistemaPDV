@@ -36,7 +36,7 @@ public class CustomerDaoJdbc implements CustomerDao {
                 throw new DbException("Erro inesperado! Nenhum cliente inserido.");
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -52,7 +52,7 @@ public class CustomerDaoJdbc implements CustomerDao {
                 return Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -76,7 +76,7 @@ public class CustomerDaoJdbc implements CustomerDao {
             }
             return list;
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -93,7 +93,21 @@ public class CustomerDaoJdbc implements CustomerDao {
 
             st.executeUpdate();
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public int countOrders(Integer idCliente) {
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement("SELECT COUNT(*) FROM pedido WHERE id_cliente = ?")) {
+            st.setInt(1, idCliente);
+            try (ResultSet rs = st.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -104,7 +118,7 @@ public class CustomerDaoJdbc implements CustomerDao {
             st.setInt(1, id);
             st.executeUpdate();
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 

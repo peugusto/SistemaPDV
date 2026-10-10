@@ -4,16 +4,45 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
 public class Alerts {
+
+    private static final Logger log = LoggerFactory.getLogger(Alerts.class);
+
     public static void showAlert(String title, String header, String content, AlertType type) {
+        registrar(title, header, content, type);
+        criar(title, header, content, type).show();
+    }
+
+    /** Igual ao showAlert, mas só continua depois que o usuário clicar em OK. */
+    public static void showAlertAndWait(String title, String header, String content, AlertType type) {
+        registrar(title, header, content, type);
+        criar(title, header, content, type).showAndWait();
+    }
+
+    private static Alert criar(String title, String header, String content, AlertType type) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(header);
         alert.setContentText(content);
-        alert.show();
+        return alert;
+    }
+
+    /**
+     * Todo erro ou aviso mostrado ao usuário fica registrado no log: quando seus pais disserem
+     * "apareceu uma mensagem", dá para ver exatamente qual foi e a que horas.
+     */
+    private static void registrar(String title, String header, String content, AlertType type) {
+        String texto = (header != null ? header + " - " : "") + content;
+        if (type == AlertType.ERROR) {
+            log.error("Mensagem de erro mostrada ao usuário [{}]: {}", title, texto);
+        } else if (type == AlertType.WARNING) {
+            log.warn("Aviso mostrado ao usuário [{}]: {}", title, texto);
+        }
     }
 
     public static boolean showConfirmation(String title, String header, String content) {

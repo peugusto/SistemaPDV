@@ -5,8 +5,11 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
+import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
+import com.casarural.sistemapdv.model.entities.enums.PaymentOrigin;
 
 import com.casarural.sistemapdv.util.Money;
 
@@ -56,7 +59,7 @@ public class OrderDaoJdbc implements OrderDao {
                 conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -85,7 +88,7 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     private void inserirPagamento(Connection conn, Order obj, int idPedido) throws SQLException {
-        String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, origem) VALUES (?, ?, ?, 'VENDA')";
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             for (Order.PaymentSlice fatia : obj.getPagamentos()) {
                 st.setInt(1, idPedido);
@@ -97,8 +100,18 @@ public class OrderDaoJdbc implements OrderDao {
         }
     }
 
+    /**
+     * Recebe um pagamento de fiado e abate dos pedidos em aberto, do mais antigo para o mais novo.
+     * Um recebimento pode quitar vários pedidos: grava uma linha por pedido abatido, todas com a
+     * mesma data/hora e forma de pagamento, para depois aparecerem juntas como um recebimento só.
+     */
     @Override
-    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago) {
+    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
+        if (metodo == null || metodo == PaymentMethod.FIADO) {
+            throw new IllegalArgumentException("Forma de pagamento inválida para receber fiado: " + metodo);
+        }
+        Timestamp agora = Timestamp.valueOf(LocalDateTime.now().withNano(0));
+
         try (Connection conn = DB.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement stSelect = conn.prepareStatement(
@@ -108,7 +121,8 @@ public class OrderDaoJdbc implements OrderDao {
                                  "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
                                  "ORDER BY p.data_pedido ASC");
                  PreparedStatement stInsert = conn.prepareStatement(
-                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento) VALUES (?, ?, 'DINHEIRO')");
+                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, data_pagamento, origem) " +
+                                 "VALUES (?, ?, ?, ?, 'RECEBIMENTO_FIADO')");
                  PreparedStatement stUpdate = conn.prepareStatement(
                          "UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?")) {
 
@@ -128,6 +142,8 @@ public class OrderDaoJdbc implements OrderDao {
 
                             stInsert.setInt(1, idPedido);
                             stInsert.setBigDecimal(2, valorAbater);
+                            stInsert.setString(3, metodo.toString());
+                            stInsert.setTimestamp(4, agora);
                             stInsert.executeUpdate();
 
                             valorRestante = valorRestante.subtract(valorAbater);
@@ -148,7 +164,7 @@ public class OrderDaoJdbc implements OrderDao {
                 conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -171,7 +187,7 @@ public class OrderDaoJdbc implements OrderDao {
                 return Money.ZERO;
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 
@@ -186,28 +202,68 @@ public class OrderDaoJdbc implements OrderDao {
     @Override
     public Order instantiate(ResultSet rs) throws SQLException { return null; }
 
+    /**
+     * Pedidos fiado ainda em aberto, do mais antigo para o mais novo (mesma ordem em que os
+     * recebimentos abatem), com quanto foi pago na hora da compra e quanto foi recebido depois.
+     */
     @Override
-    public void payFullDebt(Integer idCliente) {
-        BigDecimal totalDevendo = getCustomerDebt(idCliente);
-        if (Money.isPositive(totalDevendo)) {
-            registerPartialPayment(idCliente, totalDevendo);
-        }
-    }
-
-    @Override
-    public List<OrderItem> findItemsByCustomerPending(Integer idCliente) {
-        String sql = "SELECT p.id_pedido, p.data_pedido, prod.nome_produto, prod.cod_barras, i.quantidade, i.preco_unitario " +
-                "FROM itempedido i JOIN pedido p ON i.id_pedido = p.id_pedido JOIN produto prod ON i.id_produto = prod.id_produto " +
-                "WHERE p.id_cliente = ? AND p.status = 'FIADO' ORDER BY p.data_pedido DESC";
+    public List<Order> findOpenFiadoOrders(Integer idCliente) {
+        String sql = "SELECT p.id_pedido, p.data_pedido, p.valor_total, " +
+                "COALESCE(SUM(CASE WHEN pg.origem = 'VENDA' AND pg.metodo_pagamento <> 'FIADO' THEN pg.valor_pago END), 0) AS pago_na_venda, " +
+                "COALESCE(SUM(CASE WHEN pg.origem = 'RECEBIMENTO_FIADO' THEN pg.valor_pago END), 0) AS recebido_depois " +
+                "FROM pedido p LEFT JOIN pagamento pg ON pg.id_pedido = p.id_pedido " +
+                "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
+                "GROUP BY p.id_pedido, p.data_pedido, p.valor_total " +
+                "ORDER BY p.data_pedido ASC";
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(sql)) {
             st.setInt(1, idCliente);
             try (ResultSet rs = st.executeQuery()) {
-                List<OrderItem> list = new ArrayList<>();
-                while (rs.next()) { list.add(instantiateOI(rs)); }
+                List<Order> list = new ArrayList<>();
+                while (rs.next()) {
+                    Order obj = new Order();
+                    obj.setIdPedido(rs.getInt("id_pedido"));
+                    obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                    obj.setValorTotal(rs.getBigDecimal("valor_total"));
+                    obj.setStatus(OrderStatus.FIADO);
+                    obj.setPagoNaVenda(rs.getBigDecimal("pago_na_venda"));
+                    obj.setRecebidoDepois(rs.getBigDecimal("recebido_depois"));
+                    list.add(obj);
+                }
                 return list;
             }
-        } catch (SQLException e) { throw new DbException(e.getMessage()); }
+        } catch (SQLException e) { throw new DbException(e.getMessage(), e); }
+    }
+
+    /**
+     * Recebimentos de fiado do cliente, do mais recente para o mais antigo. As linhas gravadas
+     * no mesmo recebimento (mesma data/hora e forma) são somadas numa só.
+     */
+    @Override
+    public List<Payment> findFiadoReceipts(Integer idCliente) {
+        String sql = "SELECT pg.data_pagamento, pg.metodo_pagamento, SUM(pg.valor_pago) AS total, " +
+                "GROUP_CONCAT(CONCAT('#', pg.id_pedido) ORDER BY pg.id_pedido SEPARATOR ', ') AS pedidos " +
+                "FROM pagamento pg JOIN pedido p ON p.id_pedido = pg.id_pedido " +
+                "WHERE p.id_cliente = ? AND pg.origem = 'RECEBIMENTO_FIADO' " +
+                "GROUP BY pg.data_pagamento, pg.metodo_pagamento " +
+                "ORDER BY pg.data_pagamento DESC";
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql)) {
+            st.setInt(1, idCliente);
+            try (ResultSet rs = st.executeQuery()) {
+                List<Payment> list = new ArrayList<>();
+                while (rs.next()) {
+                    Payment obj = new Payment();
+                    obj.setDataPagamento(rs.getTimestamp("data_pagamento").toLocalDateTime());
+                    obj.setMetodo(PaymentMethod.valueOf(rs.getString("metodo_pagamento")));
+                    obj.setValorPago(rs.getBigDecimal("total"));
+                    obj.setOrigem(PaymentOrigin.RECEBIMENTO_FIADO);
+                    obj.setPedidos(rs.getString("pedidos"));
+                    list.add(obj);
+                }
+                return list;
+            }
+        } catch (SQLException e) { throw new DbException(e.getMessage(), e); }
     }
 
     public OrderItem instantiateOI(ResultSet rs) throws SQLException {
@@ -223,11 +279,6 @@ public class OrderDaoJdbc implements OrderDao {
         ped.setDataPedido(rs.getObject("data_pedido", LocalDateTime.class));
         obj.setPedido(ped);
         return obj;
-    }
-
-    @Override
-    public List<Order> findByCustomerPending(Integer idCliente) {
-        return findOrdersByCustomerAndStatus(idCliente, OrderStatus.FIADO);
     }
 
     @Override
@@ -253,7 +304,7 @@ public class OrderDaoJdbc implements OrderDao {
                 }
                 return list;
             }
-        } catch (SQLException e) { throw new DbException(e.getMessage()); }
+        } catch (SQLException e) { throw new DbException(e.getMessage(), e); }
     }
 
     @Override
@@ -267,7 +318,7 @@ public class OrderDaoJdbc implements OrderDao {
                 while (rs.next()) { list.add(instantiateOI(rs)); }
                 return list;
             }
-        } catch (SQLException e) { throw new DbException(e.getMessage()); }
+        } catch (SQLException e) { throw new DbException(e.getMessage(), e); }
     }
 
     public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
@@ -306,7 +357,7 @@ public class OrderDaoJdbc implements OrderDao {
                 return list;
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage());
+            throw new DbException(e.getMessage(), e);
         }
     }
 }

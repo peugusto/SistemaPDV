@@ -9,9 +9,13 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.scene.control.Alert.AlertType;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.function.Consumer;
 
 public class ViewLoader {
+
+    private static final Logger log = LoggerFactory.getLogger(ViewLoader.class);
 
     public static <T> void showView(Boolean isFullScreen, String fxmlPath, String title, Consumer<T> controllerAction) {
         try {
@@ -33,7 +37,7 @@ public class ViewLoader {
             if (resource != null) {
                 scene.getStylesheets().add(resource.toExternalForm());
             } else {
-                System.out.println("Aviso: Arquivo CSS não encontrado");
+                log.warn("Arquivo CSS não encontrado: /com/casarural/sistemapdv/css/style.css");
             }
 
 
@@ -59,11 +63,11 @@ public class ViewLoader {
             stage.showAndWait();
 
         } catch (IOException e) {
+            log.error("Erro ao carregar a tela {}", fxmlPath, e);
             Alerts.showAlert("Erro Crítico", "Erro ao carregar a tela", e.getMessage(), AlertType.ERROR);
-            e.printStackTrace();
         } catch (Exception e) {
+            log.error("Erro inesperado na tela {}", fxmlPath, e);
             Alerts.showAlert("Erro Inesperado", "Ocorreu um erro ao abrir a janela", e.getMessage(), AlertType.ERROR);
-            e.printStackTrace();
         }
     }
 

@@ -5,6 +5,8 @@ import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.MoneyCells;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -23,6 +25,8 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 public class ProductListController implements Initializable {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductListController.class);
 
 
     private ProductService service;
@@ -159,8 +163,8 @@ public class ProductListController implements Initializable {
             stage.showAndWait();
 
         } catch (java.io.IOException e) {
+            log.error("Erro ao carregar o formulário de edição do produto {}", obj.getIdProduto(), e);
             Alerts.showAlert("Erro", "Erro ao carregar o formulário de edição", e.getMessage(), Alert.AlertType.ERROR);
-            e.printStackTrace();
         }
     }
 

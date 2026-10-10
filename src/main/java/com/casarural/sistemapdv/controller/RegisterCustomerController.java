@@ -82,7 +82,7 @@ public class RegisterCustomerController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        Constraints.setTextFieldMaxLength(txtNome, 30);
+        Constraints.setTextFieldMaxLength(txtNome, Customer.TAMANHO_MAX_NOME);
         Constraints.setTextFieldMoney(txtLimite);
 
     }

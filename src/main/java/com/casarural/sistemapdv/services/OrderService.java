@@ -4,6 +4,8 @@ import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -34,24 +36,24 @@ public class OrderService {
         return dao.findItemsByDate(inicio, fim);
     }
 
-    public List<Order> findByCustomerPending(int idCliente) {
-        return dao.findByCustomerPending(idCliente);
+    public List<Order> findOpenFiadoOrders(int idCliente) {
+        return dao.findOpenFiadoOrders(idCliente);
     }
 
-    public List<OrderItem> findItemsByCustomerPending(int idCliente) {
-        return dao.findItemsByCustomerPending(idCliente);
+    public List<Payment> findFiadoReceipts(int idCliente) {
+        return dao.findFiadoReceipts(idCliente);
     }
 
-    public void payFullDebt(Integer idCliente) {
-        dao.payFullDebt(idCliente);
+    public List<OrderItem> findItemsByOrderId(int idPedido) {
+        return dao.findItemsByOrderId(idPedido);
     }
 
     public BigDecimal getCustomerDebt(Integer idCliente) {
         return dao.getCustomerDebt(idCliente);
     }
 
-    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago) {
-        dao.registerPartialPayment(idCliente, valorPago);
+    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
+        dao.registerPartialPayment(idCliente, valorPago, metodo);
     }
 
     public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
