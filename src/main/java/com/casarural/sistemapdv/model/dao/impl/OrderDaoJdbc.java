@@ -62,7 +62,7 @@ public class OrderDaoJdbc implements OrderDao {
 
     private void inserirItensEBaixarEstoque(List<OrderItem> itens, int idPedido) throws SQLException {
         String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)";
-        String sqlEstoque = "UPDATE produto SET estoque = estoque - ? WHERE id_produto = ?";
+        String sqlEstoque = "UPDATE produto SET estoque = estoque - ? WHERE id_produto = ? AND estoque >= ?";
         try (PreparedStatement stItem = conn.prepareStatement(sqlItem);
              PreparedStatement stEstoque = conn.prepareStatement(sqlEstoque)) {
             for (OrderItem item : itens) {
@@ -71,12 +71,16 @@ public class OrderDaoJdbc implements OrderDao {
                 stItem.setInt(3, item.getQtd());
                 stItem.setDouble(4, item.getPrecoUnitario());
                 stItem.addBatch();
+
                 stEstoque.setInt(1, item.getQtd());
                 stEstoque.setInt(2, item.getProduto().getIdProduto());
-                stEstoque.addBatch();
+                stEstoque.setInt(3, item.getQtd());
+                if (stEstoque.executeUpdate() == 0) {
+                    // SQLException para cair no rollback do insert
+                    throw new SQLException("Estoque insuficiente para o produto '" + item.getProduto().getNomeProduto() + "'.");
+                }
             }
             stItem.executeBatch();
-            stEstoque.executeBatch();
         }
     }
 

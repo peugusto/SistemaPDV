@@ -122,14 +122,23 @@ public class PDVController implements Initializable {
             Product p = prodOpt.get();
             final int quantidadeFinal = qtdInput;
 
+            Optional<OrderItem> itemExistente = itensVenda.stream()
+                    .filter(item -> item.getProduto().getCodBarras().equals(codigo))
+                    .findFirst();
+
+            int qtdNoCarrinho = itemExistente.map(OrderItem::getQtd).orElse(0);
+            if (qtdNoCarrinho + quantidadeFinal > p.getEstoque()) {
+                Alerts.showAlert("Estoque Insuficiente", null,
+                        String.format("Estoque disponível de '%s': %d (já no carrinho: %d).",
+                                p.getNomeProduto(), Math.max(0, p.getEstoque()), qtdNoCarrinho),
+                        Alert.AlertType.WARNING);
+                campoCodigoProduto.selectAll();
+                return;
+            }
 
             campoValorUnitario.setText(String.format("%.2f", p.getPrecoProduto()));
             campoTotalItem.setText(String.format("%.2f", p.getPrecoProduto() * quantidadeFinal));
             labelUltimoItem.setText(quantidadeFinal + " X " + p.getNomeProduto().toUpperCase());
-
-            Optional<OrderItem> itemExistente = itensVenda.stream()
-                    .filter(item -> item.getProduto().getCodBarras().equals(codigo))
-                    .findFirst();
 
             if (itemExistente.isPresent()) {
                 OrderItem item = itemExistente.get();
@@ -194,11 +203,13 @@ public class PDVController implements Initializable {
         order.setItemPedido(new java.util.ArrayList<>(itensVenda));
         order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
 
+        PaymentController[] pagamento = new PaymentController[1];
         com.casarural.sistemapdv.util.ViewLoader.showView(
                 true,
                 "/com/casarural/sistemapdv/view/FechamentoVenda.fxml",
                 "Finalizar Pagamento - Casa Rural",
                 (PaymentController controller) -> {
+                    pagamento[0] = controller;
                     controller.setDadosVenda(
                             order,
                             new com.casarural.sistemapdv.services.OrderService(),
@@ -207,10 +218,14 @@ public class PDVController implements Initializable {
                 }
         );
 
-
-        itensVenda.clear();
-        atualizarTotalVenda();
-        resetarCamposVisuais();
+        // Se o pagamento foi cancelado, mantém o carrinho para o operador continuar a venda
+        if (pagamento[0] != null && pagamento[0].isVendaConcluida()) {
+            itensVenda.clear();
+            atualizarTotalVenda();
+            resetarCamposVisuais();
+        } else {
+            campoCodigoProduto.requestFocus();
+        }
     }
 
     private void atualizarTotalVenda() {

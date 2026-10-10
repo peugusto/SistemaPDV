@@ -37,6 +37,12 @@ public class PaymentController implements Initializable {
     private OrderService orderService;
     private CustomerService customerService;
     private double saldoRestante;
+    private Customer clienteFiado;
+    private boolean vendaConcluida = false;
+
+    public boolean isVendaConcluida() {
+        return vendaConcluida;
+    }
 
     public void setDadosVenda(Order order, OrderService orderService, CustomerService customerService) {
         this.order = order;
@@ -146,6 +152,32 @@ public class PaymentController implements Initializable {
                                 clienteSelecionado.getNomeCliente()), Alert.AlertType.ERROR);
                 return;
             }
+
+            if (clienteFiado != null && clienteFiado.getIdCliente() != clienteSelecionado.getIdCliente()) {
+                Alerts.showAlert("Aviso", null,
+                        String.format("Esta venda já possui fiado para o cliente '%s'.", clienteFiado.getNomeCliente()),
+                        Alert.AlertType.WARNING);
+                return;
+            }
+
+            double devendo = (clienteSelecionado.getTotalDevendo() != null) ? clienteSelecionado.getTotalDevendo() : 0.0;
+            double fiadoNestaVenda = order.getPagamentos().stream()
+                    .filter(p -> p.getMetodo() == PaymentMethod.FIADO)
+                    .mapToDouble(Order.PaymentSlice::getValor)
+                    .sum();
+            double valorFiado = Math.min(valor, saldoRestante);
+            double disponivel = clienteSelecionado.getLimiteCredito() - devendo - fiadoNestaVenda;
+
+            if (valorFiado > disponivel + 0.009) {
+                Alerts.showAlert("Venda Recusada", "Limite de crédito excedido",
+                        String.format("O cliente '%s' tem limite de R$ %.2f e deve R$ %.2f.%nDisponível para fiado: R$ %.2f.",
+                                clienteSelecionado.getNomeCliente(), clienteSelecionado.getLimiteCredito(),
+                                devendo + fiadoNestaVenda, Math.max(0, disponivel)),
+                        Alert.AlertType.ERROR);
+                return;
+            }
+
+            clienteFiado = clienteSelecionado;
         }
 
         double valorEfetivo = Math.min(valor, saldoRestante);
@@ -167,20 +199,30 @@ public class PaymentController implements Initializable {
                     .mapToDouble(Order.PaymentSlice::getValor)
                     .sum();
 
+            // valor_total guarda sempre o total da venda; a dívida é valor_total - pagamentos não-fiado
             if (totalFiado > 0) {
-                order.setCostumer(comboCliente.getValue());
+                order.setCostumer(clienteFiado);
                 order.setStatus(OrderStatus.FIADO);
-                order.setValorTotal(totalFiado);
             } else {
                 order.setStatus(OrderStatus.PAGO);
             }
 
             orderService.insert(order);
+            vendaConcluida = true;
             Alerts.showAlert("Sucesso", null, "Venda finalizada!", Alert.AlertType.INFORMATION);
             fecharJanela();
         } catch (Exception e) {
             Alerts.showAlert("Erro", "Erro ao salvar", e.getMessage(), Alert.AlertType.ERROR);
+            reiniciarPagamentos();
         }
+    }
+
+    private void reiniciarPagamentos() {
+        order.getPagamentos().clear();
+        saldoRestante = order.getValorTotal();
+        clienteFiado = null;
+        txtValorRecebido.clear();
+        atualizarExibicao();
     }
 
     private void fecharJanela() {
