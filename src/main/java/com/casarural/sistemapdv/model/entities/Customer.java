@@ -2,19 +2,22 @@ package com.casarural.sistemapdv.model.entities;
 
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Customer {
     private int idCliente;
     private String nomeCliente;
-    private double limiteCredito;
+    private BigDecimal limiteCredito = Money.ZERO;
     private CustomerStatus situacaoFiado;
-    private Double totalDevendo;
+    private BigDecimal totalDevendo = Money.ZERO;
 
     public Customer(){}
-    public Customer(String nomeCliente, double limiteCredito, CustomerStatus situacaoFiado) {
+    public Customer(String nomeCliente, BigDecimal limiteCredito, CustomerStatus situacaoFiado) {
         this.nomeCliente = nomeCliente;
-        this.limiteCredito = limiteCredito;
+        this.limiteCredito = Money.of(limiteCredito);
         this.situacaoFiado = situacaoFiado;
     }
 
@@ -34,12 +37,12 @@ public class Customer {
         this.nomeCliente = nomeCliente;
     }
 
-    public double getLimiteCredito() {
+    public BigDecimal getLimiteCredito() {
         return limiteCredito;
     }
 
-    public void setLimiteCredito(double limiteCredito) {
-        this.limiteCredito = limiteCredito;
+    public void setLimiteCredito(BigDecimal limiteCredito) {
+        this.limiteCredito = Money.of(limiteCredito);
     }
 
     public CustomerStatus getSituacaoFiado() {
@@ -50,17 +53,17 @@ public class Customer {
         this.situacaoFiado = situacaoFiado;
     }
 
-    public Double getTotalDevendo() {
+    public BigDecimal getTotalDevendo() {
         return totalDevendo;
     }
-    public void setTotalDevendo(Double totalDevendo){
-        this.totalDevendo = totalDevendo;
+    public void setTotalDevendo(BigDecimal totalDevendo){
+        this.totalDevendo = Money.of(totalDevendo);
     }
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Customer customer = (Customer) o;
-        return idCliente == customer.idCliente && Double.compare(limiteCredito, customer.limiteCredito) == 0 && Objects.equals(nomeCliente, customer.nomeCliente) && situacaoFiado == customer.situacaoFiado;
+        return idCliente == customer.idCliente && Objects.equals(limiteCredito, customer.limiteCredito) && Objects.equals(nomeCliente, customer.nomeCliente) && situacaoFiado == customer.situacaoFiado;
     }
 
     @Override

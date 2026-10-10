@@ -21,7 +21,7 @@ public class CustomerDaoJdbc implements CustomerDao {
                      Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getNomeCliente());
-            st.setDouble(2, obj.getLimiteCredito());
+            st.setBigDecimal(2, obj.getLimiteCredito());
             st.setString(3, obj.getSituacaoFiado().toString());
 
             int rowsAffected = st.executeUpdate();
@@ -71,7 +71,7 @@ public class CustomerDaoJdbc implements CustomerDao {
             List<Customer> list = new ArrayList<>();
             while (rs.next()) {
                 Customer obj = instantiate(rs);
-                obj.setTotalDevendo(rs.getDouble("total_devendo"));
+                obj.setTotalDevendo(rs.getBigDecimal("total_devendo"));
                 list.add(obj);
             }
             return list;
@@ -87,7 +87,7 @@ public class CustomerDaoJdbc implements CustomerDao {
                      "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ? WHERE id_cliente = ?")) {
 
             st.setString(1, obj.getNomeCliente());
-            st.setDouble(2, obj.getLimiteCredito());
+            st.setBigDecimal(2, obj.getLimiteCredito());
             st.setString(3, obj.getSituacaoFiado().toString());
             st.setInt(4, obj.getIdCliente());
 
@@ -112,7 +112,7 @@ public class CustomerDaoJdbc implements CustomerDao {
         Customer obj = new Customer();
         obj.setIdCliente(rs.getInt("id_cliente"));
         obj.setNomeCliente(rs.getString("nome_cliente"));
-        obj.setLimiteCredito(rs.getDouble("limite_credito"));
+        obj.setLimiteCredito(rs.getBigDecimal("limite_credito"));
         obj.setSituacaoFiado(CustomerStatus.valueOf(rs.getString("situacao_fiado")));
         return obj;
     }

@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
+import com.casarural.sistemapdv.util.Money;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
@@ -61,8 +62,8 @@ public class RegisterCustomerController implements Initializable {
 
         entity.setNomeCliente(txtNome.getText());
 
-        String limiteStr = txtLimite.getText().replace(",", ".");
-        entity.setLimiteCredito(limiteStr.isEmpty() ? 0.0 : Double.parseDouble(limiteStr));
+        String limiteStr = txtLimite.getText();
+        entity.setLimiteCredito(limiteStr.trim().isEmpty() ? Money.ZERO : Money.parse(limiteStr));
 
         return entity;
     }
@@ -82,7 +83,7 @@ public class RegisterCustomerController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         Constraints.setTextFieldMaxLength(txtNome, 30);
-        Constraints.setTextFieldDouble(txtLimite);
+        Constraints.setTextFieldMoney(txtLimite);
 
     }
 }

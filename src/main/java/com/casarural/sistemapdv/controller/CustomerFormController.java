@@ -5,6 +5,8 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Constraints;
+import com.casarural.sistemapdv.util.Money;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -39,6 +41,7 @@ public class CustomerFormController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         initializeComboBox();
+        Constraints.setTextFieldMoney(txtLimite);
     }
 
     private void initializeComboBox() {
@@ -51,7 +54,7 @@ public class CustomerFormController implements Initializable {
             throw new IllegalStateException("Entity foi enviada nula");
         }
         txtNome.setText(entity.getNomeCliente());
-        txtLimite.setText(String.valueOf(entity.getLimiteCredito()));
+        txtLimite.setText(Money.toInput(entity.getLimiteCredito()));
         comboBoxStatus.setValue(entity.getSituacaoFiado());
     }
 
@@ -64,7 +67,7 @@ public class CustomerFormController implements Initializable {
         try {
 
             entity.setNomeCliente(txtNome.getText());
-            entity.setLimiteCredito(Double.parseDouble(txtLimite.getText()));
+            entity.setLimiteCredito(Money.parse(txtLimite.getText()));
             entity.setSituacaoFiado(comboBoxStatus.getValue());
 
 

@@ -1,0 +1,25 @@
+# Configuração do banco para o computador da loja.
+#
+# Copie este arquivo para:
+#     C:\ProgramData\SistemaPDV\db.properties
+# e troque a senha. O sistema lê esse arquivo ao abrir; se ele não existir,
+# usa o db.properties de dentro do projeto (desenvolvimento).
+#
+# Dois usuários, nunca o root:
+#   user / password                     -> pdv_app: usado pelo sistema o tempo todo; só lê e altera dados
+#   migracao.user / migracao.password   -> pdv_migracao: usado só ao abrir o sistema, para criar/atualizar
+#                                          as tabelas (Flyway); tem permissão total, mas só no casarural
+#
+# Criar no MySQL da loja (no Workbench, como root), com senhas novas e diferentes:
+#   CREATE USER 'pdv_app'@'localhost' IDENTIFIED BY '...';
+#   GRANT SELECT, INSERT, UPDATE, DELETE ON casarural.* TO 'pdv_app'@'localhost';
+#   CREATE USER 'pdv_migracao'@'localhost' IDENTIFIED BY '...';
+#   GRANT ALL PRIVILEGES ON casarural.* TO 'pdv_migracao'@'localhost';
+# Não é preciso criar o banco nem as tabelas: o sistema faz isso na primeira vez que abrir.
+
+dburl=jdbc:mysql://localhost:3306/casarural?allowPublicKeyRetrieval=true&useSSL=false
+user=pdv_app
+password=COLOQUE_AQUI_A_SENHA_DO_PDV_APP
+
+migracao.user=pdv_migracao
+migracao.password=COLOQUE_AQUI_A_SENHA_DO_PDV_MIGRACAO

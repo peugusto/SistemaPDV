@@ -3,6 +3,9 @@ package com.casarural.sistemapdv.model.entities;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,31 +15,31 @@ public class Order {
     private int idPedido;
     private Customer costumer;
     private LocalDateTime dataPedido;
-    private double valorTotal;
+    private BigDecimal valorTotal = Money.ZERO;
     private List<OrderItem> itemPedido;
     private OrderStatus status;
     private List<PaymentSlice> pagamentos = new ArrayList<>();
 
     public static class PaymentSlice {
-        private Double valor;
+        private BigDecimal valor;
         private PaymentMethod metodo;
 
-        public PaymentSlice(Double valor, PaymentMethod metodo) {
-            this.valor = valor;
+        public PaymentSlice(BigDecimal valor, PaymentMethod metodo) {
+            this.valor = Money.of(valor);
             this.metodo = metodo;
         }
 
-        public Double getValor() { return valor; }
+        public BigDecimal getValor() { return valor; }
         public PaymentMethod getMetodo() { return metodo; }
     }
 
     public Order(){}
 
-    public Order(int idPedido, Customer costumer, LocalDateTime dataPedido, double valorTotal, List<OrderItem> itemPedido, OrderStatus status) {
+    public Order(int idPedido, Customer costumer, LocalDateTime dataPedido, BigDecimal valorTotal, List<OrderItem> itemPedido, OrderStatus status) {
         this.idPedido = idPedido;
         this.costumer = costumer;
         this.dataPedido = dataPedido;
-        this.valorTotal = valorTotal;
+        this.valorTotal = Money.of(valorTotal);
         this.itemPedido = itemPedido;
         this.status = status;
     }
@@ -65,12 +68,12 @@ public class Order {
         this.dataPedido = dataPedido;
     }
 
-    public double getValorTotal() {
+    public BigDecimal getValorTotal() {
         return valorTotal;
     }
 
-    public void setValorTotal(double valorTotal) {
-        this.valorTotal = valorTotal;
+    public void setValorTotal(BigDecimal valorTotal) {
+        this.valorTotal = Money.of(valorTotal);
     }
 
     public List<OrderItem> getItemPedido() {
@@ -97,7 +100,7 @@ public class Order {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Order order = (Order) o;
-        return idPedido == order.idPedido && Double.compare(valorTotal, order.valorTotal) == 0 && Objects.equals(costumer, order.costumer) && Objects.equals(dataPedido, order.dataPedido) && Objects.equals(itemPedido, order.itemPedido) && status == order.status;
+        return idPedido == order.idPedido && Objects.equals(valorTotal, order.valorTotal) && Objects.equals(costumer, order.costumer) && Objects.equals(dataPedido, order.dataPedido) && Objects.equals(itemPedido, order.itemPedido) && status == order.status;
     }
 
     @Override

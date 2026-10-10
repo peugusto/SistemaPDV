@@ -5,7 +5,7 @@
 <?import javafx.geometry.Insets?>
 
 <VBox spacing="25" alignment="TOP_CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PaymentController"
-      style="-fx-background-color: -fx-secondary-color;" stylesheets="@seu_arquivo.css">
+      style="-fx-background-color: -fx-secondary-color;">
 
     <padding>
         <Insets top="30" right="40" bottom="30" left="40"/>

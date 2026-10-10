@@ -5,6 +5,8 @@ import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.MoneyCells;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -21,6 +23,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -33,8 +36,8 @@ public class CustomerListController implements Initializable {
     @FXML private TableColumn<Customer, Integer> idColumn;
     @FXML private TableColumn<Customer, String> nameColumn;
     @FXML private TableColumn<Customer, CustomerStatus> creditStatusColumn;
-    @FXML private TableColumn<Customer, Double> creditLimitColumn;
-    @FXML private TableColumn<Customer, Double> totalDebtColumn;
+    @FXML private TableColumn<Customer, BigDecimal> creditLimitColumn;
+    @FXML private TableColumn<Customer, BigDecimal> totalDebtColumn;
     @FXML private TableColumn<Customer, Void> actionsColumn;
 
     @FXML private TextField campoPesquisa;
@@ -67,6 +70,8 @@ public class CustomerListController implements Initializable {
         totalDebtColumn.setStyle("-fx-alignment: CENTER;");
         creditStatusColumn.setStyle("-fx-alignment: CENTER;");
 
+        MoneyCells.format(creditLimitColumn);
+
         creditStatusColumn.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(CustomerStatus status, boolean empty) {
@@ -87,14 +92,14 @@ public class CustomerListController implements Initializable {
 
         totalDebtColumn.setCellFactory(column -> new TableCell<>() {
             @Override
-            protected void updateItem(Double item, boolean empty) {
+            protected void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                     setText(null);
                 } else {
-                    double debt = (item != null) ? item : 0.0;
-                    setText(String.format("R$ %.2f", debt));
-                    setStyle("-fx-alignment: CENTER; -fx-text-fill: " + (debt > 0 ? "#e74c3c" : "#2ecc71") + "; -fx-font-weight: bold;");
+                    BigDecimal debt = Money.of(item);
+                    setText(Money.format(debt));
+                    setStyle("-fx-alignment: CENTER; -fx-text-fill: " + (Money.isPositive(debt) ? "#e74c3c" : "#2ecc71") + "; -fx-font-weight: bold;");
                 }
             }
         });
@@ -167,13 +172,8 @@ public class CustomerListController implements Initializable {
     public void updateTableView() {
         if (service == null) return;
 
+        // findAll já traz o total devendo de cada cliente (calculado no SQL)
         List<Customer> list = service.findAll();
-        OrderService orderService = new OrderService();
-
-        for (Customer c : list) {
-            double debt = orderService.getCustomerDebt(c.getIdCliente());
-            c.setTotalDevendo(debt);
-        }
 
         obsList = FXCollections.observableArrayList(list);
         filteredData = new FilteredList<>(obsList, b -> true);
@@ -185,9 +185,9 @@ public class CustomerListController implements Initializable {
         comboFiltroOrdenacao.setOnAction(e -> {
             String selecao = comboFiltroOrdenacao.getValue();
             if ("Maior Dívida".equals(selecao)) {
-                obsList.sort((c1, c2) -> Double.compare(c2.getTotalDevendo(), c1.getTotalDevendo()));
+                obsList.sort((c1, c2) -> c2.getTotalDevendo().compareTo(c1.getTotalDevendo()));
             } else if ("Menor Dívida".equals(selecao)) {
-                obsList.sort((c1, c2) -> Double.compare(c1.getTotalDevendo(), c2.getTotalDevendo()));
+                obsList.sort((c1, c2) -> c1.getTotalDevendo().compareTo(c2.getTotalDevendo()));
             } else {
                 obsList.sort((c1, c2) -> Integer.compare(c1.getIdCliente(), c2.getIdCliente()));
             }

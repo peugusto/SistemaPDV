@@ -2,6 +2,8 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.services.OrderService;
+import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.MoneyCells;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -11,6 +13,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,9 +31,9 @@ public class OrderListController implements Initializable {
     @FXML private TableColumn<OrderItem, String> columnCodBarras;
     @FXML private TableColumn<OrderItem, Integer> columnVendaId;
     @FXML private TableColumn<OrderItem, String> columnProduto;
-    @FXML private TableColumn<OrderItem, Double> columnPreco;
+    @FXML private TableColumn<OrderItem, BigDecimal> columnPreco;
     @FXML private TableColumn<OrderItem, Integer> columnQtd;
-    @FXML private TableColumn<OrderItem, Double> columnTotal;
+    @FXML private TableColumn<OrderItem, BigDecimal> columnTotal;
     @FXML private Label labelFaturamentoTotal;
 
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -77,6 +80,8 @@ public class OrderListController implements Initializable {
         columnPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
         columnQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
         columnTotal.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
+        MoneyCells.format(columnPreco);
+        MoneyCells.format(columnTotal);
 
         columnProduto.setStyle("-fx-alignment: CENTER-LEFT;");
     }
@@ -97,9 +102,9 @@ public class OrderListController implements Initializable {
     }
 
     private void atualizarFaturamentoTotal() {
-        double total = obsList.stream()
-                .mapToDouble(OrderItem::getSubtotal)
-                .sum();
-        labelFaturamentoTotal.setText(String.format("R$ %.2f", total));
+        BigDecimal total = obsList.stream()
+                .map(OrderItem::getSubtotal)
+                .reduce(Money.ZERO, BigDecimal::add);
+        labelFaturamentoTotal.setText(Money.format(total));
     }
 }

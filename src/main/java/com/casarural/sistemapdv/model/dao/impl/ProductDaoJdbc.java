@@ -25,7 +25,7 @@ public class ProductDaoJdbc implements ProductDao {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
-            st.setDouble(3, obj.getPrecoProduto());
+            st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
 
             int rowsAffected = st.executeUpdate();
@@ -84,7 +84,7 @@ public class ProductDaoJdbc implements ProductDao {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
-            st.setDouble(3, obj.getPrecoProduto());
+            st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
             st.setInt(5, obj.getIdProduto());
 
@@ -111,7 +111,7 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setIdProduto(rs.getInt("id_produto"));
         prod.setCodBarras(rs.getString("cod_barras"));
         prod.setNomeProduto(rs.getString("nome_produto"));
-        prod.setPrecoProduto(rs.getDouble("preco_produto"));
+        prod.setPrecoProduto(rs.getBigDecimal("preco_produto"));
 
         prod.setEstoque(rs.getInt("estoque"));
         return prod;

@@ -4,6 +4,8 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.services.OrderService;
+import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.MoneyCells;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -14,6 +16,7 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -39,10 +42,10 @@ public class FiadoHistoryController {
             TitledPane pane = new TitledPane();
 
 
-            String titulo = String.format("Pedido #%d | Data: %s | Total: R$ %.2f",
+            String titulo = String.format("Pedido #%d | Data: %s | Total: %s",
                     order.getIdPedido(),
                     order.getDataPedido().format(dtf),
-                    order.getValorTotal());
+                    Money.format(order.getValorTotal()));
 
             pane.setText(titulo);
             pane.setExpanded(false);
@@ -73,16 +76,15 @@ public class FiadoHistoryController {
         colQtd.setStyle("-fx-alignment: CENTER;");
 
 
-        TableColumn<OrderItem, Double> colPreco = new TableColumn<>("Preço Unit.");
+        TableColumn<OrderItem, BigDecimal> colPreco = new TableColumn<>("Preço Unit.");
         colPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
+        MoneyCells.format(colPreco);
         colPreco.setStyle("-fx-alignment: CENTER-RIGHT;");
 
 
-        TableColumn<OrderItem, Double> colSub = new TableColumn<>("Subtotal");
-        colSub.setCellValueFactory(cellData -> {
-            double sub = cellData.getValue().getQtd() * cellData.getValue().getPrecoUnitario();
-            return new SimpleObjectProperty<>(sub);
-        });
+        TableColumn<OrderItem, BigDecimal> colSub = new TableColumn<>("Subtotal");
+        colSub.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getSubtotal()));
+        MoneyCells.format(colSub);
         colSub.setStyle("-fx-alignment: CENTER-RIGHT;");
 
         table.getColumns().addAll(colProd, colQtd, colPreco, colSub);

@@ -3,6 +3,8 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Constraints;
+import com.casarural.sistemapdv.util.Money;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -11,6 +13,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -38,6 +41,7 @@ public class ProductFormController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        Constraints.setTextFieldMoney(txtPreco);
     }
 
 
@@ -47,7 +51,7 @@ public class ProductFormController implements Initializable {
         }
         txtCodBarras.setText(entity.getCodBarras());
         txtNome.setText(entity.getNomeProduto());
-        txtPreco.setText(String.valueOf(entity.getPrecoProduto()));
+        txtPreco.setText(Money.toInput(entity.getPrecoProduto()));
         txtEstoque.setText(String.valueOf(entity.getEstoque()));
     }
 
@@ -67,7 +71,7 @@ public class ProductFormController implements Initializable {
 
             String codBarras = txtCodBarras.getText();
             String nome = txtNome.getText();
-            double preco = Double.parseDouble(txtPreco.getText());
+            BigDecimal preco = Money.parse(txtPreco.getText());
             int estoque = Integer.parseInt(txtEstoque.getText());
 
 

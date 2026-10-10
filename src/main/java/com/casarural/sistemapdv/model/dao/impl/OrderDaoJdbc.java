@@ -8,6 +8,9 @@ import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,7 +34,7 @@ public class OrderDaoJdbc implements OrderDao {
                 } else {
                     st.setNull(1, Types.INTEGER);
                 }
-                st.setDouble(2, obj.getValorTotal());
+                st.setBigDecimal(2, obj.getValorTotal());
                 st.setString(3, obj.getStatus().toString());
 
                 int rowsAffected = st.executeUpdate();
@@ -66,7 +69,7 @@ public class OrderDaoJdbc implements OrderDao {
                 stItem.setInt(1, idPedido);
                 stItem.setInt(2, item.getProduto().getIdProduto());
                 stItem.setInt(3, item.getQtd());
-                stItem.setDouble(4, item.getPrecoUnitario());
+                stItem.setBigDecimal(4, item.getPrecoUnitario());
                 stItem.addBatch();
 
                 stEstoque.setInt(1, item.getQtd());
@@ -86,7 +89,7 @@ public class OrderDaoJdbc implements OrderDao {
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             for (Order.PaymentSlice fatia : obj.getPagamentos()) {
                 st.setInt(1, idPedido);
-                st.setDouble(2, fatia.getValor());
+                st.setBigDecimal(2, fatia.getValor());
                 st.setString(3, fatia.getMetodo().toString());
                 st.addBatch();
             }
@@ -95,7 +98,7 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     @Override
-    public void registerPartialPayment(Integer idCliente, double valorPago) {
+    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago) {
         try (Connection conn = DB.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement stSelect = conn.prepareStatement(
@@ -112,24 +115,25 @@ public class OrderDaoJdbc implements OrderDao {
                 stSelect.setInt(1, idCliente);
 
                 try (ResultSet rs = stSelect.executeQuery()) {
-                    double valorRestante = valorPago;
+                    BigDecimal valorRestante = Money.of(valorPago);
 
-                    while (rs.next() && valorRestante > 0) {
+                    while (rs.next() && Money.isPositive(valorRestante)) {
                         int idPedido = rs.getInt("id_pedido");
-                        double valorTotalPedido = rs.getDouble("valor_total");
-                        double jaPago = rs.getDouble("ja_pago");
-                        double saldoPedido = valorTotalPedido - jaPago;
+                        BigDecimal valorTotalPedido = rs.getBigDecimal("valor_total");
+                        BigDecimal jaPago = rs.getBigDecimal("ja_pago");
+                        BigDecimal saldoPedido = valorTotalPedido.subtract(jaPago);
 
-                        if (saldoPedido > 0) {
-                            double valorAbater = Math.min(valorRestante, saldoPedido);
+                        if (Money.isPositive(saldoPedido)) {
+                            BigDecimal valorAbater = Money.min(valorRestante, saldoPedido);
 
                             stInsert.setInt(1, idPedido);
-                            stInsert.setDouble(2, valorAbater);
+                            stInsert.setBigDecimal(2, valorAbater);
                             stInsert.executeUpdate();
 
-                            valorRestante -= valorAbater;
+                            valorRestante = valorRestante.subtract(valorAbater);
 
-                            if (Math.abs(saldoPedido - valorAbater) < 0.009) {
+                            // comparação exata: com BigDecimal não há resto de arredondamento
+                            if (saldoPedido.compareTo(valorAbater) == 0) {
                                 stUpdate.setInt(1, idPedido);
                                 stUpdate.executeUpdate();
                             }
@@ -149,7 +153,7 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     @Override
-    public double getCustomerDebt(Integer idCliente) {
+    public BigDecimal getCustomerDebt(Integer idCliente) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
                      "SELECT " +
@@ -162,9 +166,9 @@ public class OrderDaoJdbc implements OrderDao {
 
             try (ResultSet rs = st.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getDouble("divida_total");
+                    return Money.of(rs.getBigDecimal("divida_total"));
                 }
-                return 0.0;
+                return Money.ZERO;
             }
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
@@ -184,8 +188,8 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public void payFullDebt(Integer idCliente) {
-        double totalDevendo = getCustomerDebt(idCliente);
-        if (totalDevendo > 0) {
+        BigDecimal totalDevendo = getCustomerDebt(idCliente);
+        if (Money.isPositive(totalDevendo)) {
             registerPartialPayment(idCliente, totalDevendo);
         }
     }
@@ -209,7 +213,7 @@ public class OrderDaoJdbc implements OrderDao {
     public OrderItem instantiateOI(ResultSet rs) throws SQLException {
         OrderItem obj = new OrderItem();
         obj.setQtd(rs.getInt("quantidade"));
-        obj.setPrecoUnitario(rs.getDouble("preco_unitario"));
+        obj.setPrecoUnitario(rs.getBigDecimal("preco_unitario"));
         Product prod = new Product();
         prod.setCodBarras(rs.getString("cod_barras"));
         prod.setNomeProduto(rs.getString("nome_produto"));
@@ -243,7 +247,7 @@ public class OrderDaoJdbc implements OrderDao {
                     Order obj = new Order();
                     obj.setIdPedido(rs.getInt("id_pedido"));
                     obj.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                    obj.setValorTotal(rs.getDouble("valor_total"));
+                    obj.setValorTotal(rs.getBigDecimal("valor_total"));
                     obj.setStatus(OrderStatus.valueOf(rs.getString("status")));
                     list.add(obj);
                 }
@@ -284,7 +288,7 @@ public class OrderDaoJdbc implements OrderDao {
 
                 while (rs.next()) {
                     OrderItem item = new OrderItem();
-                    item.setPrecoUnitario(rs.getDouble("preco_unitario"));
+                    item.setPrecoUnitario(rs.getBigDecimal("preco_unitario"));
                     item.setQtd(rs.getInt("quantidade"));
 
                     Product prod = new Product();

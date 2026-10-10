@@ -1,20 +1,21 @@
 package com.casarural.sistemapdv.model.entities;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class OrderItem {
     private Product produto;
     private Order pedido;
     private int qtd;
-    private double precoUnitario;
-    private double subtotal;
+    private BigDecimal precoUnitario = Money.ZERO;
 
     public OrderItem(){}
-    public OrderItem(Product produto, int qtd, double precoUnitario, double subtotal) {
+    public OrderItem(Product produto, int qtd, BigDecimal precoUnitario) {
         this.produto = produto;
         this.qtd = qtd;
-        this.precoUnitario = precoUnitario;
-        this.subtotal = subtotal;
+        this.precoUnitario = Money.of(precoUnitario);
     }
 
     public Order getPedido() {
@@ -53,20 +54,17 @@ public class OrderItem {
         this.qtd = qtd;
     }
 
-    public double getPrecoUnitario() {
+    public BigDecimal getPrecoUnitario() {
         return precoUnitario;
     }
 
-    public void setPrecoUnitario(double precoUnitario) {
-        this.precoUnitario = precoUnitario;
+    public void setPrecoUnitario(BigDecimal precoUnitario) {
+        this.precoUnitario = Money.of(precoUnitario);
     }
 
-    public void setSubtotal(double subtotal) {
-        this.subtotal = subtotal;
-    }
-
-    public double getSubtotal() {
-        return qtd * precoUnitario;
+    // Calculado sempre a partir de preço x quantidade, nunca armazenado
+    public BigDecimal getSubtotal() {
+        return Money.of(precoUnitario.multiply(BigDecimal.valueOf(qtd)));
     }
 
 

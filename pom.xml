@@ -49,6 +49,17 @@
             <artifactId>HikariCP</artifactId>
             <version>5.1.0</version>
         </dependency>
+        <!-- Migrações do banco: aplica automaticamente os scripts de src/main/resources/db-migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>10.20.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <version>10.20.1</version>
+        </dependency>
         <!-- Exibe no console os logs do HikariCP (erros de conexão, etc.).
              slf4j-api fixado em 2.x: o HikariCP traz a 1.7, incompatível com o slf4j-simple 2.x -->
         <dependency>

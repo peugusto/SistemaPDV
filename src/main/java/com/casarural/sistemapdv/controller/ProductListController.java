@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.MoneyCells;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -16,6 +17,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -30,7 +32,7 @@ public class ProductListController implements Initializable {
     @FXML private TableColumn<Product, Integer> idColumn;
     @FXML private TableColumn<Product, String> barcodeColumn;
     @FXML private TableColumn<Product, String> nameColumn;
-    @FXML private TableColumn<Product, Double> priceColumn;
+    @FXML private TableColumn<Product, BigDecimal> priceColumn;
     @FXML private TableColumn<Product, Integer> stockColumn;
     @FXML private TableColumn<Product, Void> actionsColumn;
 
@@ -52,6 +54,7 @@ public class ProductListController implements Initializable {
         barcodeColumn.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
+        MoneyCells.format(priceColumn);
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
 
         idColumn.setStyle("-fx-alignment: CENTER;");

@@ -5,6 +5,7 @@ import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
@@ -45,11 +46,11 @@ public class OrderService {
         dao.payFullDebt(idCliente);
     }
 
-    public double getCustomerDebt(Integer idCliente) {
+    public BigDecimal getCustomerDebt(Integer idCliente) {
         return dao.getCustomerDebt(idCliente);
     }
 
-    public void registerPartialPayment(Integer idCliente, double valorPago) {
+    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago) {
         dao.registerPartialPayment(idCliente, valorPago);
     }
 

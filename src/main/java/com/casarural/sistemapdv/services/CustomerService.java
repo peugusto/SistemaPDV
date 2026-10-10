@@ -4,7 +4,9 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.CustomerDao;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
+import com.casarural.sistemapdv.util.Money;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -28,12 +30,12 @@ public class CustomerService {
                 throw new DbException(e.getMessage());
             }
         } else {
-            double devendo = (obj.getTotalDevendo() != null) ? obj.getTotalDevendo() : 0.0;
+            BigDecimal devendo = Money.of(obj.getTotalDevendo());
 
-            if (obj.getLimiteCredito() < devendo) {
+            if (obj.getLimiteCredito().compareTo(devendo) < 0) {
                 throw new DbException(String.format(
-                        "O limite de crédito (R$ %.2f) não pode ser menor do que o total devendo atual (R$ %.2f)!",
-                        obj.getLimiteCredito(), devendo
+                        "O limite de crédito (%s) não pode ser menor do que o total devendo atual (%s)!",
+                        Money.format(obj.getLimiteCredito()), Money.format(devendo)
                 ));
             }
             dao.update(obj);

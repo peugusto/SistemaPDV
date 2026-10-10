@@ -8,12 +8,15 @@ import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Constraints;
+import com.casarural.sistemapdv.util.Money;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -36,7 +39,7 @@ public class PaymentController implements Initializable {
     private Order order;
     private OrderService orderService;
     private CustomerService customerService;
-    private double saldoRestante;
+    private BigDecimal saldoRestante = Money.ZERO;
     private Customer clienteFiado;
     private boolean vendaConcluida = false;
 
@@ -55,12 +58,13 @@ public class PaymentController implements Initializable {
     }
 
     private void atualizarExibicao() {
-        labelTotalPagamento.setText(String.format("R$ %.2f", Math.max(0, saldoRestante)));
+        labelTotalPagamento.setText(Money.format(Money.max(Money.ZERO, saldoRestante)));
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         configurarVisualBotoesPagamento();
+        Constraints.setTextFieldMoney(txtValorRecebido);
 
         btnFiado.selectedProperty().addListener((obs, was, isSelected) -> {
             comboCliente.setDisable(!isSelected);
@@ -69,8 +73,8 @@ public class PaymentController implements Initializable {
         txtValorRecebido.textProperty().addListener((obs, oldVal, newVal) -> {
             if (btnDinheiro.isSelected()) {
                 try {
-                    double recebido = Double.parseDouble(newVal.replace(",", "."));
-                    labelTroco.setText(String.format("R$ %.2f", Math.max(0, recebido - saldoRestante)));
+                    BigDecimal recebido = Money.parse(newVal);
+                    labelTroco.setText(Money.format(Money.max(Money.ZERO, recebido.subtract(saldoRestante))));
                 } catch (NumberFormatException e) {
                     labelTroco.setText("R$ 0,00");
                 }
@@ -107,7 +111,11 @@ public class PaymentController implements Initializable {
 
     private void adicionarPagamentoManual() {
         try {
-            double valorInput = Double.parseDouble(txtValorRecebido.getText().replace(",", "."));
+            BigDecimal valorInput = Money.parse(txtValorRecebido.getText());
+            if (!Money.isPositive(valorInput)) {
+                Alerts.showAlert("Aviso", null, "Informe um valor maior que zero.", Alert.AlertType.WARNING);
+                return;
+            }
             processarPagamento(valorInput);
         } catch (NumberFormatException e) {
             Alerts.showAlert("Erro", null, "Valor inválido!", Alert.AlertType.ERROR);
@@ -115,15 +123,19 @@ public class PaymentController implements Initializable {
     }
 
     private void realizarBaixaAutomatica() {
-        if (saldoRestante > 0.009) {
+        if (Money.isPositive(saldoRestante)) {
             processarPagamento(saldoRestante);
         } else {
             salvarVenda();
         }
     }
 
-    private void processarPagamento(double valor) {
+    private void processarPagamento(BigDecimal valor) {
         ToggleButton selecionado = (ToggleButton) grupoPagamento.getSelectedToggle();
+        if (selecionado == null) {
+            Alerts.showAlert("Aviso", null, "Selecione a forma de pagamento.", Alert.AlertType.WARNING);
+            return;
+        }
         String textoOriginal = selecionado.getText().toUpperCase();
 
         String textoNormalizado = java.text.Normalizer.normalize(textoOriginal, java.text.Normalizer.Form.NFD)
@@ -131,7 +143,7 @@ public class PaymentController implements Initializable {
 
         PaymentMethod metodo = PaymentMethod.valueOf(textoNormalizado);
 
-        if (metodo != PaymentMethod.DINHEIRO && valor > saldoRestante + 0.009) {
+        if (metodo != PaymentMethod.DINHEIRO && valor.compareTo(saldoRestante) > 0) {
             Alerts.showAlert("Aviso", null, "Valor excede o saldo!", Alert.AlertType.WARNING);
             return;
         }
@@ -160,19 +172,16 @@ public class PaymentController implements Initializable {
                 return;
             }
 
-            double devendo = (clienteSelecionado.getTotalDevendo() != null) ? clienteSelecionado.getTotalDevendo() : 0.0;
-            double fiadoNestaVenda = order.getPagamentos().stream()
-                    .filter(p -> p.getMetodo() == PaymentMethod.FIADO)
-                    .mapToDouble(Order.PaymentSlice::getValor)
-                    .sum();
-            double valorFiado = Math.min(valor, saldoRestante);
-            double disponivel = clienteSelecionado.getLimiteCredito() - devendo - fiadoNestaVenda;
+            BigDecimal devendo = Money.of(clienteSelecionado.getTotalDevendo());
+            BigDecimal fiadoNestaVenda = totalPorMetodo(PaymentMethod.FIADO);
+            BigDecimal valorFiado = Money.min(valor, saldoRestante);
+            BigDecimal disponivel = clienteSelecionado.getLimiteCredito().subtract(devendo).subtract(fiadoNestaVenda);
 
-            if (valorFiado > disponivel + 0.009) {
+            if (valorFiado.compareTo(disponivel) > 0) {
                 Alerts.showAlert("Venda Recusada", "Limite de crédito excedido",
-                        String.format("O cliente '%s' tem limite de R$ %.2f e deve R$ %.2f.%nDisponível para fiado: R$ %.2f.",
-                                clienteSelecionado.getNomeCliente(), clienteSelecionado.getLimiteCredito(),
-                                devendo + fiadoNestaVenda, Math.max(0, disponivel)),
+                        String.format("O cliente '%s' tem limite de %s e deve %s.%nDisponível para fiado: %s.",
+                                clienteSelecionado.getNomeCliente(), Money.format(clienteSelecionado.getLimiteCredito()),
+                                Money.format(devendo.add(fiadoNestaVenda)), Money.format(Money.max(Money.ZERO, disponivel))),
                         Alert.AlertType.ERROR);
                 return;
             }
@@ -180,27 +189,25 @@ public class PaymentController implements Initializable {
             clienteFiado = clienteSelecionado;
         }
 
-        double valorEfetivo = Math.min(valor, saldoRestante);
+        // No dinheiro o cliente pode entregar mais que o saldo: registra só o saldo, o resto é troco
+        BigDecimal valorEfetivo = Money.min(valor, saldoRestante);
         order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo));
 
-        saldoRestante -= valorEfetivo;
+        saldoRestante = saldoRestante.subtract(valorEfetivo);
         txtValorRecebido.clear();
         atualizarExibicao();
 
-        if (saldoRestante <= 0.009) {
+        if (saldoRestante.signum() == 0) {
             salvarVenda();
         }
     }
 
     private void salvarVenda() {
         try {
-            double totalFiado = order.getPagamentos().stream()
-                    .filter(p -> p.getMetodo() == PaymentMethod.FIADO)
-                    .mapToDouble(Order.PaymentSlice::getValor)
-                    .sum();
+            BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
 
             // valor_total guarda sempre o total da venda; a dívida é valor_total - pagamentos não-fiado
-            if (totalFiado > 0) {
+            if (Money.isPositive(totalFiado)) {
                 order.setCostumer(clienteFiado);
                 order.setStatus(OrderStatus.FIADO);
             } else {
@@ -215,6 +222,13 @@ public class PaymentController implements Initializable {
             Alerts.showAlert("Erro", "Erro ao salvar", e.getMessage(), Alert.AlertType.ERROR);
             reiniciarPagamentos();
         }
+    }
+
+    private BigDecimal totalPorMetodo(PaymentMethod metodo) {
+        return order.getPagamentos().stream()
+                .filter(p -> p.getMetodo() == metodo)
+                .map(Order.PaymentSlice::getValor)
+                .reduce(Money.ZERO, BigDecimal::add);
     }
 
     private void reiniciarPagamentos() {

@@ -2,19 +2,22 @@ package com.casarural.sistemapdv.model.entities;
 
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class Payment {
     private int idPagamento;
     private Order order;
-    private double valorPago;
+    private BigDecimal valorPago = Money.ZERO;
     private LocalDateTime dataPagamento;
     private PaymentMethod metodo;
 
     public Payment(){}
-    public Payment(Order order, double valorPago, LocalDateTime dataPagamento, PaymentMethod metodo) {
+    public Payment(Order order, BigDecimal valorPago, LocalDateTime dataPagamento, PaymentMethod metodo) {
         this.order = order;
-        this.valorPago = valorPago;
+        this.valorPago = Money.of(valorPago);
         this.dataPagamento = dataPagamento;
         this.metodo = metodo;
     }
@@ -35,12 +38,12 @@ public class Payment {
         this.order = order;
     }
 
-    public double getValorPago() {
+    public BigDecimal getValorPago() {
         return valorPago;
     }
 
-    public void setValorPago(double valorPago) {
-        this.valorPago = valorPago;
+    public void setValorPago(BigDecimal valorPago) {
+        this.valorPago = Money.of(valorPago);
     }
 
     public LocalDateTime getDataPagamento() {

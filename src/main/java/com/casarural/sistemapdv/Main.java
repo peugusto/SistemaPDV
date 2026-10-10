@@ -1,14 +1,13 @@
 package com.casarural.sistemapdv;
 
-import com.casarural.sistemapdv.controller.MainController;
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.util.Alerts;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 
 import java.sql.Connection;
@@ -19,31 +18,25 @@ public class Main extends Application {
     public void start(Stage stage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/casarural/sistemapdv/view/main-view.fxml"));
 
-        // Testa a conexão ao abrir; se o MySQL estiver fora, avisa mas abre o sistema
-        // (o pool tenta conectar de novo na próxima operação)
+        // Atualiza a estrutura do banco antes de qualquer tela. Se falhar, o sistema não abre:
+        // usar um banco desatualizado ou atualizado pela metade pode gravar dados errados.
+        try {
+            DB.migrate();
+        } catch (DbException e) {
+            Alerts.showAlert("Banco de Dados", "O sistema não pode ser aberto", e.getMessage(), Alert.AlertType.ERROR);
+            Platform.exit();
+            return;
+        }
+
         try (Connection conn = DB.getConnection()) {
             System.out.println("Banco de dados conectado com sucesso!");
         } catch (DbException e) {
             Alerts.showAlert("Banco de Dados", "Sem conexão com o banco", e.getMessage(), Alert.AlertType.WARNING);
         }
 
-        MainController controller = new MainController();
+        // Os atalhos F1-F5 são registrados pelo próprio MainController (configurarAtalhos)
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/com/casarural/sistemapdv/css/style.css")).toExternalForm());
-        stage.setScene(scene);
-        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            switch (event.getCode()) {
-                case F1 -> controller.onBotaoPDVAction();
-                case F2 -> controller.onButtonProductAction();
-                case F3 -> controller.onButtonProductListAction();
-                case F4 -> controller.onButtonCustomerAction();
-                case F5 -> controller.onButtonCustomerListAction();
-                case ESCAPE -> {
-                }
-                default -> { return; }
-            }
-            event.consume();
-        });
 
         stage.setTitle("Casa Rural");
         stage.setMaximized(true);

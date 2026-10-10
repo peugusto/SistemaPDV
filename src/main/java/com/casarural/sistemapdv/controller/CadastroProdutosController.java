@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
+import com.casarural.sistemapdv.util.Money;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
@@ -52,7 +53,7 @@ public class CadastroProdutosController implements Initializable {
 
 
         try {
-            entity.setPrecoProduto(Double.parseDouble(txtPreco.getText().replace(",", ".")));
+            entity.setPrecoProduto(Money.parse(txtPreco.getText()));
             entity.setEstoque(Integer.parseInt(txtEstoque.getText()));
         } catch (NumberFormatException e) {
             throw new RuntimeException("Preço ou Estoque inválidos.");
@@ -82,7 +83,7 @@ public class CadastroProdutosController implements Initializable {
                     isExistingProduct = true;
 
                     txtNome.setText(product.getNomeProduto());
-                    txtPreco.setText(String.valueOf(product.getPrecoProduto()));
+                    txtPreco.setText(Money.toInput(product.getPrecoProduto()));
 
 
                     txtNome.setEditable(false);
@@ -119,7 +120,7 @@ public class CadastroProdutosController implements Initializable {
 
         entity.setCodBarras(txtCodBarras.getText());
         entity.setNomeProduto(txtNome.getText());
-        entity.setPrecoProduto(Double.parseDouble(txtPreco.getText().replace(",", ".")));
+        entity.setPrecoProduto(Money.parse(txtPreco.getText()));
 
         int qtdInformada = Integer.parseInt(txtEstoque.getText());
 
@@ -147,7 +148,7 @@ public class CadastroProdutosController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         Constraints.setTextFieldInteger(txtEstoque);
-        Constraints.setTextFieldDouble(txtPreco);
+        Constraints.setTextFieldMoney(txtPreco);
         Constraints.setTextFieldMaxLength(txtNome,20);
 
         txtCodBarras.setOnAction(event -> onSearchProduct());

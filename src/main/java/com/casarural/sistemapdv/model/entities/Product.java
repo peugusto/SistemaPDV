@@ -1,20 +1,23 @@
 package com.casarural.sistemapdv.model.entities;
 
+import com.casarural.sistemapdv.util.Money;
+
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Product {
     private int idProduto;
     private String codBarras;
     private String nomeProduto;
-    private double precoProduto;
+    private BigDecimal precoProduto = Money.ZERO;
     private int estoque;
 
     public Product(){}
 
-    public Product(String codBarras, String nomeProduto, double precoProduto, int estoque) {
+    public Product(String codBarras, String nomeProduto, BigDecimal precoProduto, int estoque) {
         this.codBarras = codBarras;
         this.nomeProduto = nomeProduto;
-        this.precoProduto = precoProduto;
+        this.precoProduto = Money.of(precoProduto);
         this.estoque = estoque;
     }
 
@@ -42,12 +45,12 @@ public class Product {
         this.nomeProduto = nomeProduto;
     }
 
-    public double getPrecoProduto() {
+    public BigDecimal getPrecoProduto() {
         return precoProduto;
     }
 
-    public void setPrecoProduto(double precoProduto) {
-        this.precoProduto = precoProduto;
+    public void setPrecoProduto(BigDecimal precoProduto) {
+        this.precoProduto = Money.of(precoProduto);
     }
 
     public int getEstoque() {
@@ -64,7 +67,7 @@ public class Product {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Product product = (Product) o;
-        return idProduto == product.idProduto && Double.compare(precoProduto, product.precoProduto) == 0 && estoque == product.estoque && Objects.equals(codBarras, product.codBarras) && Objects.equals(nomeProduto, product.nomeProduto);
+        return idProduto == product.idProduto && Objects.equals(precoProduto, product.precoProduto) && estoque == product.estoque && Objects.equals(codBarras, product.codBarras) && Objects.equals(nomeProduto, product.nomeProduto);
     }
 
     @Override

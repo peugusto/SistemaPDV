@@ -5,7 +5,7 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController"
-            style="-fx-background-color: -fx-secondary-color;" stylesheets="@seu_arquivo.css">
+            style="-fx-background-color: -fx-secondary-color;">
 
     <top>
         <VBox>

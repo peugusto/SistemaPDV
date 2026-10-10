@@ -5,6 +5,7 @@ import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Money;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -12,6 +13,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -66,10 +68,10 @@ public class PDVController implements Initializable {
                     lDesc.setPrefWidth(200);
                     lDesc.setStyle("-fx-wrap-text: true;");
 
-                    Label lVal = new Label(String.format("%.2f", item.getPrecoUnitario()));
+                    Label lVal = new Label(Money.formatPlain(item.getPrecoUnitario()));
                     lVal.setPrefWidth(70);
 
-                    Label lTot = new Label(String.format("%.2f", item.getSubtotal()));
+                    Label lTot = new Label(Money.formatPlain(item.getSubtotal()));
                     lTot.setPrefWidth(70);
 
                     hBox.getChildren().addAll(lQtd, lDesc, lVal, lTot);
@@ -136,8 +138,8 @@ public class PDVController implements Initializable {
                 return;
             }
 
-            campoValorUnitario.setText(String.format("%.2f", p.getPrecoProduto()));
-            campoTotalItem.setText(String.format("%.2f", p.getPrecoProduto() * quantidadeFinal));
+            campoValorUnitario.setText(Money.formatPlain(p.getPrecoProduto()));
+            campoTotalItem.setText(Money.formatPlain(p.getPrecoProduto().multiply(BigDecimal.valueOf(quantidadeFinal))));
             labelUltimoItem.setText(quantidadeFinal + " X " + p.getNomeProduto().toUpperCase());
 
             if (itemExistente.isPresent()) {
@@ -145,7 +147,7 @@ public class PDVController implements Initializable {
                 item.setQtd(item.getQtd() + quantidadeFinal);
                 listaItens.refresh(); // Atualiza o visual da lista
             } else {
-                OrderItem novoItem = new OrderItem(p, quantidadeFinal, p.getPrecoProduto(), p.getPrecoProduto());
+                OrderItem novoItem = new OrderItem(p, quantidadeFinal, p.getPrecoProduto());
                 itensVenda.add(novoItem);
             }
 
@@ -195,11 +197,7 @@ public class PDVController implements Initializable {
         }
 
         Order order = new Order();
-        double total = itensVenda.stream()
-                .mapToDouble(OrderItem::getSubtotal)
-                .sum();
-
-        order.setValorTotal(total);
+        order.setValorTotal(calcularTotalVenda());
         order.setItemPedido(new java.util.ArrayList<>(itensVenda));
         order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
 
@@ -228,11 +226,14 @@ public class PDVController implements Initializable {
         }
     }
 
+    private BigDecimal calcularTotalVenda() {
+        return itensVenda.stream()
+                .map(OrderItem::getSubtotal)
+                .reduce(Money.ZERO, BigDecimal::add);
+    }
+
     private void atualizarTotalVenda() {
-        double total = itensVenda.stream()
-                .mapToDouble(OrderItem::getSubtotal)
-                .sum();
-        labelTotal.setText(String.format("R$ %.2f", total));
+        labelTotal.setText(Money.format(calcularTotalVenda()));
     }
 
     private void resetarCamposVisuais() {
