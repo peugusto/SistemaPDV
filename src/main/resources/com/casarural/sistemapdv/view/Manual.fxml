@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<!-- Ajuda > Manual: assuntos e busca à esquerda, texto do assunto à direita (conteúdo em ajuda/manual.txt) -->
+<BorderPane styleClass="tela" prefWidth="1100" prefHeight="720" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.casarural.sistemapdv.controller.ManualController">
+
+    <top>
+        <VBox styleClass="cabecalho" spacing="2">
+            <Label styleClass="titulo" text="Manual do sistema"/>
+            <Label styleClass="subtitulo" text="Escolha um assunto ou procure uma palavra. Esc fecha."/>
+        </VBox>
+    </top>
+
+    <left>
+        <VBox styleClass="cartao" spacing="10" prefWidth="290" minWidth="240">
+            <BorderPane.margin><Insets top="18" right="0" bottom="20" left="24"/></BorderPane.margin>
+            <TextField fx:id="txtBusca" promptText="Procurar (ex.: troco, fiado, pão)"/>
+            <ListView fx:id="listaAssuntos" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </left>
+
+    <center>
+        <ScrollPane fx:id="rolagem" fitToWidth="true" styleClass="cartao">
+            <BorderPane.margin><Insets top="18" right="24" bottom="20" left="16"/></BorderPane.margin>
+            <VBox fx:id="conteudo" styleClass="manual" spacing="10">
+                <padding><Insets top="8" right="20" bottom="20" left="12"/></padding>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

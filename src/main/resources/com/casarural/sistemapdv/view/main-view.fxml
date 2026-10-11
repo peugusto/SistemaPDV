@@ -15,16 +15,15 @@
                     <MenuItem text="Atualizar Dados"/>
                 </Menu>
                 <Menu text="Ajuda">
-                    <MenuItem text="Manual"/>
-                    <MenuItem text="Sobre"/>
+                    <MenuItem text="Manual" onAction="#onMenuManualAction"/>
+                    <MenuItem text="Problemas e soluções" onAction="#onMenuProblemasAction"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Sobre" onAction="#onMenuSobreAction"/>
                 </Menu>
                 <Menu text="Relatórios">
                     <MenuItem fx:id="menuPao" text="Pão do dia (F7)" onAction="#onMenuPaoAction"/>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="menuRelatorios" text="Vendas e produtos (F8) — pede o PIN" onAction="#onMenuRelatoriosAction"/>
-                </Menu>
-                <Menu text="Extras">
-                    <MenuItem text="Lista de Compras"/>
                 </Menu>
             </MenuBar>
 

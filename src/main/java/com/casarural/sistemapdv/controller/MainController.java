@@ -293,6 +293,24 @@ public class MainController implements Initializable {
         atualizarCaixa();
     }
 
+    /** Ajuda > Manual. */
+    @FXML
+    public void onMenuManualAction() {
+        ManualController.abrir(botaoPDV.getScene().getWindow(), null);
+    }
+
+    /** Ajuda > Problemas e soluções: o manual já aberto nesse assunto. */
+    @FXML
+    public void onMenuProblemasAction() {
+        ManualController.abrir(botaoPDV.getScene().getWindow(), ManualController.PROBLEMAS);
+    }
+
+    /** Ajuda > Sobre. */
+    @FXML
+    public void onMenuSobreAction() {
+        SobreController.abrir(botaoPDV.getScene().getWindow());
+    }
+
     /** Relatórios > Pão do dia (F7): sem PIN, usado todo dia na compra do pão. */
     @FXML
     public void onMenuPaoAction() {

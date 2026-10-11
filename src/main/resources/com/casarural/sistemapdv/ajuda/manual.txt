@@ -1,0 +1,221 @@
+;; Manual do SistemaPDV, lido pela tela Ajuda > Manual.
+;; Formato (uma marcação no começo da linha):
+;;   # Título de um assunto (aparece na lista da esquerda)
+;;   ## Subtítulo
+;;   - item de lista
+;;   1. passo numerado (qualquer número seguido de ponto)
+;;   ! aviso importante (fundo amarelo)
+;;   > texto de uma mensagem que aparece na tela (caixa cinza)
+;;   linha comum = parágrafo; linhas seguidas viram um parágrafo só; linha vazia separa
+;;   ;; comentário (não aparece)
+
+# Começando o dia
+Antes de vender, o caixa precisa estar aberto. A barra de baixo da tela principal mostra se ele está ABERTO ou FECHADO.
+## Abrir o caixa
+1. Clique em "Abrir caixa (F6)" na barra de baixo, ou aperte F6.
+2. Conte o dinheiro que está na gaveta (o troco) e digite o valor.
+3. Confirme. A barra fica verde e mostra quanto deve ter na gaveta.
+! Se aparecer o aviso "Caixa de outro dia", o caixa de ontem não foi fechado. Feche ele primeiro (o sistema já abre a tela de fechamento) e depois abra o de hoje.
+## Pão
+Quando o pão chegar às 7h, abra Relatórios > Pão do dia (F7) e registre quantos vieram. Veja o assunto "Pão do dia".
+
+# Fazer uma venda
+1. Na tela principal, clique em "Venda" ou aperte F1.
+2. Passe o leitor no código de barras do produto. O produto entra no cupom da direita.
+3. Para vender mais de uma unidade, digite a quantidade no campo QUANTIDADE antes de passar o produto.
+4. Produto sem código de barras: digite o código curto (ex.: 1 para o pão) e aperte Enter. Se não lembrar o código, aperte F2.
+5. Quando terminar, aperte F1 (Finalizar venda) para ir ao pagamento.
+## Corrigir o cupom
+- Item errado: clique nele no cupom e depois em "Excluir item".
+- Desistir da venda inteira: "Cancelar venda (Esc)".
+- Produtos marcados [sem fiado] não podem ir para o fiado (cigarro, bebida).
+
+# Pagamento e troco
+A tela de pagamento mostra quanto FALTA PAGAR.
+## Pagar tudo de uma forma só
+1. Escolha DINHEIRO, CARTÃO, PIX ou FIADO.
+2. No dinheiro, digite quanto o cliente deu em "Valor recebido": o troco aparece embaixo.
+3. Clique em "Confirmar pagamento".
+## Pagar com duas formas (ex.: parte no PIX e o resto no fiado)
+1. Escolha a primeira forma (ex.: PIX), digite o valor e aperte Enter. O FALTA PAGAR diminui.
+2. Escolha a segunda forma (ex.: FIADO), escolha o cliente e clique em "Confirmar pagamento". O resto vai todo nessa forma.
+! "Voltar (Esc)" desiste do pagamento, mas o cupom continua lá para você terminar a venda.
+
+# Queijo, mortadela e outros pesados
+Produtos pesáveis não usam quantidade: vale o valor que a balança mostra.
+1. Pese o produto na balança.
+2. No PDV, digite o código do produto (ou ache com F2) e aperte Enter.
+3. Abre a janela "Valor na balança (R$)". Digite o valor que a balança mostra (ex.: 12,40) e clique em "Lançar".
+4. O item entra no cupom como "(balança)". Cada pesagem é uma linha separada.
+! Pesáveis e produtos sem controle de estoque nunca dão "Estoque insuficiente".
+
+# Buscar produto pelo nome (F2)
+Use quando o produto não tem código de barras ou o leitor não lê.
+1. No PDV, aperte F2 (ou o botão azul "Buscar produto").
+2. Digite parte do nome. Não precisa de acento: "acai 500" acha "Açaí 500 ml".
+3. O primeiro da lista já vem marcado: aperte Enter para adicionar. Para escolher outro, use a seta para baixo e Enter, ou dê dois cliques.
+## Filtros
+- Pesáveis: só queijo, mortadela e outros pesados.
+- Sem controle de estoque: pão, açaí e parecidos.
+- Códigos curtos: produtos com código de até 4 números. Serve para conferir a folha de códigos do caixa.
+- Só com estoque: esconde produtos zerados.
+
+# Vender no fiado
+1. No pagamento, escolha FIADO.
+2. Escolha o cliente na lista.
+3. Clique em "Confirmar pagamento".
+## Quando o fiado é recusado
+- O cliente está Bloqueado no cadastro.
+- O cliente está Em atraso: tem compra no fiado com mais de 30 dias sem pagar. Só libera quando ele pagar essas compras; não dá para liberar à mão.
+- A compra passa do limite de crédito do cliente.
+- Algum produto é "sem fiado" (cigarro, bebida). O sistema oferece tirar esses produtos da venda e lançar o resto no fiado.
+! Em todos esses casos o cliente ainda pode pagar em dinheiro, PIX ou cartão.
+
+# Receber pagamento de fiado
+1. Abra "Clientes e fiado" (F5).
+2. Dê dois cliques no cliente (ou clique em "Fiado" na linha dele).
+3. Na parte de baixo, escolha Dinheiro, PIX ou Cartão.
+4. Digite o valor e clique em "Receber". Deixe o valor vazio para receber a dívida toda.
+O pagamento abate primeiro as compras mais antigas. Se o cliente estava Em atraso e pagou as compras atrasadas, aparece "Fiado liberado".
+! O caixa precisa estar aberto para receber fiado.
+
+# Clientes
+- Novo cliente: tela principal > "Novo cliente" (F4).
+- Ver, editar ou excluir: "Clientes e fiado" (F5).
+- Situação do fiado: Liberado, Bloqueado (você bloqueou no cadastro) ou Em atraso (automático, compra fiada com mais de 30 dias).
+- Cliente com compras não pode ser excluído: deixe ele Bloqueado.
+
+# Cadastrar produto e dar entrada
+## Produto novo
+1. Tela principal > "Produtos" (F2).
+2. Passe o leitor ou digite o código e aperte Enter. Se o código não existir, o sistema pergunta se quer cadastrar.
+3. Preencha nome e preço. Marque "Pesável" para queijo e frios. Desmarque "Controlar estoque" para pão, açaí e o que sai sem ser registrado. Desmarque "Pode vender no fiado" para cigarro e bebida.
+4. Salvar.
+## Chegou mercadoria
+1. Mesma tela: passe o código do produto que chegou.
+2. Digite só a quantidade que chegou. O sistema soma ao estoque.
+! Para mudar nome, preço ou as opções de um produto que já existe, use Estoque (F3) > Editar.
+
+# Estoque
+Tela principal > "Estoque" (F3). Mostra todos os produtos, preço e estoque. Estoque em vermelho: 15 unidades ou menos. Pesáveis e produtos sem controle aparecem como "Pesável" ou "Não controla".
+
+# Caixa: retirar, colocar e fechar
+## Retirar dinheiro (sangria)
+Barra de baixo > "Retirar dinheiro". Use quando tirar dinheiro da gaveta (pagar fornecedor, guardar no cofre). Escreva o motivo.
+## Colocar dinheiro (reforço)
+Barra de baixo > "Colocar dinheiro". Use quando colocar troco na gaveta.
+## Fechar o caixa no fim do dia
+1. Clique em "Fechar caixa (F6)".
+2. O sistema mostra quanto deve ter na gaveta.
+3. Conte o dinheiro e digite (opcional, mas recomendado). O sistema mostra se sobrou ou faltou.
+4. Confirme. O resumo fica em "Histórico de caixas".
+
+# Pão do dia
+Relatórios > Pão do dia (F7). Não pede PIN.
+## Todo dia, duas vezes
+1. Quando o pão chegar (7h e 15h), digite quantos vieram no cartão Manhã ou Tarde e aperte Enter (ou "Registrar").
+2. Errou? Digite o número certo e clique em "Corrigir".
+3. Esqueceu um dia? Clique no dia na tabela "Últimos 14 dias" e registre.
+## Quantos pães comprar
+O cartão verde mostra a sugestão para a próxima compra: hoje às 7h, hoje às 15h ou amanhã às 7h, conforme a hora.
+- A conta usa a média dos últimos 4 dias iguais da semana (ex.: as últimas 4 terças).
+- Se o pão acabou antes da hora num desses dias, o sistema conta quanto teria vendido.
+- Na compra das 15h, desconta o que deve sobrar da manhã.
+! A sugestão só aparece depois de alguns dias registrando. Fica boa com umas 2 semanas.
+
+# Relatórios de vendas
+Relatórios > Vendas e produtos (F8). Pede o PIN.
+- Na primeira vez, o sistema pede para criar um PIN de 4 a 6 números (digitado duas vezes). Guarde: ele é pedido toda vez.
+- Aba Vendas: faturamento, número de vendas, ticket médio, fiado, formas de pagamento, horários de movimento e média por dia da semana.
+- Aba Produtos: o que mais vende, o que não vende (Parados), filtros e ordem.
+- Escolha o período no topo: Hoje, 7 dias, 30 dias, Este mês, Mês passado ou duas datas.
+- "Trocar PIN" no canto de cima troca o PIN.
+
+# Histórico de vendas
+Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos.
+
+# Atalhos do teclado
+## Tela principal
+- F1: Venda
+- F2: Produtos (cadastro e entrada)
+- F3: Estoque
+- F4: Novo cliente
+- F5: Clientes e fiado
+- F6: Abrir ou fechar o caixa
+- F7: Pão do dia
+- F8: Relatórios de vendas (PIN)
+## Na venda (PDV)
+- Enter: adicionar o produto
+- F2: buscar produto pelo nome
+- F1: finalizar a venda
+- Esc: cancelar a venda
+
+# Problemas e soluções
+Procure abaixo a mensagem que apareceu na tela.
+
+## O sistema não abre
+> O sistema não pode ser aberto. Não foi possível atualizar o banco de dados.
+O sistema não conseguiu preparar o banco ao abrir. Não use o sistema e chame o responsável. (Para o responsável: veja o log em C:\ProgramData\SistemaPDV\logs; em geral é a senha do usuário pdv_migracao faltando no db.properties.)
+
+## Sem conexão com o banco
+> Não foi possível conectar ao banco de dados.
+1. Feche o sistema.
+2. Reinicie o computador e abra o sistema de novo.
+3. Se continuar, chame o responsável.
+
+## O caixa está fechado
+> O caixa está fechado. Abra o caixa para registrar vendas e recebimentos de fiado.
+Abra o caixa com F6 (veja "Começando o dia").
+
+## Caixa de outro dia
+> O caixa aberto em ... não foi fechado.
+Alguém esqueceu de fechar o caixa. Feche ele (conte a gaveta se puder) e depois abra o caixa de hoje.
+
+## Produto não encontrado
+> Produto não encontrado!
+- Confira o código digitado ou passe o leitor de novo.
+- Use F2 para procurar pelo nome.
+- Se o produto não está cadastrado, cadastre em "Produtos" (F2 na tela principal).
+
+## Estoque insuficiente
+> Estoque disponível de '...': ...
+O sistema acha que não tem mais desse produto. Se tem na prateleira, o estoque está errado: dê entrada em "Produtos" ou corrija em Estoque > Editar. Para pão, açaí e parecidos, desmarque "Controlar estoque".
+
+## Fiado recusado: bloqueado
+> O cliente '...' está com o cadastro BLOQUEADO para compras fiadas.
+Alguém bloqueou o cliente no cadastro. Para liberar: Clientes e fiado > Editar > Situação do fiado: Liberado.
+
+## Fiado recusado: em atraso
+> Conta bloqueada por atraso
+O cliente tem compra no fiado com mais de 30 dias sem pagar. Libera sozinho quando ele pagar o valor mostrado na mensagem. Não dá para liberar à mão. Esta compra pode ser paga em dinheiro, PIX ou cartão.
+
+## Fiado recusado: limite
+> Limite de crédito excedido
+A dívida com esta compra passaria do limite do cliente. Receba uma parte em dinheiro, PIX ou cartão, ou aumente o limite em Clientes e fiado > Editar.
+
+## Produto que não pode ser fiado
+> Fiado não permitido
+Cigarro, bebida e outros marcados "sem fiado" não podem ir para o fiado. Escolha "Tirar da venda e lançar o resto no fiado" (devolva os produtos à prateleira) ou receba a compra toda de outra forma.
+
+## Não deixa excluir o cliente
+> Não foi possível excluir
+Clientes com compras não podem ser excluídos, para não perder o histórico. Deixe o cliente Bloqueado.
+
+## Esqueci o PIN dos relatórios
+Chame o responsável. Ele apaga o PIN no banco (comando: DELETE FROM configuracao WHERE chave = 'relatorios.pin';) e você cria um novo ao abrir os relatórios.
+
+## PIN errado
+> PIN errado 3 vezes
+Feche, confira o PIN e abra de novo pelo menu Relatórios.
+
+## A sugestão do pão não aparece
+Ainda não há dias suficientes registrados. Continue registrando quantos pães chegam às 7h e às 15h.
+
+## Produto do pão não encontrado
+> Produto do pão não encontrado
+O produto de código 1 (PÃO FRANCÊS) foi excluído ou trocado. Chame o responsável.
+
+## A tela travou ou apareceu um erro estranho
+1. Anote ou tire foto da mensagem.
+2. Feche o sistema e abra de novo.
+3. Se repetir, chame o responsável e diga a hora em que aconteceu: tudo fica registrado no log.

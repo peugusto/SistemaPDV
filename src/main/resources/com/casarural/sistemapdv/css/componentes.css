@@ -592,3 +592,53 @@
 .grafico-horizontal .chart-bar {
     -fx-background-radius: 0 4 4 0;
 }
+
+/* =========================================================================
+   MANUAL (Ajuda > Manual)
+   ========================================================================= */
+.manual-titulo {
+    -fx-font-size: 1.7em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 0 0 4 0;
+}
+.manual-subtitulo {
+    -fx-font-size: 1.2em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 12 0 0 0;
+}
+.manual-paragrafo {
+    -fx-font-size: 1.1em;
+    -fx-text-fill: -cor-texto;
+    -fx-line-spacing: 3;
+}
+.manual-marcador {
+    -fx-font-size: 1.1em;
+    -fx-text-fill: -cor-primaria;
+    -fx-font-weight: bold;
+}
+.manual-numero {
+    -fx-background-color: -cor-primaria;
+    -fx-background-radius: 13;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.manual-aviso {
+    -fx-background-color: -cor-alerta-clara;
+    -fx-background-radius: 8;
+    -fx-padding: 10 14 10 14;
+    -fx-text-fill: -cor-texto;
+    -fx-font-size: 1.05em;
+}
+/* Mensagem exatamente como aparece na tela */
+.manual-mensagem {
+    -fx-background-color: -cor-neutro;
+    -fx-border-color: -cor-borda;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10 14 10 14;
+    -fx-text-fill: -cor-texto;
+    -fx-font-style: italic;
+    -fx-font-size: 1.05em;
+}

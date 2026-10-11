@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<!-- Ajuda > Sobre: cartões em duas colunas; o meio rola se a tela for baixa e os botões ficam sempre visíveis -->
+<BorderPane styleClass="tela" prefWidth="900" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.casarural.sistemapdv.controller.SobreController">
+
+    <top>
+        <VBox styleClass="cabecalho" spacing="2">
+            <Label fx:id="lblNome" styleClass="titulo" text="SistemaPDV"/>
+            <Label fx:id="lblVersao" styleClass="subtitulo" text=""/>
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fx:id="rolagem" fitToWidth="true" hbarPolicy="NEVER">
+            <HBox fx:id="colunas" spacing="14">
+                <padding><Insets top="16" right="20" bottom="8" left="20"/></padding>
+                <VBox fx:id="colunaEsquerda" spacing="14" HBox.hgrow="ALWAYS" prefWidth="420"/>
+                <VBox fx:id="colunaDireita" spacing="14" HBox.hgrow="ALWAYS" prefWidth="420"/>
+            </HBox>
+        </ScrollPane>
+    </center>
+
+    <bottom>
+        <HBox styleClass="barra-inferior" spacing="10" alignment="CENTER_RIGHT">
+            <Label fx:id="lblCopiado" styleClass="texto-suave" wrapText="true"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Copiar informações" onAction="#onCopiar"/>
+            <Button fx:id="btnFechar" styleClass="botao-primario" text="Fechar" onAction="#onFechar"/>
+        </HBox>
+    </bottom>
+</BorderPane>
