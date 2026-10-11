@@ -97,6 +97,10 @@ public class DB {
             log.error("migracao.user não configurado no db.properties");
             throw new DbException(MENSAGEM_ATUALIZACAO_FALHOU);
         }
+        if (password == null || password.isBlank()) {
+            log.error("migracao.password não configurado no db.properties (linha ausente ou comentada com #)");
+            throw new DbException(MENSAGEM_ATUALIZACAO_FALHOU);
+        }
 
         // Só a conexão de migração pode criar o banco, se ele ainda não existir
         String url = props.getProperty("dburl");

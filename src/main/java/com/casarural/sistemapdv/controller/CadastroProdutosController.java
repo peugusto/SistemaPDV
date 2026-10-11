@@ -1,15 +1,18 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.ProdutoCampos;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -27,6 +30,9 @@ public class CadastroProdutosController implements Initializable {
     @FXML private TextField txtPreco;
     @FXML private TextField txtEstoque;
     @FXML private CheckBox chkPermiteFiado;
+    @FXML private CheckBox chkPesavel;
+    @FXML private CheckBox chkControlaEstoque;
+    @FXML private Label lblPreco;
     @FXML private Button botaoSalvar;
     @FXML private Button botaoCancelar;
 
@@ -56,7 +62,7 @@ public class CadastroProdutosController implements Initializable {
 
         try {
             entity.setPrecoProduto(Money.parse(txtPreco.getText()));
-            entity.setEstoque(Integer.parseInt(txtEstoque.getText()));
+            entity.setEstoque(ProdutoCampos.estoque(txtEstoque));
         } catch (NumberFormatException e) {
             throw new RuntimeException("Preço ou Estoque inválidos.");
         }
@@ -81,6 +87,15 @@ public class CadastroProdutosController implements Initializable {
 
         service.findByCodBarras(code).ifPresentOrElse(
                 product -> {
+                    // Sem controle de estoque não há entrada para dar; o resto muda em "Editar"
+                    if (!product.isControlaEstoque()) {
+                        Alerts.showAlertAndWait("Produto sem estoque", product.getNomeProduto(),
+                                (product.isPesavel() ? "Este produto é pesável" : "Este produto está sem controle de estoque")
+                                        + ", então não precisa dar entrada.\n\nPara mudar preço ou nome, use Estoque > Editar.",
+                                AlertType.INFORMATION);
+                        txtCodBarras.clear();
+                        return;
+                    }
                     this.entity = product;
                     isExistingProduct = true;
 
@@ -92,6 +107,8 @@ public class CadastroProdutosController implements Initializable {
                     txtNome.setEditable(false);
                     txtPreco.setEditable(false);
                     chkPermiteFiado.setDisable(true);
+                    chkPesavel.setDisable(true);
+                    chkControlaEstoque.setDisable(true);
                     txtEstoque.requestFocus();
                 },
                 () -> {
@@ -126,13 +143,15 @@ public class CadastroProdutosController implements Initializable {
         entity.setNomeProduto(txtNome.getText());
         entity.setPrecoProduto(Money.parse(txtPreco.getText()));
 
-        int qtdInformada = Integer.parseInt(txtEstoque.getText());
+        int qtdInformada = ProdutoCampos.estoque(txtEstoque);
 
         if (isExistingProduct) {
             entity.adicionarEstoque(qtdInformada);
         } else {
             entity.setEstoque(qtdInformada);
             entity.setPermiteFiado(chkPermiteFiado.isSelected());
+            entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
+            entity.setControlaEstoque(chkControlaEstoque.isSelected());
         }
     }
 
@@ -142,6 +161,10 @@ public class CadastroProdutosController implements Initializable {
         txtPreco.setEditable(true);
         chkPermiteFiado.setDisable(false);
         chkPermiteFiado.setSelected(true);
+        chkPesavel.setDisable(false);
+        chkPesavel.setSelected(false);
+        chkControlaEstoque.setSelected(true);
+        chkControlaEstoque.setDisable(false);
         txtNome.setStyle("");
         txtPreco.setStyle("");
     }
@@ -157,6 +180,8 @@ public class CadastroProdutosController implements Initializable {
         Constraints.setTextFieldInteger(txtEstoque);
         Constraints.setTextFieldMoney(txtPreco);
         Constraints.setTextFieldMaxLength(txtNome,20);
+
+        ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
 
         txtCodBarras.setOnAction(event -> onSearchProduct());
     }

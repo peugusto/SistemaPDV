@@ -36,7 +36,7 @@ public final class Tema {
         dialogPane.getStylesheets().setAll(folhas());
     }
 
-    private static final List<String> ESTADOS_TEXTO = List.of("texto-perigo", "texto-sucesso", "texto-alerta");
+    private static final List<String> ESTADOS_TEXTO = List.of("texto-perigo", "texto-sucesso", "texto-alerta", "texto-suave");
 
     /**
      * Marca a cor de estado de um texto (ex.: célula de tabela) com as classes do componentes.css,

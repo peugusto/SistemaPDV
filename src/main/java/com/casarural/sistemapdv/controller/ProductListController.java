@@ -70,9 +70,14 @@ public class ProductListController implements Initializable {
             @Override
             protected void updateItem(Integer estoque, boolean empty) {
                 super.updateItem(estoque, empty);
-                if (empty || estoque == null) {
+                Product produto = getTableRow() == null ? null : getTableRow().getItem();
+                if (empty || estoque == null || produto == null) {
                     setText(null);
                     Tema.estado(this, null);
+                } else if (!produto.isControlaEstoque()) {
+                    // Pesável / sem controle: o número não significa nada, então não aparece
+                    setText(produto.isPesavel() ? "Pesável" : "Não controla");
+                    Tema.estado(this, "texto-suave");
                 } else {
                     setText(String.valueOf(estoque));
                     Tema.estado(this, estoque <= ESTOQUE_BAIXO ? "texto-perigo" : null);

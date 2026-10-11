@@ -13,12 +13,17 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class PDVController implements Initializable {
+
+    private static final Logger log = LoggerFactory.getLogger(PDVController.class);
 
     private ProductService productService;
     private ObservableList<OrderItem> itensVenda = FXCollections.observableArrayList();
@@ -36,6 +41,7 @@ public class PDVController implements Initializable {
 
 
     @FXML private Button botaoAdicionar;
+    @FXML private Button botaoBuscar;
     @FXML private Button botaoRemover;
     @FXML private Button botaoLimpar;
     @FXML private Button botaoFinalizar;
@@ -66,6 +72,7 @@ public class PDVController implements Initializable {
 
                     // Produto que não pode ir para o fiado aparece marcado no carrinho
                     Label lDesc = new Label(item.getProduto().getNomeProduto()
+                            + (item.getProduto().isPesavel() ? "  (balança)" : "")
                             + (item.getProduto().isPermiteFiado() ? "" : "  [sem fiado]"));
                     lDesc.setPrefWidth(200);
                     lDesc.setStyle("-fx-wrap-text: true;");
@@ -86,6 +93,7 @@ public class PDVController implements Initializable {
         botaoAdicionar.setOnAction(event -> onAdicionarItem());
         campoCodigoProduto.setOnAction(event -> onAdicionarItem()); // Permite adicionar apertando Enter no campo
 
+        botaoBuscar.setOnAction(event -> onBuscarProduto());
         botaoRemover.setOnAction(event -> onRemoverItem());
         botaoLimpar.setOnAction(event -> onLimparVenda());
         botaoFinalizar.setOnAction(event -> onFinalizarVenda());
@@ -96,6 +104,10 @@ public class PDVController implements Initializable {
                 newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
                     if (event.getCode() == javafx.scene.input.KeyCode.F1) {
                         onFinalizarVenda();
+                        event.consume();
+                    }
+                    if (event.getCode() == javafx.scene.input.KeyCode.F2) {
+                        onBuscarProduto();
                         event.consume();
                     }
                     if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
@@ -124,6 +136,13 @@ public class PDVController implements Initializable {
 
         if (prodOpt.isPresent()) {
             Product p = prodOpt.get();
+
+            // Pesável: vale o valor da balança, cada pesagem é uma linha própria
+            if (p.isPesavel()) {
+                adicionarPesavel(p);
+                return;
+            }
+
             final int quantidadeFinal = qtdInput;
 
             Optional<OrderItem> itemExistente = itensVenda.stream()
@@ -131,7 +150,7 @@ public class PDVController implements Initializable {
                     .findFirst();
 
             int qtdNoCarrinho = itemExistente.map(OrderItem::getQtd).orElse(0);
-            if (qtdNoCarrinho + quantidadeFinal > p.getEstoque()) {
+            if (!p.temEstoquePara(qtdNoCarrinho + quantidadeFinal)) {
                 Alerts.showAlert("Estoque Insuficiente", null,
                         String.format("Estoque disponível de '%s': %d (já no carrinho: %d).",
                                 p.getNomeProduto(), Math.max(0, p.getEstoque()), qtdNoCarrinho),
@@ -165,6 +184,52 @@ public class PDVController implements Initializable {
         } else {
             Alerts.showAlert("Aviso", null, "Produto não encontrado!", Alert.AlertType.WARNING);
             campoCodigoProduto.selectAll();
+        }
+    }
+
+    /**
+     * Queijo, mortadela...: a balança mostra o preço e o caixa digita esse valor.
+     * Entra como 1 item com o valor digitado; não mexe no estoque.
+     */
+    private void adicionarPesavel(Product p) {
+        Optional<BigDecimal> valor = Alerts.pedirValor(
+                "Produto pesado",
+                p.getNomeProduto().toUpperCase() + "  —  " + Money.format(p.getPrecoProduto()) + " o kg",
+                "Valor na balança (R$):");
+        if (valor.isEmpty()) {
+            campoCodigoProduto.selectAll();
+            campoCodigoProduto.requestFocus();
+            return;
+        }
+
+        itensVenda.add(new OrderItem(p, 1, valor.get()));
+        campoValorUnitario.setText(Money.formatPlain(valor.get()));
+        campoTotalItem.setText(Money.formatPlain(valor.get()));
+        labelUltimoItem.setText(p.getNomeProduto().toUpperCase() + " (BALANÇA)");
+        atualizarTotalVenda();
+
+        campoCodigoProduto.clear();
+        campoQuantidade.setText("1");
+        campoCodigoProduto.requestFocus();
+        listaItens.scrollTo(itensVenda.size() - 1);
+    }
+
+    /**
+     * F2: procura pelo nome. O produto escolhido entra como se o código tivesse sido digitado,
+     * então vale a quantidade do campo, a janela da balança e a conferência de estoque.
+     */
+    private void onBuscarProduto() {
+        try {
+            Optional<Product> escolhido = BuscaProdutoController.abrir(productService, labelTotal.getScene().getWindow());
+            if (escolhido.isPresent()) {
+                campoCodigoProduto.setText(escolhido.get().getCodBarras());
+                onAdicionarItem();
+            } else {
+                campoCodigoProduto.requestFocus();
+            }
+        } catch (Exception e) {
+            log.error("Erro ao abrir a busca de produto", e);
+            Alerts.showAlert("Buscar produto", null, "Não foi possível abrir a busca de produto.", Alert.AlertType.ERROR);
         }
     }
 

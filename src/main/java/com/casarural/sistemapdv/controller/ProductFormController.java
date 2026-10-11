@@ -1,16 +1,19 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.ProdutoCampos;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -29,6 +32,9 @@ public class ProductFormController implements Initializable {
     @FXML private TextField txtPreco;
     @FXML private TextField txtEstoque;
     @FXML private CheckBox chkPermiteFiado;
+    @FXML private CheckBox chkPesavel;
+    @FXML private CheckBox chkControlaEstoque;
+    @FXML private Label lblPreco;
     @FXML private Button btnSave;
     @FXML private Button btnCancel;
 
@@ -44,6 +50,7 @@ public class ProductFormController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         Constraints.setTextFieldMoney(txtPreco);
+        ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
     }
 
 
@@ -56,6 +63,8 @@ public class ProductFormController implements Initializable {
         txtPreco.setText(Money.toInput(entity.getPrecoProduto()));
         txtEstoque.setText(String.valueOf(entity.getEstoque()));
         chkPermiteFiado.setSelected(entity.isPermiteFiado());
+        chkControlaEstoque.setSelected(entity.isControlaEstoque());
+        chkPesavel.setSelected(entity.isPesavel());
     }
 
     @FXML
@@ -75,7 +84,7 @@ public class ProductFormController implements Initializable {
             String codBarras = txtCodBarras.getText();
             String nome = txtNome.getText();
             BigDecimal preco = Money.parse(txtPreco.getText());
-            int estoque = Integer.parseInt(txtEstoque.getText());
+            int estoque = ProdutoCampos.estoque(txtEstoque);
 
 
             entity.setCodBarras(codBarras);
@@ -83,6 +92,8 @@ public class ProductFormController implements Initializable {
             entity.setPrecoProduto(preco);
             entity.setEstoque(estoque);
             entity.setPermiteFiado(chkPermiteFiado.isSelected());
+            entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
+            entity.setControlaEstoque(chkControlaEstoque.isSelected());
 
 
             service.saveOrUpdate(entity);

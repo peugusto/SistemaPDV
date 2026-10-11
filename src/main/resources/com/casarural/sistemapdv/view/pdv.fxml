@@ -22,7 +22,7 @@
             <!-- Leitura do produto -->
             <VBox styleClass="cartao" spacing="10" HBox.hgrow="ALWAYS" maxWidth="620">
                 <Label styleClass="rotulo-secao" text="CÓDIGO DE BARRAS"/>
-                <TextField fx:id="campoCodigoProduto" styleClass="campo-grande" promptText="Passe o leitor ou digite o código"/>
+                <TextField fx:id="campoCodigoProduto" styleClass="campo-grande" promptText="Passe o leitor, digite o código ou aperte F2"/>
 
                 <Label styleClass="rotulo-secao" text="QUANTIDADE">
                     <VBox.margin><Insets top="6"/></VBox.margin>
@@ -65,6 +65,7 @@
     <bottom>
         <HBox styleClass="barra-inferior" spacing="12" alignment="CENTER_LEFT">
             <Button fx:id="botaoAdicionar" text="Adicionar (Enter)" prefHeight="46"/>
+            <Button fx:id="botaoBuscar" styleClass="botao-info" text="Buscar produto (F2)" prefHeight="46"/>
             <Button fx:id="botaoRemover" text="Excluir item" prefHeight="46"/>
             <Button fx:id="botaoLimpar" text="Cancelar venda (Esc)" prefHeight="46"/>
             <Pane HBox.hgrow="ALWAYS"/>

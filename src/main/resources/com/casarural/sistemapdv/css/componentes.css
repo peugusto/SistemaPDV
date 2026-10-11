@@ -118,6 +118,10 @@
     -fx-text-fill: -cor-alerta;
     -fx-font-weight: bold;
 }
+.table-row-cell .table-cell.texto-suave,
+.list-cell.texto-suave {
+    -fx-text-fill: -cor-texto-suave;
+}
 
 /* =========================================================================
    BOTÕES
@@ -269,16 +273,35 @@
 .check-box {
     -fx-text-fill: -cor-texto;
 }
-.combo-box-popup .list-cell {
-    -fx-text-fill: -cor-texto;
-}
-/* O valor escolhido dentro do combo não deve parecer "linha selecionada" de lista */
-.combo-box .list-cell,
-.combo-box .list-cell:filled:selected {
+/* O valor escolhido dentro do combo não deve parecer "linha selecionada" de lista.
+   Só o filho direto (">"): sem ele a regra pegava também os itens da lista aberta,
+   que ficavam sem fundo por cima da tela. */
+.combo-box > .list-cell,
+.combo-box > .list-cell:filled:selected {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-text-fill: -cor-texto;
     -fx-padding: 4 8 4 8;
+}
+/* Lista que abre ao clicar no combo: cartão com borda e sombra */
+.combo-box-popup > .list-view {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 8;
+    -fx-border-color: -cor-borda;
+    -fx-border-radius: 8;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 12, 0, 0, 3);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 6 10 6 10;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:hover,
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected {
+    -fx-background-color: -cor-primaria-clara;
 }
 .separator .line {
     -fx-border-color: -cor-borda;

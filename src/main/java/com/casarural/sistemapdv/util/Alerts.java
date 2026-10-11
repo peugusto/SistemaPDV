@@ -4,9 +4,11 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.TextInputDialog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public class Alerts {
@@ -83,5 +85,35 @@ public class Alerts {
 
         Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == btnSim;
+    }
+
+    /**
+     * Pede um valor em reais (ex.: o valor mostrado na balança).
+     * Volta vazio se a pessoa cancelar; valor zero ou inválido pede de novo.
+     */
+    public static Optional<BigDecimal> pedirValor(String title, String header, String content) {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText(content);
+        dialog.getEditor().setPromptText("0,00");
+        dialog.getDialogPane().getButtonTypes().setAll(
+                new ButtonType("Lançar", ButtonBar.ButtonData.OK_DONE),
+                new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE));
+        Constraints.setTextFieldMoney(dialog.getEditor());
+        Tema.aplicar(dialog.getDialogPane());
+
+        while (true) {
+            Optional<String> texto = dialog.showAndWait();
+            if (texto.isEmpty()) return Optional.empty();
+            try {
+                BigDecimal valor = Money.parse(texto.get());
+                if (Money.isPositive(valor)) return Optional.of(valor);
+            } catch (NumberFormatException e) {
+                // cai no aviso abaixo
+            }
+            showAlertAndWait(title, null, "Digite o valor em reais, por exemplo 12,40.", AlertType.WARNING);
+            dialog.getEditor().selectAll();
+        }
     }
 }

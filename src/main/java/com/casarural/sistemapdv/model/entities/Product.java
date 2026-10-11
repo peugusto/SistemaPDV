@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.model.entities;
 
+import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 import com.casarural.sistemapdv.util.Money;
 
 import java.math.BigDecimal;
@@ -13,6 +14,10 @@ public class Product {
     private int estoque;
     /** false = não pode ser vendido no fiado (ex.: cigarro, bebida alcoólica). Coluna produto.permite_fiado (V8). */
     private boolean permiteFiado = true;
+    /** Coluna produto.tipo_venda (V11). */
+    private TipoVenda tipoVenda = TipoVenda.UNIDADE;
+    /** false = a venda não confere nem baixa estoque. Coluna produto.controla_estoque (V11). */
+    private boolean controlaEstoque = true;
 
     public Product(){}
 
@@ -71,6 +76,32 @@ public class Product {
 
     public void setPermiteFiado(boolean permiteFiado) {
         this.permiteFiado = permiteFiado;
+    }
+
+    public TipoVenda getTipoVenda() {
+        return tipoVenda;
+    }
+
+    public void setTipoVenda(TipoVenda tipoVenda) {
+        this.tipoVenda = tipoVenda == null ? TipoVenda.UNIDADE : tipoVenda;
+    }
+
+    public boolean isPesavel() {
+        return tipoVenda == TipoVenda.PESAVEL;
+    }
+
+    /** Pesável nunca controla estoque: o valor digitado não diz quanto saiu da peça. */
+    public boolean isControlaEstoque() {
+        return controlaEstoque && !isPesavel();
+    }
+
+    public void setControlaEstoque(boolean controlaEstoque) {
+        this.controlaEstoque = controlaEstoque;
+    }
+
+    /** Se dá para vender {@code quantidade} (somando o que já está no carrinho). Sem controle, sempre dá. */
+    public boolean temEstoquePara(int quantidade) {
+        return !isControlaEstoque() || quantidade <= estoque;
     }
 
     @Override

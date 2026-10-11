@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<!-- Busca de produto (F2 no PDV): nome ou código, filtros por tipo, Enter escolhe -->
+<VBox styleClass="tela" prefWidth="820" prefHeight="600" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.casarural.sistemapdv.controller.BuscaProdutoController">
+
+    <VBox styleClass="cabecalho" spacing="2">
+        <Label styleClass="titulo" text="Buscar produto"/>
+        <Label styleClass="subtitulo" wrapText="true"
+               text="Digite parte do nome ou do código. Enter adiciona na venda, seta para baixo escolhe na lista, Esc fecha."/>
+    </VBox>
+
+    <VBox styleClass="cartao" spacing="12" VBox.vgrow="ALWAYS">
+        <VBox.margin><Insets top="18" right="24" bottom="8" left="24"/></VBox.margin>
+
+        <TextField fx:id="txtBusca" styleClass="campo-grande" promptText="Ex.: queijo, acai 500, pao"/>
+
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <Label styleClass="rotulo-secao" text="MOSTRAR" minWidth="70"/>
+            <fx:define><ToggleGroup fx:id="grupoFiltro"/></fx:define>
+            <ToggleButton fx:id="btnTodos" styleClass="pilula" text="Todos" toggleGroup="$grupoFiltro" selected="true" focusTraversable="false"/>
+            <ToggleButton fx:id="btnPesaveis" styleClass="pilula" text="Pesáveis" toggleGroup="$grupoFiltro" focusTraversable="false"/>
+            <ToggleButton fx:id="btnSemControle" styleClass="pilula" text="Sem controle de estoque" toggleGroup="$grupoFiltro" focusTraversable="false"/>
+            <ToggleButton fx:id="btnCodigosCurtos" styleClass="pilula" text="Códigos curtos" toggleGroup="$grupoFiltro" focusTraversable="false"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <CheckBox fx:id="chkSoComEstoque" text="Só com estoque" focusTraversable="false"/>
+        </HBox>
+
+        <TableView fx:id="tabela" VBox.vgrow="ALWAYS">
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+            <placeholder><Label styleClass="texto-suave" text="Nenhum produto encontrado."/></placeholder>
+            <columns>
+                <TableColumn fx:id="colCodigo" text="CÓDIGO" prefWidth="150"/>
+                <TableColumn fx:id="colNome" text="PRODUTO" prefWidth="270"/>
+                <TableColumn fx:id="colPreco" text="PREÇO" prefWidth="120"/>
+                <TableColumn fx:id="colEstoque" text="ESTOQUE" prefWidth="120"/>
+                <TableColumn fx:id="colFiado" text="FIADO" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </VBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <padding><Insets top="10" right="24" bottom="20" left="24"/></padding>
+        <Label fx:id="lblQuantidade" styleClass="texto-suave"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnFechar" text="Fechar (Esc)" onAction="#onFechar"/>
+        <Button fx:id="btnEscolher" styleClass="botao-primario" text="Adicionar na venda (Enter)" onAction="#onEscolher"/>
+    </HBox>
+</VBox>

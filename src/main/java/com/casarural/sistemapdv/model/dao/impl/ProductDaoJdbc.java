@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,7 +21,7 @@ public class ProductDaoJdbc implements ProductDao {
     public void insert(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado) VALUES (?, ?, ?, ?, ?)",
+                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado, tipo_venda, controla_estoque) VALUES (?, ?, ?, ?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getCodBarras());
@@ -28,6 +29,8 @@ public class ProductDaoJdbc implements ProductDao {
             st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
             st.setBoolean(5, obj.isPermiteFiado());
+            st.setString(6, obj.getTipoVenda().name());
+            st.setBoolean(7, obj.isControlaEstoque());
 
             int rowsAffected = st.executeUpdate();
 
@@ -81,14 +84,17 @@ public class ProductDaoJdbc implements ProductDao {
     public void update(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ? WHERE id_produto = ?")) {
+                     "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
+                             + "tipo_venda = ?, controla_estoque = ? WHERE id_produto = ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
             st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
             st.setBoolean(5, obj.isPermiteFiado());
-            st.setInt(6, obj.getIdProduto());
+            st.setString(6, obj.getTipoVenda().name());
+            st.setBoolean(7, obj.isControlaEstoque());
+            st.setInt(8, obj.getIdProduto());
 
             st.executeUpdate();
         } catch (SQLException e) {
@@ -117,6 +123,8 @@ public class ProductDaoJdbc implements ProductDao {
 
         prod.setEstoque(rs.getInt("estoque"));
         prod.setPermiteFiado(rs.getBoolean("permite_fiado"));
+        prod.setTipoVenda(TipoVenda.valueOf(rs.getString("tipo_venda")));
+        prod.setControlaEstoque(rs.getBoolean("controla_estoque"));
         return prod;
     }
 
