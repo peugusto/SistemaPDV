@@ -16,6 +16,8 @@ public class Customer {
     private BigDecimal limiteCredito = Money.ZERO;
     private CustomerStatus situacaoFiado;
     private BigDecimal totalDevendo = Money.ZERO;
+    /** Só os números (DDD + número), ou null. Ver util.Telefone. Coluna cliente.telefone (V10). */
+    private String telefone;
 
     public Customer(){}
     public Customer(String nomeCliente, BigDecimal limiteCredito, CustomerStatus situacaoFiado) {
@@ -54,6 +56,35 @@ public class Customer {
 
     public void setSituacaoFiado(CustomerStatus situacaoFiado) {
         this.situacaoFiado = situacaoFiado;
+    }
+
+    /** Valor das compras no fiado que passaram do prazo (RegraFiado). Calculado, não gravado. */
+    private BigDecimal valorEmAtraso = Money.ZERO;
+
+    public BigDecimal getValorEmAtraso() {
+        return valorEmAtraso;
+    }
+
+    public void setValorEmAtraso(BigDecimal valorEmAtraso) {
+        this.valorEmAtraso = Money.of(valorEmAtraso);
+    }
+
+    /** Bloqueio automático: tem compra fiada atrasada. Só sai quando o cliente pagar o valor em atraso. */
+    public boolean isBloqueadoPorAtraso() {
+        return Money.isPositive(valorEmAtraso);
+    }
+
+    /** Não pode comprar no fiado: bloqueado manualmente no cadastro OU por atraso. */
+    public boolean isFiadoBloqueado() {
+        return situacaoFiado == CustomerStatus.BLOQUEADO || isBloqueadoPorAtraso();
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
     }
 
     public BigDecimal getTotalDevendo() {

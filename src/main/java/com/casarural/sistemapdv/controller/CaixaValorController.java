@@ -51,27 +51,34 @@ public class CaixaValorController implements Initializable {
 
         switch (modo) {
             case ABRIR:
-                labelTitulo.setText("ABRIR CAIXA");
+                labelTitulo.setText("Abrir caixa");
                 labelExplicacao.setText("Conte o dinheiro que está na gaveta agora (o troco do dia) e digite abaixo. "
                         + "Se a gaveta estiver vazia, digite 0.");
                 btnConfirmar.setText("Abrir caixa");
                 esconderMotivo();
                 break;
             case SANGRIA:
-                labelTitulo.setText("RETIRAR DINHEIRO");
+                labelTitulo.setText("Retirar dinheiro");
                 labelExplicacao.setText("Dinheiro tirado da gaveta que não é troco de venda: pagar fornecedor, levar para casa...");
-                labelInfo.setText("Na gaveta agora: " + Money.format(service.summarize(caixa).getDinheiroEsperado()));
+                mostrarInfo("Na gaveta agora: " + Money.format(service.summarize(caixa).getDinheiroEsperado()));
                 btnConfirmar.setText("Retirar");
-                btnConfirmar.setStyle(btnConfirmar.getStyle().replace("#27ae60", "#c0392b"));
+                btnConfirmar.getStyleClass().remove("botao-primario");
+                btnConfirmar.getStyleClass().add("botao-perigo");
                 break;
             case REFORCO:
-                labelTitulo.setText("COLOCAR DINHEIRO");
+                labelTitulo.setText("Colocar dinheiro");
                 labelExplicacao.setText("Dinheiro colocado na gaveta que não veio de venda: por exemplo, mais troco.");
-                labelInfo.setText("Na gaveta agora: " + Money.format(service.summarize(caixa).getDinheiroEsperado()));
+                mostrarInfo("Na gaveta agora: " + Money.format(service.summarize(caixa).getDinheiroEsperado()));
                 btnConfirmar.setText("Colocar");
                 break;
         }
         campoValor.requestFocus();
+    }
+
+    private void mostrarInfo(String texto) {
+        labelInfo.setText(texto);
+        labelInfo.setVisible(true);
+        labelInfo.setManaged(true);
     }
 
     public boolean isConcluido() {

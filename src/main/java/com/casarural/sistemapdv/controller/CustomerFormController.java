@@ -2,11 +2,13 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Customer;
+import com.casarural.sistemapdv.model.entities.RegraFiado;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.Telefone;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -25,7 +27,9 @@ public class CustomerFormController implements Initializable {
 
     @FXML private TextField txtNome;
     @FXML private TextField txtLimite;
+    @FXML private TextField txtTelefone;
     @FXML private ComboBox<CustomerStatus> comboBoxStatus;
+    @FXML private Label labelAtraso;
     @FXML private Button btnSave;
     @FXML private Button btnCancel;
 
@@ -43,10 +47,18 @@ public class CustomerFormController implements Initializable {
         initializeComboBox();
         Constraints.setTextFieldMoney(txtLimite);
         Constraints.setTextFieldMaxLength(txtNome, Customer.TAMANHO_MAX_NOME);
+        Constraints.setTextFieldTelefone(txtTelefone);
     }
 
     private void initializeComboBox() {
         comboBoxStatus.setItems(FXCollections.observableArrayList(CustomerStatus.values()));
+        // Mostra "Liberado"/"Bloqueado" em vez do nome guardado no banco
+        comboBoxStatus.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(CustomerStatus s) {
+                return s == null ? "" : (s == CustomerStatus.BLOQUEADO ? "Bloqueado" : "Liberado");
+            }
+            @Override public CustomerStatus fromString(String t) { return null; }
+        });
     }
 
 
@@ -56,7 +68,19 @@ public class CustomerFormController implements Initializable {
         }
         txtNome.setText(entity.getNomeCliente());
         txtLimite.setText(Money.toInput(entity.getLimiteCredito()));
+        txtTelefone.setText(Telefone.formatar(entity.getTelefone()));
         comboBoxStatus.setValue(entity.getSituacaoFiado());
+
+        // Bloqueio por atraso não se desfaz por aqui: só pagando as compras atrasadas
+        if (entity.isBloqueadoPorAtraso()) {
+            comboBoxStatus.setDisable(true);
+            labelAtraso.setText(String.format(
+                    "Fiado bloqueado por atraso: compras com mais de %d dias sem pagar. "
+                            + "Libera sozinho quando o cliente pagar %s.",
+                    RegraFiado.PRAZO_DIAS, Money.format(entity.getValorEmAtraso())));
+            labelAtraso.setVisible(true);
+            labelAtraso.setManaged(true);
+        }
     }
 
     @FXML
@@ -68,6 +92,7 @@ public class CustomerFormController implements Initializable {
         try {
 
             entity.setNomeCliente(txtNome.getText());
+            entity.setTelefone(Telefone.normalizar(txtTelefone.getText()));
             entity.setLimiteCredito(Money.parse(txtLimite.getText()));
             entity.setSituacaoFiado(comboBoxStatus.getValue());
 
@@ -84,6 +109,9 @@ public class CustomerFormController implements Initializable {
 
         } catch (NumberFormatException e) {
             Alerts.showAlert("Erro de Validação", null, "Por favor, digite um valor numérico válido para o limite.", Alert.AlertType.ERROR);
+        } catch (IllegalArgumentException e) {
+            // telefone incompleto (Telefone.normalizar)
+            Alerts.showAlert("Celular", null, e.getMessage(), Alert.AlertType.WARNING);
         } catch (DbException e) {
 
             Alerts.showAlert("Erro de Negócio", "Não foi possível salvar", e.getMessage(), Alert.AlertType.ERROR);

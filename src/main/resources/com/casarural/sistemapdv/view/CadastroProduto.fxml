@@ -4,63 +4,45 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.CadastroProdutosController">
+<!-- Cadastro de produto / entrada de estoque (código já existente: só soma estoque) -->
+<VBox styleClass="tela" prefWidth="560" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.CadastroProdutosController">
 
-    <top>
-        <HBox alignment="CENTER" style="-fx-background-color: #2c3e50;">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+    <VBox styleClass="cabecalho" spacing="2">
+        <Label styleClass="titulo" text="Produto"/>
+        <Label styleClass="subtitulo" wrapText="true" text="Digite o código e aperte Enter. Se já existir, você só informa quanto chegou."/>
+    </VBox>
 
-            <Label text="Cadastro de Produto" textFill="WHITE" style="-fx-font-size:18px; -fx-font-weight:bold;"/>
-        </HBox>
-    </top>
+    <GridPane styleClass="cartao" hgap="14" vgap="14">
+        <VBox.margin><Insets top="20" right="24" bottom="8" left="24"/></VBox.margin>
+        <columnConstraints>
+            <ColumnConstraints minWidth="140"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
 
+        <Label styleClass="rotulo" text="Código de barras" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtCodBarras" promptText="Passe o leitor ou digite e aperte Enter" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-    <center>
-        <GridPane hgap="10" vgap="15">
-            <padding>
-                <Insets top="20" right="20" bottom="20" left="20"/>
-            </padding>
+        <Label styleClass="rotulo" text="Nome do produto" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtNome" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-            <Label text="Código de Barras:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtCodBarras" prefWidth="250"
-                       GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label styleClass="rotulo" text="Preço (R$)" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtPreco" promptText="0,00" maxWidth="160" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-            <Label text="Nome do Produto:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtNome" prefWidth="350"
-                       GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <Label styleClass="rotulo" text="Quantidade" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtEstoque" promptText="0" maxWidth="160" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-            <Label text="Preço Unitário:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtPreco" prefWidth="150"
-                       GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <Label styleClass="rotulo" text="Fiado" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <VBox spacing="4" GridPane.rowIndex="4" GridPane.columnIndex="1">
+            <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" selected="true"/>
+            <Label styleClass="texto-dica" wrapText="true"
+                   text="Desmarque para cigarro, bebida alcoólica e outros produtos que só podem ser pagos na hora."/>
+        </VBox>
+    </GridPane>
 
-            <Label text="Estoque:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtEstoque" prefWidth="150"
-                       GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-
-            <Label text="Fiado:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-            <VBox spacing="2" GridPane.rowIndex="4" GridPane.columnIndex="1">
-                <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" selected="true"/>
-                <Label text="Desmarque para cigarro, bebida alcoólica e outros produtos que só podem ser pagos na hora."
-                       wrapText="true" maxWidth="350" style="-fx-font-size: 11px; -fx-opacity: 0.75;"/>
-            </VBox>
-
-        </GridPane>
-    </center>
-
-
-    <bottom>
-        <HBox spacing="10" alignment="CENTER_RIGHT">
-            <padding>
-                <Insets top="10" right="20" bottom="20" left="20"/>
-            </padding>
-
-            <Button text="Salvar" fx:id="botaoSalvar" onAction="#onBotaoSalvarAction"/>
-            <Button text="Limpar " fx:id="botaoLimpar"/>
-            <Button text="Cancelar" fx:id="botaoCancelar" onAction="#onBotaoCancelarAction"/>
-        </HBox>
-    </bottom>
-
-</BorderPane>
-
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <padding><Insets top="12" right="24" bottom="22" left="24"/></padding>
+        <Button text="Limpar" fx:id="botaoLimpar"/>
+        <Button text="Cancelar" fx:id="botaoCancelar" onAction="#onBotaoCancelarAction"/>
+        <Button text="Salvar" fx:id="botaoSalvar" styleClass="botao-primario" onAction="#onBotaoSalvarAction"/>
+    </HBox>
+</VBox>

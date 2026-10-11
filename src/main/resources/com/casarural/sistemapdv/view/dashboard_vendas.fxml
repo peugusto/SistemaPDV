@@ -4,11 +4,15 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox alignment="CENTER" prefHeight="600.0" prefWidth="800.0" spacing="20.0" style="-fx-background-color: #2c3e50;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.DashboardVendasController">
-    <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-    </padding>
-
-    <Label text="DASHBOARD DE VENDAS" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;" />
-
+<!-- Dashboard de vendas: ainda não implementado (ficará protegido por senha, junto com o faturamento) -->
+<VBox styleClass="tela" prefHeight="600.0" prefWidth="800.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.DashboardVendasController">
+    <VBox styleClass="cabecalho" spacing="2">
+        <Label styleClass="titulo" text="Dashboard de vendas" />
+        <Label styleClass="subtitulo" text="Em construção." />
+    </VBox>
+    <VBox styleClass="cartao" alignment="CENTER" spacing="6" VBox.vgrow="ALWAYS">
+        <VBox.margin><Insets top="20.0" right="24.0" bottom="24.0" left="24.0" /></VBox.margin>
+        <Label styleClass="titulo-cartao" text="Esta tela ainda não está pronta" />
+        <Label styleClass="texto-suave" text="Os números de faturamento vão ficar aqui, protegidos por senha." />
+    </VBox>
 </VBox>

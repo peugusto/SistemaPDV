@@ -21,6 +21,9 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -61,12 +64,17 @@ public class OrderListController implements Initializable {
     @FXML private TableColumn<SaleSummary, String> colNumero;
     @FXML private TableColumn<SaleSummary, String> colCliente;
     @FXML private TableColumn<SaleSummary, Integer> colItens;
-    @FXML private TableColumn<SaleSummary, String> colFormas;
+    @FXML private TableColumn<SaleSummary, List<PaymentMethod>> colFormas;
     @FXML private TableColumn<SaleSummary, BigDecimal> colValor;
     @FXML private TableColumn<SaleSummary, OrderStatus> colSituacao;
 
-    @FXML private Label labelVendaTitulo;
-    @FXML private Label labelVendaInfo;
+    @FXML private VBox painelVazio;
+    @FXML private VBox painelDetalhe;
+    @FXML private Label labelVendaNumero;
+    @FXML private Label labelVendaValor;
+    @FXML private Label labelVendaData;
+    @FXML private Label labelVendaCliente;
+    @FXML private Label labelVendaSituacao;
     @FXML private TableView<OrderItem> tabelaItens;
     @FXML private TableColumn<OrderItem, String> colItemProduto;
     @FXML private TableColumn<OrderItem, Integer> colItemQtd;
@@ -92,11 +100,8 @@ public class OrderListController implements Initializable {
     // ===================== Filtros =====================
 
     private void configurarFiltros() {
-        for (Toggle t : grupoPeriodo.getToggles()) {
-            estilizarBotaoPeriodo((ToggleButton) t);
-        }
+        // A aparência das pílulas (selecionada ou não) vem do componentes.css
         grupoPeriodo.selectedToggleProperty().addListener((obs, antigo, novo) -> {
-            grupoPeriodo.getToggles().forEach(t -> estilizarBotaoPeriodo((ToggleButton) t));
             if (novo != null && !ajustandoPeriodo) aplicarPeriodo((ToggleButton) novo);
         });
 
@@ -151,10 +156,18 @@ public class OrderListController implements Initializable {
         };
     }
 
-    private void estilizarBotaoPeriodo(ToggleButton b) {
-        b.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 6; "
-                + (b.isSelected() ? "-fx-background-color: #27ae60; -fx-text-fill: white;"
-                                  : "-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;"));
+    // ===================== Etiquetas coloridas (classes no componentes.css) =====================
+
+    private static Label etiquetaForma(PaymentMethod forma) {
+        Label l = new Label(SaleSummary.nomeDaForma(forma));
+        l.getStyleClass().addAll("etiqueta", "etiqueta-" + forma.toString().toLowerCase());
+        return l;
+    }
+
+    private static void aplicarEtiquetaSituacao(Label l, OrderStatus s) {
+        l.setText(nomeDaSituacao(s));
+        l.getStyleClass().removeAll("etiqueta-paga", "etiqueta-receber");
+        l.getStyleClass().add(s == OrderStatus.FIADO ? "etiqueta-receber" : "etiqueta-paga");
     }
 
     private void aplicarPeriodo(ToggleButton botao) {
@@ -243,22 +256,35 @@ public class OrderListController implements Initializable {
         colCliente.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getNomeCliente() == null ? "—" : c.getValue().getNomeCliente()));
         colItens.setCellValueFactory(new PropertyValueFactory<>("quantidadeItens"));
-        colItens.setStyle("-fx-alignment: CENTER;");
-        colFormas.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getFormasTexto()));
+        colFormas.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getFormas()));
+        colFormas.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(List<PaymentMethod> formas, boolean empty) {
+                super.updateItem(formas, empty);
+                setText(null);
+                if (empty || formas == null) {
+                    setGraphic(null);
+                    return;
+                }
+                HBox etiquetas = new HBox(6);
+                etiquetas.setAlignment(Pos.CENTER_LEFT);
+                formas.forEach(f -> etiquetas.getChildren().add(etiquetaForma(f)));
+                setGraphic(etiquetas);
+            }
+        });
         colValor.setCellValueFactory(new PropertyValueFactory<>("valorTotal"));
         MoneyCells.format(colValor);
-        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
         colSituacao.setCellValueFactory(new PropertyValueFactory<>("status"));
         colSituacao.setCellFactory(col -> new TableCell<>() {
+            private final Label etiqueta = new Label();
+            { etiqueta.getStyleClass().add("etiqueta"); }
             @Override protected void updateItem(OrderStatus s, boolean empty) {
                 super.updateItem(s, empty);
+                setText(null);
                 if (empty || s == null) {
-                    setText(null);
-                    setStyle("");
+                    setGraphic(null);
                 } else {
-                    setText(nomeDaSituacao(s));
-                    setStyle("-fx-alignment: CENTER; -fx-font-weight: bold; -fx-text-fill: "
-                            + (s == OrderStatus.FIADO ? "#d35400;" : "#27ae60;"));
+                    aplicarEtiquetaSituacao(etiqueta, s);
+                    setGraphic(etiqueta);
                 }
             }
         });
@@ -278,53 +304,51 @@ public class OrderListController implements Initializable {
     private void configurarDetalhe() {
         colItemProduto.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNomeProduto()));
         colItemQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
-        colItemQtd.setStyle("-fx-alignment: CENTER;");
         colItemPreco.setCellValueFactory(new PropertyValueFactory<>("precoUnitario"));
         colItemSubtotal.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getSubtotal()));
         MoneyCells.format(colItemPreco);
         MoneyCells.format(colItemSubtotal);
 
-        // Pagamento em colunas alinhadas: forma | valor | quando
+        // Pagamento: etiqueta da forma | quando | valor
         listaPagamentos.setCellFactory(lv -> new ListCell<>() {
-            private final Label forma = new Label();
-            private final Label valor = new Label();
-            private final Label quando = new Label();
-            private final HBox linha = new HBox(12, forma, valor, quando);
-            {
-                forma.setMinWidth(70);
-                forma.setStyle("-fx-font-weight: bold;");
-                valor.setMinWidth(85);
-                valor.setAlignment(Pos.CENTER_RIGHT);
-                quando.setStyle("-fx-text-fill: #7f8c8d;");
-                linha.setAlignment(Pos.CENTER_LEFT);
-            }
             @Override
             protected void updateItem(Payment p, boolean empty) {
                 super.updateItem(p, empty);
+                setText(null);
                 if (empty || p == null) {
                     setGraphic(null);
                     return;
                 }
-                forma.setText(SaleSummary.nomeDaForma(p.getMetodo()));
-                valor.setText(Money.format(p.getValorPago()));
-                quando.setText(descreverQuando(p));
+                Label etiqueta = etiquetaForma(p.getMetodo());
+                etiqueta.setMinWidth(72);
+                etiqueta.setAlignment(Pos.CENTER);
+                Label quando = new Label(descreverQuando(p));
+                quando.getStyleClass().add("texto-suave");
+                Label valor = new Label(Money.format(p.getValorPago()));
+                valor.getStyleClass().addAll("texto", "texto-forte");
+                Pane espaco = new Pane();
+                HBox.setHgrow(espaco, Priority.ALWAYS);
+                HBox linha = new HBox(10, etiqueta, quando, espaco, valor);
+                linha.setAlignment(Pos.CENTER_LEFT);
                 setGraphic(linha);
             }
         });
     }
 
     private void mostrarDetalhe(SaleSummary venda) {
-        if (venda == null) {
-            labelVendaTitulo.setText("Selecione uma venda");
-            labelVendaInfo.setText("Os produtos e os pagamentos da venda aparecem aqui.");
+        boolean temVenda = venda != null;
+        painelVazio.setVisible(!temVenda);
+        painelDetalhe.setVisible(temVenda);
+        if (!temVenda) {
             tabelaItens.getItems().clear();
             listaPagamentos.getItems().clear();
             return;
         }
-        labelVendaTitulo.setText("Venda #" + venda.getIdPedido() + "  ·  " + Money.format(venda.getValorTotal()));
-        labelVendaInfo.setText(DATA_HORA.format(venda.getDataPedido())
-                + (venda.getNomeCliente() != null ? "   ·   Cliente: " + venda.getNomeCliente() : "")
-                + "   ·   " + nomeDaSituacao(venda.getStatus()));
+        labelVendaNumero.setText("Venda #" + venda.getIdPedido());
+        labelVendaValor.setText(Money.format(venda.getValorTotal()));
+        labelVendaData.setText(DATA_HORA.format(venda.getDataPedido()));
+        labelVendaCliente.setText(venda.getNomeCliente() != null ? "·  " + venda.getNomeCliente() : "");
+        aplicarEtiquetaSituacao(labelVendaSituacao, venda.getStatus());
         try {
             tabelaItens.setItems(FXCollections.observableArrayList(service.findItemsByOrderId(venda.getIdPedido())));
             listaPagamentos.setItems(FXCollections.observableArrayList(service.findPaymentsByOrder(venda.getIdPedido())));

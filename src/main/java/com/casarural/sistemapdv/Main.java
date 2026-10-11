@@ -3,6 +3,7 @@ package com.casarural.sistemapdv;
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Tema;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -13,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
-import java.util.Objects;
 
 public class Main extends Application {
 
@@ -52,7 +52,7 @@ public class Main extends Application {
 
         // Os atalhos F1-F5 são registrados pelo próprio MainController (configurarAtalhos)
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
-        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/com/casarural/sistemapdv/css/style.css")).toExternalForm());
+        Tema.aplicar(scene);
 
         stage.setTitle("Casa Rural");
         stage.setMaximized(true);

@@ -4,51 +4,37 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" 
-            fx:controller="com.casarural.sistemapdv.controller.RegisterCustomerController">
+<!-- Cadastro de cliente novo -->
+<VBox styleClass="tela" prefWidth="540" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.casarural.sistemapdv.controller.RegisterCustomerController">
 
-    <top>
-        <HBox alignment="CENTER" style="-fx-background-color: #2c3e50;">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+    <VBox styleClass="cabecalho" spacing="2">
+        <Label styleClass="titulo" text="Novo cliente"/>
+        <Label styleClass="subtitulo" text="O limite é o máximo que o cliente pode ficar devendo no fiado."/>
+    </VBox>
 
-            <Label text="Cadastro de Cliente" textFill="WHITE" style="-fx-font-size:18px; -fx-font-weight:bold;"/>
-        </HBox>
-    </top>
+    <GridPane styleClass="cartao" hgap="14" vgap="14">
+        <VBox.margin><Insets top="20" right="24" bottom="8" left="24"/></VBox.margin>
+        <columnConstraints>
+            <ColumnConstraints minWidth="150"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
 
-    <center>
-        <GridPane hgap="10" vgap="15">
-            <padding>
-                <Insets top="20" right="20" bottom="20" left="20"/>
-            </padding>
+        <Label styleClass="rotulo" text="Nome completo" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtNome" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-            <Label text="Nome Completo:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtNome" prefWidth="350"
-                       GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label styleClass="rotulo" text="Celular / WhatsApp" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtPhoneNumber" promptText="(00) 00000-0000" maxWidth="220"
+                   GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-            <Label text="Celular / WhatsApp:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtPhoneNumber" prefWidth="200"
-                       GridPane.rowIndex="1" GridPane.columnIndex="1"
-                       promptText="(00) 00000-0000"/>
+        <Label styleClass="rotulo" text="Limite de crédito (R$)" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtLimite" promptText="0,00" maxWidth="160" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+    </GridPane>
 
-            <Label text="Limite de Credito (inicial):" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtLimite" prefWidth="350"
-                       GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-        </GridPane>
-    </center>
-
-    <bottom>
-        <HBox spacing="10" alignment="CENTER_RIGHT">
-            <padding>
-                <Insets top="10" right="20" bottom="20" left="20"/>
-            </padding>
-
-            <Button text="Salvar" fx:id="btnSave" onAction="#onBtnSaveAction"/>
-            <Button text="Limpar" fx:id="btnClear"/>
-            <Button text="Cancelar" fx:id="btnCancel" onAction="#onBtnCancelAction"/>
-        </HBox>
-    </bottom>
-
-</BorderPane>
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <padding><Insets top="12" right="24" bottom="22" left="24"/></padding>
+        <Button text="Limpar" fx:id="btnClear"/>
+        <Button text="Cancelar" fx:id="btnCancel" onAction="#onBtnCancelAction"/>
+        <Button text="Salvar" fx:id="btnSave" styleClass="botao-primario" onAction="#onBtnSaveAction"/>
+    </HBox>
+</VBox>

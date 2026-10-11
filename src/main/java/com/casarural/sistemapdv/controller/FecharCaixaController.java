@@ -10,6 +10,7 @@ import com.casarural.sistemapdv.services.CashRegisterService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.Tema;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -106,24 +107,20 @@ public class FecharCaixaController implements Initializable {
         BigDecimal contado = valorContado();
         if (contado == null) {
             labelDiferenca.setText("Não conferido");
-            labelDiferenca.setStyle(estilo("#bdc3c7"));
+            Tema.estado(labelDiferenca, null);
             return;
         }
         BigDecimal dif = resumo.diferenca(contado);
         if (dif.signum() == 0) {
             labelDiferenca.setText("Bateu certinho");
-            labelDiferenca.setStyle(estilo("#2ecc71"));
+            Tema.estado(labelDiferenca, "texto-sucesso");
         } else if (dif.signum() < 0) {
             labelDiferenca.setText("Faltam " + Money.format(dif.negate()));
-            labelDiferenca.setStyle(estilo("#e74c3c"));
+            Tema.estado(labelDiferenca, "texto-perigo");
         } else {
             labelDiferenca.setText("Sobram " + Money.format(dif));
-            labelDiferenca.setStyle(estilo("#f39c12"));
+            Tema.estado(labelDiferenca, "texto-alerta");
         }
-    }
-
-    private static String estilo(String cor) {
-        return "-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: " + cor + ";";
     }
 
     @FXML

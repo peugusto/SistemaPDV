@@ -3,6 +3,7 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
+import com.casarural.sistemapdv.model.entities.RegraFiado;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
@@ -98,25 +99,16 @@ public class PaymentController implements Initializable {
         btnCancelar.setOnAction(event -> fecharJanela());
     }
 
+    /**
+     * A aparência das formas de pagamento (selecionada ou não) vem do componentes.css (.opcao-grande).
+     * Aqui só garantimos que sempre haja uma forma escolhida: clicar na já selecionada não a desmarca.
+     */
     private void configurarVisualBotoesPagamento() {
-        ToggleButton[] botoes = {btnDinheiro, btnCartao, btnPix, btnFiado};
-        String estiloBase = "-fx-font-size: 16px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 8; -fx-border-radius: 8; ";
-
-        for (ToggleButton btn : botoes) {
-            btn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
-                if (isSelected) {
-                    btn.setStyle(estiloBase + "-fx-background-color: #27ae60; -fx-text-fill: white; -fx-border-color: #27ae60;");
-                } else {
-                    btn.setStyle(estiloBase + "-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2);");
-                }
-            });
-
-            if (btn.isSelected()) {
-                btn.setStyle(estiloBase + "-fx-background-color: #27ae60; -fx-text-fill: white; -fx-border-color: #27ae60;");
-            } else {
-                btn.setStyle(estiloBase + "-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2);");
+        grupoPagamento.selectedToggleProperty().addListener((obs, antiga, nova) -> {
+            if (nova == null && antiga != null) {
+                antiga.setSelected(true);
             }
-        }
+        });
     }
 
     private void adicionarPagamentoManual() {
@@ -165,6 +157,20 @@ public class PaymentController implements Initializable {
 
             if (clienteSelecionado == null) {
                 Alerts.showAlert("Aviso", null, "Selecione o cliente para a venda no Fiado!", Alert.AlertType.WARNING);
+                return;
+            }
+
+            // Bloqueio automático: compra no fiado com mais de RegraFiado.PRAZO_DIAS dias sem pagar
+            if (clienteSelecionado.isBloqueadoPorAtraso()) {
+                log.info("Fiado recusado para {}: {} em atraso", clienteSelecionado.getNomeCliente(),
+                        Money.format(clienteSelecionado.getValorEmAtraso()));
+                Alerts.showAlert("Fiado bloqueado", "Conta bloqueada por atraso",
+                        String.format("%s tem compras no fiado com mais de %d dias sem pagar.%n%n"
+                                        + "Para liberar o fiado, ele precisa pagar %s.%n"
+                                        + "Esta compra pode ser paga em dinheiro, PIX ou cartão.",
+                                clienteSelecionado.getNomeCliente(), RegraFiado.PRAZO_DIAS,
+                                Money.format(clienteSelecionado.getValorEmAtraso())),
+                        Alert.AlertType.WARNING);
                 return;
             }
 

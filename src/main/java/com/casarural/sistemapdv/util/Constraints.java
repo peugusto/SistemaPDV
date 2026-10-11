@@ -19,6 +19,15 @@ public class Constraints {
         });
     }
 
+    /** Campo de telefone: números, espaço, parênteses e traço; no máximo 16 caracteres. */
+    public static void setTextFieldTelefone(TextField txt) {
+        txt.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue != null && (!newValue.matches("[0-9 ()\\-]*") || newValue.length() > 16)) {
+                txt.setText(oldValue);
+            }
+        });
+    }
+
     /** Campo de dinheiro: só dígitos, um separador decimal (vírgula ou ponto) e até 2 casas. */
     public static void setTextFieldMoney(TextField txt) {
         txt.textProperty().addListener((obs, oldValue, newValue) -> {

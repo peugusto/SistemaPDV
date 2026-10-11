@@ -5,12 +5,17 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.RegraFiado;
+import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
 import com.casarural.sistemapdv.util.MoneyCells;
+import com.casarural.sistemapdv.util.Tema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -33,6 +38,8 @@ import java.util.ResourceBundle;
 public class FiadoListController implements Initializable {
 
     private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final Logger log = LoggerFactory.getLogger(FiadoListController.class);
 
     @FXML private Label labelTitulo;
     @FXML private Label labelSituacao;
@@ -42,6 +49,7 @@ public class FiadoListController implements Initializable {
     @FXML private TableView<Order> tableAbertos;
     @FXML private TableColumn<Order, LocalDateTime> colAbertoData;
     @FXML private TableColumn<Order, String> colAbertoPedido;
+    @FXML private TableColumn<Order, Order> colAbertoVence;
     @FXML private TableColumn<Order, BigDecimal> colAbertoTotal;
     @FXML private TableColumn<Order, BigDecimal> colAbertoPagoVenda;
     @FXML private TableColumn<Order, BigDecimal> colAbertoPagoDepois;
@@ -96,6 +104,22 @@ public class FiadoListController implements Initializable {
         colAbertoData.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getDataPedido()));
         formatarDataHora(colAbertoData);
         colAbertoPedido.setCellValueFactory(c -> new SimpleStringProperty("#" + c.getValue().getIdPedido()));
+        // Vencimento (compra + prazo); atrasada em vermelho: é ela que bloqueia o fiado
+        colAbertoVence.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue()));
+        colAbertoVence.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Order compra, boolean empty) {
+                super.updateItem(compra, empty);
+                if (empty || compra == null) {
+                    setText(null);
+                    Tema.estado(this, null);
+                    return;
+                }
+                boolean atrasada = RegraFiado.estaAtrasada(compra, LocalDateTime.now());
+                setText(DATA.format(RegraFiado.vencimento(compra)) + (atrasada ? "  (atrasada)" : ""));
+                Tema.estado(this, atrasada ? "texto-perigo" : null);
+            }
+        });
         colAbertoTotal.setCellValueFactory(new PropertyValueFactory<>("valorTotal"));
         colAbertoPagoVenda.setCellValueFactory(new PropertyValueFactory<>("pagoNaVenda"));
         colAbertoPagoDepois.setCellValueFactory(new PropertyValueFactory<>("recebidoDepois"));
@@ -104,7 +128,7 @@ public class FiadoListController implements Initializable {
         MoneyCells.format(colAbertoPagoVenda);
         MoneyCells.format(colAbertoPagoDepois);
         MoneyCells.format(colAbertoFalta);
-        colAbertoFalta.setStyle("-fx-font-weight: bold; -fx-text-fill: #c0392b;");
+        colAbertoFalta.getStyleClass().add("texto-perigo");
 
         configurarItens(colItemAbertoProduto, colItemAbertoQtd, colItemAbertoPreco, colItemAbertoSubtotal);
         tableAbertos.getSelectionModel().selectedItemProperty().addListener((obs, antigo, pedido) ->
@@ -141,28 +165,17 @@ public class FiadoListController implements Initializable {
             if (nova == null && antiga != null) {
                 antiga.setSelected(true);
             }
-            atualizarEstiloFormas();
         });
-        atualizarEstiloFormas();
 
         Constraints.setTextFieldMoney(campoValorPagamento);
         campoValorPagamento.setOnAction(e -> onPagarAction());
     }
 
-    private void atualizarEstiloFormas() {
-        String base = "-fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 6; ";
-        for (Toggle t : grupoForma.getToggles()) {
-            ToggleButton b = (ToggleButton) t;
-            b.setStyle(base + (b.isSelected()
-                    ? "-fx-background-color: #27ae60; -fx-text-fill: white;"
-                    : "-fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white;"));
-        }
-    }
 
     public void setCustomerData(Customer customer, OrderService service) {
         this.customer = customer;
         this.orderService = service;
-        labelTitulo.setText("CONTA DE FIADO: " + customer.getNomeCliente().toUpperCase());
+        labelTitulo.setText("Conta de fiado: " + customer.getNomeCliente());
         carregarDados();
     }
 
@@ -170,7 +183,10 @@ public class FiadoListController implements Initializable {
         if (orderService == null || customer == null) return;
         int id = customer.getIdCliente();
 
-        tableAbertos.setItems(FXCollections.observableArrayList(orderService.findOpenFiadoOrders(id)));
+        List<Order> abertas = orderService.findOpenFiadoOrders(id);
+        tableAbertos.setItems(FXCollections.observableArrayList(abertas));
+        // Recalcula o atraso com os dados de agora (muda logo depois de um pagamento)
+        customer.setValorEmAtraso(RegraFiado.valorEmAtraso(abertas, LocalDateTime.now()));
         tableRecebimentos.setItems(FXCollections.observableArrayList(orderService.findFiadoReceipts(id)));
         tableQuitados.setItems(FXCollections.observableArrayList(orderService.findPaidOrdersByCustomer(id)));
         mostrarItens(null, tableItensAberto, labelItensAberto);
@@ -180,8 +196,14 @@ public class FiadoListController implements Initializable {
         labelTotalDevendo.setText(Money.format(dividaAtual));
 
         BigDecimal disponivel = Money.max(Money.ZERO, customer.getLimiteCredito().subtract(dividaAtual));
+        String situacao;
+        if (customer.isBloqueadoPorAtraso()) {
+            situacao = "EM ATRASO: pague " + Money.format(customer.getValorEmAtraso()) + " para liberar o fiado";
+        } else {
+            situacao = customer.getSituacaoFiado() == CustomerStatus.BLOQUEADO ? "Bloqueado" : "Liberado";
+        }
         labelSituacao.setText(String.format("Situação: %s   |   Limite: %s   |   Disponível para fiado: %s",
-                customer.getSituacaoFiado(), Money.format(customer.getLimiteCredito()), Money.format(disponivel)));
+                situacao, Money.format(customer.getLimiteCredito()), Money.format(disponivel)));
 
         btnPagar.setDisable(!Money.isPositive(dividaAtual));
     }
@@ -248,9 +270,16 @@ public class FiadoListController implements Initializable {
         if (!confirmou) return;
 
         try {
+            boolean estavaEmAtraso = customer.isBloqueadoPorAtraso();
             orderService.registerPartialPayment(customer.getIdCliente(), valorPago, forma);
             campoValorPagamento.clear();
             carregarDados();
+            if (estavaEmAtraso && !customer.isBloqueadoPorAtraso()) {
+                log.info("Fiado de {} liberado: compras atrasadas quitadas", customer.getNomeCliente());
+                Alerts.showAlertAndWait("Fiado liberado", null,
+                        "As compras atrasadas foram pagas. O fiado de " + customer.getNomeCliente() + " está liberado.",
+                        Alert.AlertType.INFORMATION);
+            }
             Alerts.showAlert("Pagamento registrado", null,
                     quita ? "Dívida quitada." : "Pagamento registrado. Ainda falta " + Money.format(dividaAtual) + ".",
                     Alert.AlertType.INFORMATION);

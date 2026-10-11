@@ -4,13 +4,12 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController"
-            style="-fx-background-color: -fx-secondary-color;">
+<!-- Tela principal: menu em blocos e a barra do caixa embaixo. Visual em css/componentes.css -->
+<BorderPane styleClass="tela" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.MainController">
 
     <top>
         <VBox>
-            <MenuBar fx:id="menuPrincipal" style="-fx-background-color: rgba(0,0,0,0.3);">
-
+            <MenuBar fx:id="menuPrincipal">
                 <Menu text="Sistema">
                     <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
                     <MenuItem text="Atualizar Dados"/>
@@ -25,89 +24,111 @@
                 </Menu>
             </MenuBar>
 
-            <BorderPane style="-fx-background-color: rgba(0,0,0,0.2); -fx-padding: 20; -fx-border-width: 0 0 1 0; -fx-border-color: rgba(255,255,255,0.1);">
-                <left>
-                    <Label text="PDV - CasaRural" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: white;" BorderPane.alignment="CENTER_LEFT"/>
-                </left>
-                <right>
-                    <VBox alignment="CENTER_RIGHT" spacing="5">
-                        <Label fx:id="labelData" text="00/00/0000" style="-fx-font-size: 16px; -fx-text-fill: #bdc3c7;"/>
-                        <Label fx:id="labelHora" text="00:00:00" style="-fx-font-size: 20px; -fx-text-fill: #2ecc71; -fx-font-weight: bold;"/>
-                    </VBox>
-                </right>
-            </BorderPane>
+            <HBox styleClass="cabecalho" alignment="CENTER_LEFT">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label styleClass="titulo" text="Casa Rural"/>
+                    <Label styleClass="subtitulo" text="Ponto de venda"/>
+                </VBox>
+                <VBox alignment="CENTER_RIGHT" spacing="2">
+                    <Label fx:id="labelHora" styleClass="relogio" text="00:00:00"/>
+                    <Label fx:id="labelData" styleClass="subtitulo" text="00/00/0000"/>
+                </VBox>
+            </HBox>
         </VBox>
     </top>
 
     <center>
-        <GridPane hgap="30" vgap="30" alignment="CENTER">
+        <GridPane hgap="22" vgap="22" alignment="CENTER">
             <padding>
-                <Insets top="40" right="40" bottom="40" left="40"/>
+                <Insets top="32" right="32" bottom="32" left="32"/>
             </padding>
 
-            <Button text="Venda&#10;(F1)" textAlignment="CENTER"
-                    fx:id="botaoPDV"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="0" GridPane.columnIndex="0"
-                    onAction="#onBotaoPDVAction"/>
+            <Button fx:id="botaoPDV" styleClass="bloco-menu" onAction="#onBotaoPDVAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="0" GridPane.columnIndex="0">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-sucesso" text="F1"/>
+                        <Label styleClass="bloco-titulo" text="Venda"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Passar produtos e receber o pagamento"/>
+                    </VBox>
+                </graphic>
+            </Button>
 
-            <Button text="Cadastrar/Fornecer&#10;Produtos (F2)" textAlignment="CENTER"
-                    fx:id="botaoProdutos"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="0" GridPane.columnIndex="1"
-                    onAction="#onButtonProductAction"/>
+            <Button fx:id="botaoProdutos" styleClass="bloco-menu" onAction="#onButtonProductAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="0" GridPane.columnIndex="1">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-neutra" text="F2"/>
+                        <Label styleClass="bloco-titulo" text="Produtos"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Cadastrar produto ou dar entrada no estoque"/>
+                    </VBox>
+                </graphic>
+            </Button>
 
-            <Button text="Estoque de&#10;Produtos (F3)" textAlignment="CENTER"
-                    fx:id="botaoConsultarProdutos"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="0" GridPane.columnIndex="2"
-                    onAction="#onButtonProductListAction"/>
+            <Button fx:id="botaoConsultarProdutos" styleClass="bloco-menu" onAction="#onButtonProductListAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="0" GridPane.columnIndex="2">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-neutra" text="F3"/>
+                        <Label styleClass="bloco-titulo" text="Estoque"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Ver, editar e excluir produtos"/>
+                    </VBox>
+                </graphic>
+            </Button>
 
-            <Button text="Cadastrar&#10;Clientes (F4)" textAlignment="CENTER"
-                    fx:id="botaoClientes"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="1" GridPane.columnIndex="0"
-                    onAction="#onButtonCustomerAction"/>
+            <Button fx:id="botaoClientes" styleClass="bloco-menu" onAction="#onButtonCustomerAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="1" GridPane.columnIndex="0">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-neutra" text="F4"/>
+                        <Label styleClass="bloco-titulo" text="Novo cliente"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Cadastrar um cliente para o fiado"/>
+                    </VBox>
+                </graphic>
+            </Button>
 
-            <Button text="Consultar&#10;Clientes (F5)" textAlignment="CENTER"
-                    fx:id="botaoFiados"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="1" GridPane.columnIndex="1"
-                    onAction="#onButtonCustomerListAction"/>
+            <Button fx:id="botaoFiados" styleClass="bloco-menu" onAction="#onButtonCustomerListAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="1" GridPane.columnIndex="1">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-alerta" text="F5"/>
+                        <Label styleClass="bloco-titulo" text="Clientes e fiado"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Consultar clientes e receber pagamentos de fiado"/>
+                    </VBox>
+                </graphic>
+            </Button>
 
-            <Button text="Histórico de&#10;Vendas" textAlignment="CENTER"
-                    fx:id="botaoHistorico"
-                    prefWidth="200" prefHeight="180"
-                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 12; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 12; -fx-cursor: hand;"
-                    GridPane.rowIndex="1" GridPane.columnIndex="2"
-                    onAction="#onBotaoHistoricoAction"/>
+            <Button fx:id="botaoHistorico" styleClass="bloco-menu" onAction="#onBotaoHistoricoAction"
+                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    GridPane.rowIndex="1" GridPane.columnIndex="2">
+                <graphic>
+                    <VBox spacing="6" prefWidth="230">
+                        <Label styleClass="etiqueta,etiqueta-info" text="Consulta"/>
+                        <Label styleClass="bloco-titulo" text="Histórico de vendas"/>
+                        <Label styleClass="bloco-descricao" wrapText="true" text="Encontrar vendas anteriores"/>
+                    </VBox>
+                </graphic>
+            </Button>
         </GridPane>
     </center>
 
     <!-- Barra do caixa: situação, dinheiro na gaveta e ações -->
     <bottom>
-        <HBox alignment="CENTER_LEFT" spacing="12.0"
-              style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 1 0 0 0; -fx-border-color: rgba(255,255,255,0.1);">
-            <padding>
-                <Insets top="14" right="24" bottom="14" left="24"/>
-            </padding>
-            <VBox spacing="2" HBox.hgrow="ALWAYS">
-                <Label fx:id="labelCaixaStatus" text="CAIXA FECHADO" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"/>
-                <Label fx:id="labelCaixaGaveta" text="" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+        <HBox styleClass="barra-inferior" alignment="CENTER_LEFT" spacing="12.0">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label fx:id="labelCaixaStatus" styleClass="etiqueta" text="CAIXA FECHADO"/>
+                <Label fx:id="labelCaixaGaveta" styleClass="valor-grande" text=""/>
             </VBox>
-            <Button fx:id="btnRetirar" text="Retirar dinheiro" onAction="#onRetirarAction" prefHeight="44"
-                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
-            <Button fx:id="btnColocar" text="Colocar dinheiro" onAction="#onColocarAction" prefHeight="44"
-                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
-            <Button text="Histórico de caixas" onAction="#onHistoricoCaixaAction" prefHeight="44"
-                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
-            <Button fx:id="btnCaixaAbrirFechar" text="Abrir caixa (F6)" onAction="#onCaixaAbrirFecharAction" prefHeight="44" prefWidth="190"
-                    style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
+            <Button fx:id="btnRetirar" text="Retirar dinheiro" onAction="#onRetirarAction" prefHeight="42"/>
+            <Button fx:id="btnColocar" text="Colocar dinheiro" onAction="#onColocarAction" prefHeight="42"/>
+            <Button text="Histórico de caixas" onAction="#onHistoricoCaixaAction" prefHeight="42"/>
+            <Button fx:id="btnCaixaAbrirFechar" styleClass="botao-primario" text="Abrir caixa (F6)"
+                    onAction="#onCaixaAbrirFecharAction" prefHeight="42" prefWidth="190"/>
         </HBox>
     </bottom>
 

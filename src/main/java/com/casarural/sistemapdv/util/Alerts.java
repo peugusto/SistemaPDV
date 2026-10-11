@@ -29,6 +29,7 @@ public class Alerts {
         alert.setTitle(title);
         alert.setHeaderText(header);
         alert.setContentText(content);
+        Tema.aplicar(alert.getDialogPane());
         return alert;
     }
 
@@ -74,8 +75,9 @@ public class Alerts {
         alert.setTitle(title);
         alert.setHeaderText(header);
         alert.setContentText(content);
+        Tema.aplicar(alert.getDialogPane());
 
-        ButtonType btnSim = new ButtonType("Sim");
+        ButtonType btnSim = new ButtonType("Sim", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNao = new ButtonType("Não", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnSim, btnNao);
 

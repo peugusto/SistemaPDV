@@ -6,6 +6,7 @@ import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.CashRegisterService;
 import com.casarural.sistemapdv.util.Money;
 import com.casarural.sistemapdv.util.MoneyCells;
+import com.casarural.sistemapdv.util.Tema;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -57,15 +58,15 @@ public class HistoricoCaixaController implements Initializable {
                 super.updateItem(item, empty);
                 setText(empty ? null : item);
                 if (empty || item == null) {
-                    setStyle("");
+                    Tema.estado(this, null);
                 } else if (item.startsWith("Faltaram")) {
-                    setStyle("-fx-text-fill: #c0392b; -fx-font-weight: bold;");
+                    Tema.estado(this, "texto-perigo");
                 } else if (item.startsWith("Sobraram")) {
-                    setStyle("-fx-text-fill: #d35400; -fx-font-weight: bold;");
+                    Tema.estado(this, "texto-alerta");
                 } else if (item.startsWith("Bateu")) {
-                    setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                    Tema.estado(this, "texto-sucesso");
                 } else {
-                    setStyle("-fx-text-fill: #7f8c8d;");
+                    Tema.estado(this, null);
                 }
             }
         });

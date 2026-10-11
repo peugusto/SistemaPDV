@@ -1,0 +1,486 @@
+/*
+ * COMPONENTES DO SISTEMA
+ *
+ * Desenha telas, cartões, botões, campos, tabelas, etiquetas e avisos usando SÓ as
+ * variáveis do tema (-cor-*, definidas em tema-claro.css). Não coloque cores fixas aqui:
+ * assim, trocar o tema muda o sistema inteiro.
+ *
+ * Tamanhos de letra em "em": 1em = tamanho base do tema.
+ */
+
+/* =========================================================================
+   ESTRUTURA DAS TELAS
+   ========================================================================= */
+.tela {
+    -fx-background-color: -cor-fundo;
+}
+
+.cabecalho {
+    -fx-background-color: -cor-cabecalho;
+    -fx-padding: 18 28 18 28;
+}
+.cabecalho .titulo {
+    -fx-font-size: 1.7em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-cabecalho-texto;
+}
+.cabecalho .subtitulo {
+    -fx-font-size: 1em;
+    -fx-text-fill: -cor-cabecalho-suave;
+}
+.cabecalho .relogio {
+    -fx-font-size: 1.45em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-cabecalho-texto;
+}
+
+.cartao {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(44, 62, 80, 0.10), 14, 0, 0, 3);
+    -fx-padding: 16 18 16 18;
+}
+
+.barra-inferior {
+    -fx-background-color: -cor-cartao;
+    -fx-border-color: -cor-borda transparent transparent transparent;
+    -fx-padding: 14 28 14 28;
+}
+
+/* =========================================================================
+   TEXTOS
+   ========================================================================= */
+.label {
+    -fx-text-fill: -cor-texto;
+}
+.titulo-cartao {
+    -fx-font-size: 1.3em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+}
+.rotulo-secao {
+    -fx-font-size: 0.85em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto-suave;
+}
+.rotulo {
+    -fx-font-size: 0.95em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+}
+.texto {
+    -fx-text-fill: -cor-texto;
+}
+.texto-suave {
+    -fx-font-size: 0.93em;
+    -fx-text-fill: -cor-texto-suave;
+}
+.texto-dica {
+    -fx-font-size: 0.8em;
+    -fx-text-fill: -cor-texto-suave;
+}
+.texto-forte {
+    -fx-font-weight: bold;
+}
+.valor-grande {
+    -fx-font-size: 1.45em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+}
+.valor-destaque {
+    -fx-font-size: 2.6em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-primaria;
+}
+.monoespacado {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+/*
+ * Cores de estado. Ficam DEPOIS dos tamanhos (.valor-grande etc.) para ganhar deles, e têm
+ * versões para células de tabela e lista, cuja regra geral é mais específica.
+ */
+.texto-perigo,
+.table-row-cell .table-cell.texto-perigo,
+.list-cell.texto-perigo {
+    -fx-text-fill: -cor-perigo;
+    -fx-font-weight: bold;
+}
+.texto-sucesso,
+.table-row-cell .table-cell.texto-sucesso,
+.list-cell.texto-sucesso {
+    -fx-text-fill: -cor-primaria;
+    -fx-font-weight: bold;
+}
+.texto-alerta,
+.table-row-cell .table-cell.texto-alerta,
+.list-cell.texto-alerta {
+    -fx-text-fill: -cor-alerta;
+    -fx-font-weight: bold;
+}
+
+/* =========================================================================
+   BOTÕES
+   ========================================================================= */
+.button, .toggle-button {
+    -fx-background-color: -cor-neutro;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-text-fill: -cor-texto;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+}
+.button:hover, .toggle-button:hover {
+    -fx-background-color: -cor-neutro-hover;
+}
+.button:focused, .toggle-button:focused {
+    -fx-background-insets: 0;
+    -fx-border-color: -cor-primaria;
+    -fx-border-radius: 8;
+}
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+
+.botao-primario, .button:default {
+    -fx-background-color: -cor-primaria;
+    -fx-text-fill: white;
+}
+.botao-primario:hover, .button:default:hover {
+    -fx-background-color: -cor-primaria-escura;
+}
+.botao-perigo, .botao-perigo:default {
+    -fx-background-color: -cor-perigo;
+    -fx-text-fill: white;
+}
+.botao-perigo:hover, .botao-perigo:default:hover {
+    -fx-background-color: -cor-perigo-escura;
+}
+.botao-info {
+    -fx-background-color: -cor-info;
+    -fx-text-fill: white;
+}
+.botao-info:hover {
+    -fx-background-color: -cor-info-escura;
+}
+.botao-grande {
+    -fx-font-size: 1.2em;
+    -fx-padding: 12 26 12 26;
+    -fx-background-radius: 10;
+}
+.botao-pequeno {
+    -fx-font-size: 0.88em;
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 6;
+}
+.link {
+    -fx-background-color: transparent;
+    -fx-text-fill: -cor-info;
+    -fx-padding: 4 6 4 6;
+}
+.link:hover {
+    -fx-background-color: transparent;
+    -fx-underline: true;
+}
+
+/* Pílulas: botões de escolha pequenos (período, forma de pagamento do fiado) */
+.pilula {
+    -fx-background-radius: 20;
+    -fx-padding: 7 16 7 16;
+    -fx-font-size: 0.93em;
+}
+.pilula:selected, .opcao-grande:selected {
+    -fx-background-color: -cor-primaria;
+    -fx-text-fill: white;
+}
+
+/* Opções grandes: formas de pagamento na tela de pagamento */
+.opcao-grande {
+    -fx-background-color: -cor-cartao;
+    -fx-border-color: -cor-borda;
+    -fx-border-width: 2;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-font-size: 1.2em;
+}
+.opcao-grande:hover {
+    -fx-background-color: -cor-hover;
+    -fx-border-color: -cor-primaria;
+}
+.opcao-grande:selected {
+    -fx-border-color: -cor-primaria;
+}
+
+/* Blocos do menu principal */
+.bloco-menu {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 16;
+    -fx-border-color: transparent;
+    -fx-border-width: 2;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(44, 62, 80, 0.10), 16, 0, 0, 4);
+    -fx-padding: 18;
+    -fx-alignment: top-left;
+}
+.bloco-menu:hover {
+    -fx-background-color: -cor-cartao;
+    -fx-border-color: -cor-primaria;
+}
+.bloco-titulo {
+    -fx-font-size: 1.35em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+}
+.bloco-descricao {
+    -fx-font-size: 0.9em;
+    -fx-font-weight: normal;
+    -fx-text-fill: -cor-texto-suave;
+}
+
+/* =========================================================================
+   CAMPOS
+   ========================================================================= */
+.text-field, .password-field, .combo-box, .date-picker {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 8;
+    -fx-border-color: -cor-borda;
+    -fx-border-radius: 8;
+    -fx-text-fill: -cor-texto;
+}
+.text-field, .password-field {
+    -fx-padding: 7 10 7 10;
+}
+.text-field:focused, .password-field:focused, .combo-box:focused, .date-picker:focused {
+    -fx-border-color: -cor-primaria;
+}
+.date-picker .text-field, .combo-box .text-field {
+    -fx-border-color: transparent;
+}
+.campo-grande {
+    -fx-font-size: 1.6em;
+    -fx-font-weight: bold;
+}
+.campo-leitura, .campo-leitura:focused {
+    -fx-background-color: -cor-neutro;
+    -fx-text-fill: -cor-texto-suave;
+    -fx-border-color: transparent;
+}
+.check-box {
+    -fx-text-fill: -cor-texto;
+}
+.combo-box-popup .list-cell {
+    -fx-text-fill: -cor-texto;
+}
+/* O valor escolhido dentro do combo não deve parecer "linha selecionada" de lista */
+.combo-box .list-cell,
+.combo-box .list-cell:filled:selected {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 4 8 4 8;
+}
+.separator .line {
+    -fx-border-color: -cor-borda;
+}
+
+/* =========================================================================
+   TABELAS E LISTAS
+   ========================================================================= */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-table-cell-border-color: transparent;
+    -fx-fixed-cell-size: 42;
+}
+.table-view:focused {
+    -fx-background-color: transparent;
+}
+.table-view .column-header-background {
+    -fx-background-color: -cor-cartao;
+    -fx-border-color: transparent transparent -cor-borda transparent;
+}
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 8 4 8 4;
+}
+.table-view .column-header .label {
+    -fx-text-fill: -cor-texto-suave;
+    -fx-font-size: 0.85em;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+    -fx-padding: 0 4 0 4;
+}
+.table-row-cell {
+    -fx-background-color: -cor-cartao;
+    -fx-border-color: transparent transparent -cor-linha transparent;
+}
+.table-row-cell:empty {
+    -fx-border-color: transparent;
+}
+.table-row-cell:filled:hover {
+    -fx-background-color: -cor-hover;
+}
+.table-row-cell:filled:selected {
+    -fx-background-color: -cor-primaria-clara;
+}
+.table-row-cell .table-cell,
+.table-row-cell:selected .table-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+}
+.table-view .placeholder .label {
+    -fx-text-fill: -cor-texto-suave;
+}
+
+.list-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+.list-cell {
+    -fx-background-color: -cor-cartao;
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 8 6 8 6;
+    -fx-border-color: transparent transparent -cor-linha transparent;
+}
+.list-cell:empty {
+    -fx-border-color: transparent;
+}
+.list-cell:filled:selected {
+    -fx-background-color: -cor-primaria-clara;
+    -fx-text-fill: -cor-texto;
+}
+
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* =========================================================================
+   ABAS
+   ========================================================================= */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: transparent;
+}
+.tab-pane .tab {
+    -fx-background-color: -cor-neutro;
+    -fx-background-radius: 10 10 0 0;
+    -fx-padding: 6 16 6 16;
+}
+.tab-pane .tab:selected {
+    -fx-background-color: -cor-cartao;
+}
+.tab-pane .tab .tab-label {
+    -fx-text-fill: -cor-texto-suave;
+    -fx-font-weight: bold;
+}
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: -cor-texto;
+}
+.tab-pane .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+.tab-pane > .tab-content-area {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 0 12 12 12;
+}
+
+/* =========================================================================
+   ETIQUETAS (situação, forma de pagamento)
+   ========================================================================= */
+.etiqueta {
+    -fx-background-radius: 12;
+    -fx-padding: 3 10 3 10;
+    -fx-font-size: 0.85em;
+    -fx-font-weight: bold;
+}
+.etiqueta-paga, .etiqueta-sucesso, .etiqueta-dinheiro {
+    -fx-background-color: -cor-primaria-clara;
+    -fx-text-fill: -cor-primaria-escura;
+}
+.etiqueta-receber, .etiqueta-alerta, .etiqueta-fiado {
+    -fx-background-color: -cor-alerta-clara;
+    -fx-text-fill: -cor-alerta;
+}
+.etiqueta-perigo {
+    -fx-background-color: -cor-perigo-clara;
+    -fx-text-fill: -cor-perigo;
+}
+.etiqueta-pix {
+    -fx-background-color: -cor-pix-clara;
+    -fx-text-fill: -cor-pix;
+}
+.etiqueta-cartao, .etiqueta-info {
+    -fx-background-color: -cor-info-clara;
+    -fx-text-fill: -cor-info;
+}
+.etiqueta-neutra {
+    -fx-background-color: -cor-neutro;
+    -fx-text-fill: -cor-texto-suave;
+}
+
+/* =========================================================================
+   MENU DO TOPO
+   ========================================================================= */
+.menu-bar {
+    -fx-background-color: -cor-cabecalho;
+    -fx-padding: 2 8 2 8;
+}
+.menu-bar .menu .label {
+    -fx-text-fill: -cor-cabecalho-suave;
+}
+.menu-bar .menu:hover, .menu-bar .menu:showing {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+}
+.context-menu {
+    -fx-background-color: -cor-cartao;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 12, 0, 0, 3);
+}
+.menu-item .label {
+    -fx-text-fill: -cor-texto;
+}
+.menu-item:focused {
+    -fx-background-color: -cor-primaria-clara;
+}
+
+/* =========================================================================
+   AVISOS (Alert / Dialog)
+   ========================================================================= */
+.dialog-pane {
+    -fx-background-color: -cor-cartao;
+}
+.dialog-pane > .header-panel {
+    -fx-background-color: -cor-fundo;
+    -fx-padding: 14 18 14 18;
+}
+.dialog-pane > .header-panel .label {
+    -fx-font-size: 1.1em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-texto;
+}
+.dialog-pane > .content.label {
+    -fx-text-fill: -cor-texto;
+    -fx-padding: 16 18 8 18;
+}
+.dialog-pane > .button-bar > .container {
+    -fx-padding: 10 14 14 14;
+}
+
+/* =========================================================================
+   PDV
+   ========================================================================= */
+.pdv-banner {
+    -fx-background-color: -cor-cabecalho;
+    -fx-padding: 22;
+}
+.pdv-banner .label {
+    -fx-font-size: 2.3em;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cor-cabecalho-texto;
+}

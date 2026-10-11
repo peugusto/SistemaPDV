@@ -1,0 +1,53 @@
+/*
+ * TEMA CLARO (padrão do sistema)
+ *
+ * Este arquivo só define VARIÁVEIS: cores e fonte. O desenho dos componentes fica em
+ * componentes.css, que usa apenas estas variáveis.
+ *
+ * Para criar outro tema (ex.: tema-escuro.css): copie este arquivo e mude só os valores.
+ * Para mudar o tamanho da letra do sistema todo: mude -fx-font-size abaixo; os componentes
+ * usam "em" (proporcional a este tamanho).
+ */
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica", "Arial", sans-serif;
+    -fx-font-size: 14px;
+
+    /* Superfícies */
+    -cor-fundo: #f2f4f7;
+    -cor-cartao: #ffffff;
+    -cor-borda: #e1e6eb;
+    -cor-linha: #f0f2f5;
+    -cor-neutro: #eef1f4;
+    -cor-neutro-hover: #e1e7ec;
+    -cor-hover: #f4faf6;
+
+    /* Texto */
+    -cor-texto: #2c3e50;
+    -cor-texto-suave: #7f8c8d;
+
+    /* Faixa do topo das telas */
+    -cor-cabecalho: #2c3e50;
+    -cor-cabecalho-texto: #ffffff;
+    -cor-cabecalho-suave: #c7d0d8;
+
+    /* Ações e situações */
+    -cor-primaria: #27ae60;
+    -cor-primaria-escura: #1e8449;
+    -cor-primaria-clara: #e3f4ea;
+    -cor-perigo: #c0392b;
+    -cor-perigo-escura: #a93226;
+    -cor-perigo-clara: #fbe4e1;
+    -cor-alerta: #b9770e;
+    -cor-alerta-clara: #fdebd0;
+    -cor-info: #1f5fbf;
+    -cor-info-escura: #174a96;
+    -cor-info-clara: #e3ecfa;
+    -cor-pix: #00796b;
+    -cor-pix-clara: #e0f7f4;
+
+    /* Cores internas do JavaFX (seleção, foco) seguem o tema */
+    -fx-accent: -cor-primaria;
+    -fx-focus-color: -cor-primaria;
+    -fx-faint-focus-color: transparent;
+    -fx-background-color: -cor-fundo;
+}

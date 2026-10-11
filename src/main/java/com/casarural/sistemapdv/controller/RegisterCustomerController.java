@@ -5,6 +5,7 @@ import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.Telefone;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
@@ -61,6 +62,7 @@ public class RegisterCustomerController implements Initializable {
         }
 
         entity.setNomeCliente(txtNome.getText());
+        entity.setTelefone(Telefone.normalizar(txtPhoneNumber.getText()));   // mensagem clara se incompleto
 
         String limiteStr = txtLimite.getText();
         entity.setLimiteCredito(limiteStr.trim().isEmpty() ? Money.ZERO : Money.parse(limiteStr));
@@ -84,6 +86,7 @@ public class RegisterCustomerController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         Constraints.setTextFieldMaxLength(txtNome, Customer.TAMANHO_MAX_NOME);
         Constraints.setTextFieldMoney(txtLimite);
+        Constraints.setTextFieldTelefone(txtPhoneNumber);
 
     }
 }

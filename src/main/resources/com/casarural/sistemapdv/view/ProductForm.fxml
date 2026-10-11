@@ -4,49 +4,41 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox spacing="15" alignment="TOP_LEFT" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.casarural.sistemapdv.controller.ProductFormController" prefWidth="400.0">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+<!-- Edição de produto (aberta pela lista de estoque) -->
+<VBox styleClass="tela" prefWidth="480.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.casarural.sistemapdv.controller.ProductFormController">
 
-    <Label text="Editar Produto" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
-    <Separator/>
+    <VBox styleClass="cabecalho" spacing="2">
+        <Label styleClass="titulo" text="Editar produto"/>
+        <Label styleClass="subtitulo" text="Altere os dados e clique em Salvar."/>
+    </VBox>
 
-    <GridPane hgap="10" vgap="10">
+    <GridPane styleClass="cartao" hgap="14" vgap="14">
+        <VBox.margin><Insets top="20" right="24" bottom="8" left="24"/></VBox.margin>
         <columnConstraints>
-            <ColumnConstraints minWidth="120" prefWidth="120" />
-            <ColumnConstraints hgrow="ALWAYS" />
+            <ColumnConstraints minWidth="130"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
         </columnConstraints>
-        <rowConstraints>
-            <RowConstraints minHeight="30" />
-            <RowConstraints minHeight="30" />
-            <RowConstraints minHeight="30" />
-            <RowConstraints minHeight="30" />
-            <RowConstraints minHeight="30" />
-        </rowConstraints>
 
-        <Label text="Código de Barras:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <Label styleClass="rotulo" text="Código de barras" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
         <TextField fx:id="txtCodBarras" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-        <Label text="Nome do Produto:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <Label styleClass="rotulo" text="Nome do produto" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
         <TextField fx:id="txtNome" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-        <Label text="Preço (R$):" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-        <TextField fx:id="txtPreco" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+        <Label styleClass="rotulo" text="Preço (R$)" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <TextField fx:id="txtPreco" maxWidth="160" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
 
-        <Label text="Estoque Atual:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-        <TextField fx:id="txtEstoque" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+        <Label styleClass="rotulo" text="Estoque atual" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+        <TextField fx:id="txtEstoque" maxWidth="160" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
 
-        <Label text="Fiado:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+        <Label styleClass="rotulo" text="Fiado" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
         <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
     </GridPane>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <padding>
-            <Insets top="10"/>
-        </padding>
-        <Button fx:id="btnSave" text="Salvar" onAction="#onBtnSaveAction" style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand;"/>
-        <Button fx:id="btnCancel" text="Cancelar" onAction="#onBtnCancelAction" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-cursor: hand;"/>
+        <padding><Insets top="12" right="24" bottom="22" left="24"/></padding>
+        <Button fx:id="btnCancel" text="Cancelar" onAction="#onBtnCancelAction"/>
+        <Button fx:id="btnSave" styleClass="botao-primario" text="Salvar" onAction="#onBtnSaveAction"/>
     </HBox>
 </VBox>

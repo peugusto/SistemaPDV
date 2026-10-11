@@ -5,6 +5,8 @@ import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Tema;
+import com.casarural.sistemapdv.util.Telefone;
 import com.casarural.sistemapdv.util.Money;
 import com.casarural.sistemapdv.util.MoneyCells;
 import javafx.collections.FXCollections;
@@ -35,6 +37,7 @@ public class CustomerListController implements Initializable {
     @FXML private TableView<Customer> customerTable;
     @FXML private TableColumn<Customer, Integer> idColumn;
     @FXML private TableColumn<Customer, String> nameColumn;
+    @FXML private TableColumn<Customer, String> phoneColumn;
     @FXML private TableColumn<Customer, CustomerStatus> creditStatusColumn;
     @FXML private TableColumn<Customer, BigDecimal> creditLimitColumn;
     @FXML private TableColumn<Customer, BigDecimal> totalDebtColumn;
@@ -60,33 +63,32 @@ public class CustomerListController implements Initializable {
     private void initializeNodes() {
         idColumn.setCellValueFactory(new PropertyValueFactory<>("idCliente"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeCliente"));
+        phoneColumn.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                c.getValue().getTelefone() == null ? "—" : Telefone.formatar(c.getValue().getTelefone())));
         creditStatusColumn.setCellValueFactory(new PropertyValueFactory<>("situacaoFiado"));
         creditLimitColumn.setCellValueFactory(new PropertyValueFactory<>("limiteCredito"));
         totalDebtColumn.setCellValueFactory(new PropertyValueFactory<>("totalDevendo"));
 
-        idColumn.setStyle("-fx-alignment: CENTER;");
-        nameColumn.setStyle("-fx-alignment: CENTER;");
-        creditLimitColumn.setStyle("-fx-alignment: CENTER;");
-        totalDebtColumn.setStyle("-fx-alignment: CENTER;");
-        creditStatusColumn.setStyle("-fx-alignment: CENTER;");
-
         MoneyCells.format(creditLimitColumn);
 
+        // Situação como etiqueta colorida (classes do componentes.css)
         creditStatusColumn.setCellFactory(column -> new TableCell<>() {
+            private final Label etiqueta = new Label();
+            { etiqueta.getStyleClass().add("etiqueta"); }
             @Override
             protected void updateItem(CustomerStatus status, boolean empty) {
                 super.updateItem(status, empty);
+                setText(null);
                 if (empty || status == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(status.toString());
-                    if (status == CustomerStatus.BLOQUEADO) {
-                        setStyle("-fx-alignment: CENTER; -fx-text-fill: #e74c3c; -fx-font-weight: bold;");
-                    } else {
-                        setStyle("-fx-alignment: CENTER; -fx-text-fill: #2ecc71; -fx-font-weight: bold;");
-                    }
+                    setGraphic(null);
+                    return;
                 }
+                Customer cliente = getTableRow() == null ? null : getTableRow().getItem();
+                String texto = situacaoFiado(cliente);
+                etiqueta.setText(texto);
+                etiqueta.getStyleClass().removeAll("etiqueta-perigo", "etiqueta-sucesso");
+                etiqueta.getStyleClass().add("Liberado".equals(texto) ? "etiqueta-sucesso" : "etiqueta-perigo");
+                setGraphic(etiqueta);
             }
         });
 
@@ -96,10 +98,11 @@ public class CustomerListController implements Initializable {
                 super.updateItem(item, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                     setText(null);
+                    Tema.estado(this, null);
                 } else {
                     BigDecimal debt = Money.of(item);
-                    setText(Money.format(debt));
-                    setStyle("-fx-alignment: CENTER; -fx-text-fill: " + (Money.isPositive(debt) ? "#e74c3c" : "#2ecc71") + "; -fx-font-weight: bold;");
+                    setText(Money.isPositive(debt) ? Money.format(debt) : "Nada");
+                    Tema.estado(this, Money.isPositive(debt) ? "texto-perigo" : "texto-sucesso");
                 }
             }
         });
@@ -119,7 +122,7 @@ public class CustomerListController implements Initializable {
     }
 
     private void configurarFiltrosEEstatisticas() {
-        comboFiltroStatus.setItems(FXCollections.observableArrayList("Todos", "DISPONIVEL", "BLOQUEADO"));
+        comboFiltroStatus.setItems(FXCollections.observableArrayList("Todos", "Liberado", "Bloqueado", "Em atraso"));
         comboFiltroStatus.setValue("Todos");
 
         comboFiltroOrdenacao.setItems(FXCollections.observableArrayList("Padrão", "Maior Dívida", "Menor Dívida"));
@@ -143,10 +146,20 @@ public class CustomerListController implements Initializable {
 
             String statusFilter = comboFiltroStatus.getValue();
             boolean matchesStatus = statusFilter == null || statusFilter.equals("Todos") ||
-                    customer.getSituacaoFiado().toString().equalsIgnoreCase(statusFilter);
+                    situacaoFiado(customer).equals(statusFilter);
 
             return matchesSearch && matchesStatus;
         });
+    }
+
+    /**
+     * "Em atraso" (bloqueio automático, só sai pagando) tem prioridade sobre "Bloqueado"
+     * (bloqueio manual do cadastro); senão "Liberado".
+     */
+    private static String situacaoFiado(Customer c) {
+        if (c == null) return "";
+        if (c.isBloqueadoPorAtraso()) return "Em atraso";
+        return c.getSituacaoFiado() == CustomerStatus.BLOQUEADO ? "Bloqueado" : "Liberado";
     }
 
     private void showFiadoDetails(Customer customer) {
@@ -159,7 +172,9 @@ public class CustomerListController implements Initializable {
 
             Stage stage = new Stage();
             stage.setTitle("Conta de fiado - " + customer.getNomeCliente());
-            stage.setScene(new Scene(parent));
+            Scene scene = new Scene(parent);
+            Tema.aplicar(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
@@ -213,9 +228,9 @@ public class CustomerListController implements Initializable {
                     return;
                 }
 
-                btnFiado.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
-                btnEdit.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
-                btnDelete.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+                btnFiado.getStyleClass().setAll("button", "botao-pequeno", "botao-primario");
+                btnEdit.getStyleClass().setAll("button", "botao-pequeno", "botao-info");
+                btnDelete.getStyleClass().setAll("button", "botao-pequeno", "botao-perigo");
 
                 btnEdit.setOnAction(event -> {
                     Customer obj = getTableView().getItems().get(getIndex());
@@ -232,8 +247,8 @@ public class CustomerListController implements Initializable {
                     showFiadoDetails(obj);
                 });
 
-                HBox pane = new HBox(8, btnEdit, btnDelete, btnFiado);
-                pane.setStyle("-fx-alignment: CENTER;");
+                HBox pane = new HBox(8, btnFiado, btnEdit, btnDelete);
+                pane.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
                 setGraphic(pane);
             }
         });
@@ -251,7 +266,9 @@ public class CustomerListController implements Initializable {
 
             Stage stage = new Stage();
             stage.setTitle("Editar Cliente - " + obj.getNomeCliente());
-            stage.setScene(new Scene(parent));
+            Scene scene = new Scene(parent);
+            Tema.aplicar(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 

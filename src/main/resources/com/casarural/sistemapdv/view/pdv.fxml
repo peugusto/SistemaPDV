@@ -3,102 +3,72 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.text.Font?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PDVController"
-            style="-fx-background-color: -fx-secondary-color;" >
-
+<!-- PDV: último item em destaque no topo, leitura à esquerda, cupom à direita, ações embaixo -->
+<BorderPane styleClass="tela" xmlns:fx="http://javafx.com/fxml" fx:controller="com.casarural.sistemapdv.controller.PDVController">
 
     <top>
-        <StackPane style="-fx-background-color: rgba(0,0,0,0.2); -fx-border-width: 0 0 2 0; -fx-border-color: -fx-primary-color;">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
-            <Label fx:id="labelUltimoItem" text="CAIXA LIVRE"
-                   style="-fx-font-size: 32px; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <StackPane styleClass="pdv-banner">
+            <Label fx:id="labelUltimoItem" text="CAIXA LIVRE"/>
         </StackPane>
     </top>
 
-
     <center>
-        <HBox spacing="30" alignment="CENTER">
+        <HBox spacing="22" alignment="CENTER">
             <padding>
-                <Insets top="30" right="30" bottom="30" left="30"/>
+                <Insets top="24" right="28" bottom="24" left="28"/>
             </padding>
 
+            <!-- Leitura do produto -->
+            <VBox styleClass="cartao" spacing="10" HBox.hgrow="ALWAYS" maxWidth="620">
+                <Label styleClass="rotulo-secao" text="CÓDIGO DE BARRAS"/>
+                <TextField fx:id="campoCodigoProduto" styleClass="campo-grande" promptText="Passe o leitor ou digite o código"/>
 
-            <VBox spacing="15" HBox.hgrow="ALWAYS" alignment="CENTER_LEFT" maxWidth="600">
-                <Label text="Código de Barras:" style="-fx-font-size: 20px; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                <TextField fx:id="campoCodigoProduto" promptText="Passe o leitor ou digite..."
-                           style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-pref-height: 50px;"/>
+                <Label styleClass="rotulo-secao" text="QUANTIDADE">
+                    <VBox.margin><Insets top="6"/></VBox.margin>
+                </Label>
+                <TextField fx:id="campoQuantidade" styleClass="campo-grande" text="1"/>
 
-                <Label text="Quantidade:" style="-fx-font-size: 20px; -fx-text-fill: white; -fx-font-weight: bold;"/>
-
-                <TextField fx:id="campoQuantidade" text="1"
-                           style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-pref-height: 50px;"/>
-
-                <Label text="Valor Unitário (R$):" style="-fx-font-size: 20px; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                <TextField fx:id="campoValorUnitario" editable="false" text="0,00"
-                           style="-fx-font-size: 24px; -fx-background-color: #e0e0e0; -fx-text-fill: #555555; -fx-pref-height: 50px;"/>
-
-                <Label text="Total do Item (R$):" style="-fx-font-size: 20px; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                <TextField fx:id="campoTotalItem" editable="false" text="0,00"
-                           style="-fx-font-size: 24px; -fx-background-color: #e0e0e0; -fx-text-fill: #555555; -fx-pref-height: 50px;"/>
+                <HBox spacing="14">
+                    <VBox.margin><Insets top="6"/></VBox.margin>
+                    <VBox spacing="6" HBox.hgrow="ALWAYS">
+                        <Label styleClass="rotulo-secao" text="VALOR UNITÁRIO"/>
+                        <TextField fx:id="campoValorUnitario" styleClass="campo-grande,campo-leitura" editable="false" focusTraversable="false" text="0,00"/>
+                    </VBox>
+                    <VBox spacing="6" HBox.hgrow="ALWAYS">
+                        <Label styleClass="rotulo-secao" text="TOTAL DO ITEM"/>
+                        <TextField fx:id="campoTotalItem" styleClass="campo-grande,campo-leitura" editable="false" focusTraversable="false" text="0,00"/>
+                    </VBox>
+                </HBox>
             </VBox>
 
-
-            <VBox prefWidth="450" minWidth="400"
-                  style="-fx-background-color: white; -fx-background-radius: 5; -fx-border-radius: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);">
-                <padding>
-                    <Insets top="15" right="15" bottom="15" left="15"/>
-                </padding>
-
-                <Label text="CUPOM DE CONFERÊNCIA" maxWidth="Infinity" alignment="CENTER"
-                       style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -fx-secondary-color;"/>
-
-                <Separator style="-fx-padding: 10 0;"/>
-
-
+            <!-- Cupom -->
+            <VBox styleClass="cartao" spacing="8" prefWidth="470" minWidth="420">
+                <Label styleClass="titulo-cartao" text="Cupom da venda"/>
                 <HBox spacing="10">
-                    <Label text="Qtd" prefWidth="40" style="-fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
-                    <Label text="Descrição do Produto" prefWidth="200" style="-fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
-                    <Label text="V. Unit" prefWidth="70" style="-fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
-                    <Label text="Total" prefWidth="70" style="-fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+                    <padding><Insets top="6" bottom="2" left="6"/></padding>
+                    <Label styleClass="rotulo-secao" text="QTD" prefWidth="40"/>
+                    <Label styleClass="rotulo-secao" text="PRODUTO" prefWidth="200"/>
+                    <Label styleClass="rotulo-secao" text="UNIT." prefWidth="70"/>
+                    <Label styleClass="rotulo-secao" text="TOTAL" prefWidth="70"/>
                 </HBox>
-
-                <Separator style="-fx-padding: 5 0;"/>
-
-
-                <ListView fx:id="listaItens" VBox.vgrow="ALWAYS"
-                          style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;"/>
-
-                <Separator style="-fx-padding: 10 0;"/>
-
-
-                <HBox alignment="CENTER_RIGHT" spacing="10">
-                    <Label text="TOTAL:" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: -fx-secondary-color;"/>
-                    <Label fx:id="labelTotal" text="R$ 0,00" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: -fx-primary-color;"/>
+                <ListView fx:id="listaItens" VBox.vgrow="ALWAYS"/>
+                <Separator/>
+                <HBox alignment="CENTER_RIGHT" spacing="12">
+                    <Label styleClass="rotulo-secao" text="TOTAL"/>
+                    <Label fx:id="labelTotal" styleClass="valor-destaque" text="R$ 0,00"/>
                 </HBox>
             </VBox>
         </HBox>
     </center>
 
-
     <bottom>
-        <HBox spacing="15" alignment="CENTER" style="-fx-background-color: rgba(0,0,0,0.2); -fx-border-width: 1 0 0 0; -fx-border-color: rgba(255,255,255,0.1);">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
-
-
-            <Button fx:id="botaoAdicionar" text="Adicionar (Enter)" prefWidth="160" prefHeight="45" style="-fx-font-size: 14px;"/>
-            <Button fx:id="botaoRemover" text="Excluir Item" prefWidth="150" prefHeight="45" style="-fx-font-size: 14px;"/>
-            <Button fx:id="botaoLimpar" text="Cancelar Venda (Esc)" prefWidth="180" prefHeight="45" style="-fx-font-size: 14px;"/>
-
-            <Pane HBox.hgrow="ALWAYS" />
-
-            <Button fx:id="botaoFinalizar" text="FINALIZAR (F1)" prefWidth="250" prefHeight="55"
-                    style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-background-color: -fx-primary-color; -fx-text-fill: white;"/>
+        <HBox styleClass="barra-inferior" spacing="12" alignment="CENTER_LEFT">
+            <Button fx:id="botaoAdicionar" text="Adicionar (Enter)" prefHeight="46"/>
+            <Button fx:id="botaoRemover" text="Excluir item" prefHeight="46"/>
+            <Button fx:id="botaoLimpar" text="Cancelar venda (Esc)" prefHeight="46"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button fx:id="botaoFinalizar" styleClass="botao-primario,botao-grande" text="Finalizar venda (F1)" prefWidth="270" prefHeight="56"/>
         </HBox>
     </bottom>
 

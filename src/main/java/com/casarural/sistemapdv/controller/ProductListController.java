@@ -4,6 +4,7 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Tema;
 import com.casarural.sistemapdv.util.MoneyCells;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,39 +72,30 @@ public class ProductListController implements Initializable {
                 super.updateItem(estoque, empty);
                 if (empty || estoque == null) {
                     setText(null);
-                    setStyle("");
+                    Tema.estado(this, null);
                 } else {
                     setText(String.valueOf(estoque));
-                    setStyle(estoque <= ESTOQUE_BAIXO
-                            ? "-fx-alignment: CENTER; -fx-text-fill: #e74c3c; -fx-font-weight: bold;"
-                            : "-fx-alignment: CENTER;");
+                    Tema.estado(this, estoque <= ESTOQUE_BAIXO ? "texto-perigo" : null);
                 }
             }
         });
         fiadoColumn.setCellValueFactory(new PropertyValueFactory<>("permiteFiado"));
         fiadoColumn.setCellFactory(col -> new TableCell<>() {
+            private final Label etiqueta = new Label("Sem fiado");
+            { etiqueta.getStyleClass().addAll("etiqueta", "etiqueta-perigo"); }
             @Override
             protected void updateItem(Boolean permite, boolean empty) {
                 super.updateItem(permite, empty);
-                if (empty || permite == null) {
-                    setText(null);
-                    setStyle("");
-                } else if (permite) {
+                setGraphic(null);
+                setText(null);
+                if (empty || permite == null) return;
+                if (permite) {
                     setText("Sim");
-                    setStyle("-fx-alignment: CENTER;");
                 } else {
-                    setText("Não");
-                    setStyle("-fx-alignment: CENTER; -fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    setGraphic(etiqueta);
                 }
             }
         });
-
-        idColumn.setStyle("-fx-alignment: CENTER;");
-        barcodeColumn.setStyle("-fx-alignment: CENTER;");
-        nameColumn.setStyle("-fx-alignment: CENTER;");
-        priceColumn.setStyle("-fx-alignment: CENTER;");
-        stockColumn.setStyle("-fx-alignment: CENTER;");
-
 
     }
 
@@ -142,7 +134,7 @@ public class ProductListController implements Initializable {
             private final HBox pane = new HBox(10, btnEdit, btnDelete);
 
             {
-                pane.setAlignment(Pos.CENTER);
+                pane.setAlignment(Pos.CENTER_LEFT);
 
                 btnEdit.setOnAction(event -> {
                     Product obj = getTableView().getItems().get(getIndex());
@@ -154,8 +146,8 @@ public class ProductListController implements Initializable {
                     onDeleteAction(obj);
                 });
 
-                btnEdit.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-cursor: hand;");
-                btnDelete.setStyle("-fx-background-color: #c0392b; -fx-text-fill: white; -fx-cursor: hand;");
+                btnEdit.getStyleClass().setAll("button", "botao-pequeno", "botao-info");
+                btnDelete.getStyleClass().setAll("button", "botao-pequeno", "botao-perigo");
 
             }
 
@@ -165,9 +157,6 @@ public class ProductListController implements Initializable {
 
                 if (empty) {
                     setGraphic(null);
-                    if (getTableRow() != null) {
-                        getTableRow().setStyle("");
-                    }
                 } else {
                     setGraphic(pane);
                 }
@@ -187,7 +176,9 @@ public class ProductListController implements Initializable {
 
             Stage stage = new Stage();
             stage.setTitle("Editar Produto - " + obj.getNomeProduto());
-            stage.setScene(new javafx.scene.Scene(parent));
+            javafx.scene.Scene scene = new javafx.scene.Scene(parent);
+            Tema.aplicar(scene);
+            stage.setScene(scene);
             stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             stage.showAndWait();
 

@@ -5,108 +5,132 @@
 <?import javafx.scene.layout.*?>
 
 <!--
-  Histórico de vendas.
-  Topo: filtros (período rápido ou datas, forma de pagamento, situação, cliente, produto).
-  Esquerda: vendas encontradas. Direita: produtos e pagamentos da venda selecionada.
+  Histórico de vendas (visual em css/componentes.css).
+  Topo: filtros num cartão. Esquerda: vendas encontradas. Direita: detalhe da venda selecionada.
   Não mostra soma de valores (faturamento): esse dado fica para uma tela protegida.
 -->
-<VBox prefHeight="760.0" prefWidth="1280.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.casarural.sistemapdv.controller.OrderListController"
-      style="-fx-background-color: #2c3e50;">
+<VBox styleClass="tela"
+      prefHeight="780.0" prefWidth="1280.0" spacing="0.0"
+      xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.casarural.sistemapdv.controller.OrderListController">
     <children>
         <!-- Cabeçalho -->
-        <VBox spacing="2.0" style="-fx-background-color: rgba(0,0,0,0.3);">
-            <padding><Insets bottom="14.0" left="24.0" right="24.0" top="16.0" /></padding>
+        <VBox styleClass="cabecalho" spacing="2.0">
             <children>
-                <Label text="HISTÓRICO DE VENDAS" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                <Label text="Encontre uma venda pelo período, forma de pagamento, cliente ou produto." style="-fx-font-size: 14px; -fx-text-fill: #bdc3c7;" />
+                <Label styleClass="titulo" text="Histórico de vendas" />
+                <Label styleClass="subtitulo" text="Encontre uma venda pelo período, forma de pagamento, cliente ou produto." />
             </children>
         </VBox>
 
         <!-- Filtros -->
-        <VBox spacing="12.0" style="-fx-background-color: rgba(0,0,0,0.15); -fx-border-color: rgba(255,255,255,0.08); -fx-border-width: 0 0 1 0;">
-            <padding><Insets bottom="14.0" left="24.0" right="24.0" top="14.0" /></padding>
+        <VBox styleClass="cartao" spacing="12.0">
+            <VBox.margin><Insets bottom="0.0" left="24.0" right="24.0" top="18.0" /></VBox.margin>
             <children>
                 <HBox alignment="CENTER_LEFT" spacing="8.0">
                     <children>
-                        <Label text="Período" minWidth="70" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                        <Label styleClass="rotulo-secao" text="PERÍODO" minWidth="78" />
                         <fx:define><ToggleGroup fx:id="grupoPeriodo" /></fx:define>
-                        <ToggleButton fx:id="btnHoje" text="Hoje" toggleGroup="$grupoPeriodo" selected="true" prefHeight="34" />
-                        <ToggleButton fx:id="btnOntem" text="Ontem" toggleGroup="$grupoPeriodo" prefHeight="34" />
-                        <ToggleButton fx:id="btn7Dias" text="Últimos 7 dias" toggleGroup="$grupoPeriodo" prefHeight="34" />
-                        <ToggleButton fx:id="btnMes" text="Este mês" toggleGroup="$grupoPeriodo" prefHeight="34" />
-                        <Pane prefWidth="16" />
-                        <Label text="De" style="-fx-font-size: 13px; -fx-text-fill: white;" />
+                        <ToggleButton fx:id="btnHoje" styleClass="pilula" text="Hoje" toggleGroup="$grupoPeriodo" selected="true" />
+                        <ToggleButton fx:id="btnOntem" styleClass="pilula" text="Ontem" toggleGroup="$grupoPeriodo" />
+                        <ToggleButton fx:id="btn7Dias" styleClass="pilula" text="Últimos 7 dias" toggleGroup="$grupoPeriodo" />
+                        <ToggleButton fx:id="btnMes" styleClass="pilula" text="Este mês" toggleGroup="$grupoPeriodo" />
+                        <Pane prefWidth="14" />
+                        <Label styleClass="texto-suave" text="de" />
                         <DatePicker fx:id="dpInicio" prefWidth="140" prefHeight="34" />
-                        <Label text="até" style="-fx-font-size: 13px; -fx-text-fill: white;" />
+                        <Label styleClass="texto-suave" text="até" />
                         <DatePicker fx:id="dpFim" prefWidth="140" prefHeight="34" />
                     </children>
                 </HBox>
                 <HBox alignment="CENTER_LEFT" spacing="8.0">
                     <children>
-                        <Label text="Filtrar" minWidth="70" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
-                        <ComboBox fx:id="comboForma" prefWidth="170" prefHeight="34" promptText="Forma de pagamento" />
-                        <ComboBox fx:id="comboSituacao" prefWidth="170" prefHeight="34" promptText="Situação" />
-                        <TextField fx:id="campoCliente" promptText="Cliente (fiado)" prefWidth="190" prefHeight="34" />
+                        <Label styleClass="rotulo-secao" text="FILTRAR" minWidth="78" />
+                        <ComboBox fx:id="comboForma" prefWidth="175" prefHeight="34" />
+                        <ComboBox fx:id="comboSituacao" prefWidth="175" prefHeight="34" />
+                        <TextField fx:id="campoCliente" promptText="Nome do cliente" prefWidth="190" prefHeight="34" />
                         <TextField fx:id="campoProduto" promptText="Produto ou código de barras" prefWidth="240" prefHeight="34" />
                         <Pane HBox.hgrow="ALWAYS" />
-                        <Button fx:id="btnLimpar" text="Limpar filtros" onAction="#onLimparFiltros" prefHeight="34"
-                                style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 6;" />
+                        <Button fx:id="btnLimpar" styleClass="link" text="Limpar filtros" onAction="#onLimparFiltros" />
                     </children>
                 </HBox>
             </children>
         </VBox>
 
         <!-- Vendas + detalhe -->
-        <HBox spacing="16.0" VBox.vgrow="ALWAYS">
-            <padding><Insets bottom="12.0" left="24.0" right="24.0" top="16.0" /></padding>
+        <HBox spacing="18.0" VBox.vgrow="ALWAYS">
+            <padding><Insets bottom="10.0" left="24.0" right="24.0" top="18.0" /></padding>
             <children>
-                <TableView fx:id="tabelaVendas" HBox.hgrow="ALWAYS" style="-fx-font-size: 14px;">
-                    <placeholder><Label text="Nenhuma venda encontrada com esses filtros." /></placeholder>
-                    <columns>
-                        <TableColumn fx:id="colData" prefWidth="140" text="Data e hora" />
-                        <TableColumn fx:id="colNumero" prefWidth="70" text="Venda" />
-                        <TableColumn fx:id="colCliente" prefWidth="150" text="Cliente" />
-                        <TableColumn fx:id="colItens" prefWidth="60" text="Itens" />
-                        <TableColumn fx:id="colFormas" prefWidth="170" text="Pagamento" />
-                        <TableColumn fx:id="colValor" prefWidth="100" text="Valor" />
-                        <TableColumn fx:id="colSituacao" prefWidth="105" text="Situação" />
-                    </columns>
-                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
-                </TableView>
-
-                <VBox spacing="10.0" prefWidth="420.0" minWidth="380.0"
-                      style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 16;">
+                <VBox styleClass="cartao" spacing="8.0" HBox.hgrow="ALWAYS">
                     <children>
-                        <Label fx:id="labelVendaTitulo" text="Selecione uma venda" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" />
-                        <Label fx:id="labelVendaInfo" wrapText="true" text="Os produtos e os pagamentos da venda aparecem aqui." style="-fx-font-size: 13px; -fx-text-fill: #bdc3c7;" />
-                        <Label text="PRODUTOS" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;">
-                            <VBox.margin><Insets top="6.0" /></VBox.margin>
-                        </Label>
-                        <TableView fx:id="tabelaItens" VBox.vgrow="ALWAYS" prefHeight="220.0" style="-fx-font-size: 13px;">
-                            <placeholder><Label text="" /></placeholder>
+                        <Label fx:id="labelContagem" styleClass="rotulo-secao" text="" />
+                        <TableView fx:id="tabelaVendas" VBox.vgrow="ALWAYS">
+                            <placeholder>
+                                <Label text="Nenhuma venda encontrada. Tente outro período ou limpe os filtros." />
+                            </placeholder>
                             <columns>
-                                <TableColumn fx:id="colItemProduto" prefWidth="170" text="Produto" />
-                                <TableColumn fx:id="colItemQtd" prefWidth="45" text="Qtd" />
-                                <TableColumn fx:id="colItemPreco" prefWidth="80" text="Unitário" />
-                                <TableColumn fx:id="colItemSubtotal" prefWidth="80" text="Subtotal" />
+                                <TableColumn fx:id="colData" prefWidth="140" text="DATA E HORA" />
+                                <TableColumn fx:id="colNumero" prefWidth="70" text="VENDA" />
+                                <TableColumn fx:id="colCliente" prefWidth="140" text="CLIENTE" />
+                                <TableColumn fx:id="colItens" prefWidth="55" text="ITENS" />
+                                <TableColumn fx:id="colFormas" prefWidth="170" text="PAGAMENTO" />
+                                <TableColumn fx:id="colValor" prefWidth="95" text="VALOR" />
+                                <TableColumn fx:id="colSituacao" prefWidth="110" text="SITUAÇÃO" />
                             </columns>
                             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                         </TableView>
-                        <Label text="PAGAMENTOS" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
-                        <ListView fx:id="listaPagamentos" prefHeight="130.0" style="-fx-font-size: 13px;">
-                            <placeholder><Label text="" /></placeholder>
-                        </ListView>
                     </children>
                 </VBox>
-            </children>
-        </HBox>
 
-        <!-- Rodapé: só a contagem, sem somar valores -->
-        <HBox alignment="CENTER_LEFT" style="-fx-background-color: rgba(0,0,0,0.3);">
-            <padding><Insets bottom="10.0" left="24.0" right="24.0" top="10.0" /></padding>
-            <children>
-                <Label fx:id="labelContagem" text="" style="-fx-font-size: 13px; -fx-text-fill: #bdc3c7;" />
+                <!-- Detalhe -->
+                <StackPane styleClass="cartao" prefWidth="420.0" minWidth="380.0">
+                    <children>
+                        <VBox fx:id="painelVazio" alignment="CENTER" spacing="6.0">
+                            <children>
+                                <Label styleClass="titulo-cartao" text="Nenhuma venda selecionada" />
+                                <Label styleClass="texto-suave" wrapText="true" textAlignment="CENTER" maxWidth="300"
+                                       text="Clique em uma venda da lista para ver os produtos e como ela foi paga." />
+                            </children>
+                        </VBox>
+
+                        <VBox fx:id="painelDetalhe" spacing="10.0" visible="false">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                    <children>
+                                        <Label fx:id="labelVendaNumero" styleClass="titulo-cartao" text="Venda #0" />
+                                        <Pane HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="labelVendaValor" styleClass="valor-grande,texto-sucesso" text="R$ 0,00" />
+                                    </children>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                    <children>
+                                        <Label fx:id="labelVendaData" styleClass="texto-suave" text="" />
+                                        <Label fx:id="labelVendaCliente" styleClass="texto-suave" text="" />
+                                        <Pane HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="labelVendaSituacao" styleClass="etiqueta" text="" />
+                                    </children>
+                                </HBox>
+
+                                <Label styleClass="rotulo-secao" text="PRODUTOS">
+                                    <VBox.margin><Insets top="8.0" /></VBox.margin>
+                                </Label>
+                                <TableView fx:id="tabelaItens" VBox.vgrow="ALWAYS" prefHeight="220.0">
+                                    <placeholder><Label text="" /></placeholder>
+                                    <columns>
+                                        <TableColumn fx:id="colItemProduto" prefWidth="170" text="PRODUTO" />
+                                        <TableColumn fx:id="colItemQtd" prefWidth="45" text="QTD" />
+                                        <TableColumn fx:id="colItemPreco" prefWidth="80" text="UNITÁRIO" />
+                                        <TableColumn fx:id="colItemSubtotal" prefWidth="80" text="SUBTOTAL" />
+                                    </columns>
+                                    <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                                </TableView>
+
+                                <Label styleClass="rotulo-secao" text="PAGAMENTOS" />
+                                <ListView fx:id="listaPagamentos" prefHeight="140.0">
+                                    <placeholder><Label text="" /></placeholder>
+                                </ListView>
+                            </children>
+                        </VBox>
+                    </children>
+                </StackPane>
             </children>
         </HBox>
     </children>

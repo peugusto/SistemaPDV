@@ -119,12 +119,12 @@ public class MainController implements Initializable {
             if (aberto.isPresent()) {
                 CashRegister caixa = aberto.get();
                 labelCaixaStatus.setText("CAIXA ABERTO desde " + DATA_HORA.format(caixa.getAbertoEm()));
-                labelCaixaStatus.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2ecc71;");
+                trocarEtiqueta(labelCaixaStatus, "etiqueta-sucesso");
                 labelCaixaGaveta.setText("Dinheiro na gaveta: " + Money.format(caixaService.summarize(caixa).getDinheiroEsperado()));
                 btnCaixaAbrirFechar.setText("Fechar caixa (F6)");
             } else {
                 labelCaixaStatus.setText("CAIXA FECHADO");
-                labelCaixaStatus.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;");
+                trocarEtiqueta(labelCaixaStatus, "etiqueta-perigo");
                 labelCaixaGaveta.setText("Abra o caixa para começar a vender");
                 btnCaixaAbrirFechar.setText("Abrir caixa (F6)");
             }
@@ -132,8 +132,15 @@ public class MainController implements Initializable {
             btnColocar.setDisable(aberto.isEmpty());
         } catch (DbException e) {
             labelCaixaStatus.setText("CAIXA: SEM CONEXÃO COM O BANCO");
+            trocarEtiqueta(labelCaixaStatus, "etiqueta-alerta");
             labelCaixaGaveta.setText("");
         }
+    }
+
+    /** Troca a cor da etiqueta (classes do componentes.css) mantendo o formato. */
+    private static void trocarEtiqueta(Label etiqueta, String cor) {
+        etiqueta.getStyleClass().removeAll("etiqueta-sucesso", "etiqueta-perigo", "etiqueta-alerta");
+        etiqueta.getStyleClass().add(cor);
     }
 
     private void verificarCaixaEsquecido() {

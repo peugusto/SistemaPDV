@@ -33,12 +33,7 @@ public class ViewLoader {
 
             Scene scene = new Scene(root);
 
-            var resource = ViewLoader.class.getResource("/com/casarural/sistemapdv/css/style.css");
-            if (resource != null) {
-                scene.getStylesheets().add(resource.toExternalForm());
-            } else {
-                log.warn("Arquivo CSS não encontrado: /com/casarural/sistemapdv/css/style.css");
-            }
+            Tema.aplicar(scene);
 
 
             scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
