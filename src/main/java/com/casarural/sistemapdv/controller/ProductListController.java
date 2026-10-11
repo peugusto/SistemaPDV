@@ -38,6 +38,10 @@ public class ProductListController implements Initializable {
     @FXML private TableColumn<Product, String> nameColumn;
     @FXML private TableColumn<Product, BigDecimal> priceColumn;
     @FXML private TableColumn<Product, Integer> stockColumn;
+    @FXML private TableColumn<Product, Boolean> fiadoColumn;
+
+    /** A partir deste número (inclusive) o estoque aparece em vermelho. */
+    private static final int ESTOQUE_BAIXO = 15;
     @FXML private TableColumn<Product, Void> actionsColumn;
 
     private ObservableList<Product> obsList;
@@ -60,6 +64,39 @@ public class ProductListController implements Initializable {
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
         MoneyCells.format(priceColumn);
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
+        // Vermelho só na célula do produto com estoque baixo (antes a coluna inteira ficava vermelha)
+        stockColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Integer estoque, boolean empty) {
+                super.updateItem(estoque, empty);
+                if (empty || estoque == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(estoque));
+                    setStyle(estoque <= ESTOQUE_BAIXO
+                            ? "-fx-alignment: CENTER; -fx-text-fill: #e74c3c; -fx-font-weight: bold;"
+                            : "-fx-alignment: CENTER;");
+                }
+            }
+        });
+        fiadoColumn.setCellValueFactory(new PropertyValueFactory<>("permiteFiado"));
+        fiadoColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Boolean permite, boolean empty) {
+                super.updateItem(permite, empty);
+                if (empty || permite == null) {
+                    setText(null);
+                    setStyle("");
+                } else if (permite) {
+                    setText("Sim");
+                    setStyle("-fx-alignment: CENTER;");
+                } else {
+                    setText("Não");
+                    setStyle("-fx-alignment: CENTER; -fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                }
+            }
+        });
 
         idColumn.setStyle("-fx-alignment: CENTER;");
         barcodeColumn.setStyle("-fx-alignment: CENTER;");
@@ -133,14 +170,6 @@ public class ProductListController implements Initializable {
                     }
                 } else {
                     setGraphic(pane);
-
-                    Product produto = (Product) getTableRow().getItem();
-
-                    if (produto != null) {
-                        if (produto.getEstoque() <= 15) {
-                            stockColumn.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                        }
-                    }
                 }
             }
         });

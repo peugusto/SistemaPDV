@@ -64,7 +64,9 @@ public class PDVController implements Initializable {
                     Label lQtd = new Label(String.valueOf(item.getQtd()));
                     lQtd.setPrefWidth(40);
 
-                    Label lDesc = new Label(item.getProduto().getNomeProduto());
+                    // Produto que não pode ir para o fiado aparece marcado no carrinho
+                    Label lDesc = new Label(item.getProduto().getNomeProduto()
+                            + (item.getProduto().isPermiteFiado() ? "" : "  [sem fiado]"));
                     lDesc.setPrefWidth(200);
                     lDesc.setStyle("-fx-wrap-text: true;");
 

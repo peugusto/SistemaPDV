@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!--
+  Fechamento do caixa. Esquerda: conta do dinheiro na gaveta (calculada pelo sistema).
+  Direita: o que entrou em PIX/cartão, o que foi vendido no fiado, sangrias/reforços do dia.
+  Embaixo: contagem opcional da gaveta, diferença e observação.
+-->
+<VBox prefWidth="860.0" spacing="0.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.casarural.sistemapdv.controller.FecharCaixaController"
+      style="-fx-background-color: #2c3e50;">
+    <children>
+        <VBox spacing="4.0" style="-fx-background-color: rgba(0,0,0,0.3);">
+            <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+            <children>
+                <Label text="FECHAR CAIXA" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                <Label fx:id="labelAberto" text="Aberto em 00/00/0000 às 00:00" style="-fx-font-size: 14px; -fx-text-fill: #bdc3c7;" />
+            </children>
+        </VBox>
+
+        <HBox spacing="20.0">
+            <padding><Insets bottom="16.0" left="24.0" right="24.0" top="20.0" /></padding>
+            <children>
+                <!-- Dinheiro na gaveta -->
+                <VBox spacing="8.0" HBox.hgrow="ALWAYS" prefWidth="400.0"
+                      style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 16;">
+                    <children>
+                        <Label text="DINHEIRO NA GAVETA" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                        <GridPane hgap="12.0" vgap="8.0">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints halignment="RIGHT" />
+                            </columnConstraints>
+                            <children>
+                                <Label text="Troco inicial" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="0" />
+                                <Label fx:id="valTroco" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                                <Label text="+ Vendas em dinheiro" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="1" />
+                                <Label fx:id="valVendasDinheiro" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                <Label text="+ Fiado recebido em dinheiro" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="2" />
+                                <Label fx:id="valFiadoDinheiro" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                                <Label text="+ Dinheiro colocado (reforços)" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="3" />
+                                <Label fx:id="valReforcos" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                                <Label text="− Dinheiro retirado (sangrias)" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="4" />
+                                <Label fx:id="valSangrias" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                                <Separator GridPane.columnSpan="2" GridPane.rowIndex="5" />
+                                <Label text="= Deve ter na gaveta" style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.rowIndex="6" />
+                                <Label fx:id="valEsperado" text="R$ 0,00" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2ecc71;" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                            </children>
+                        </GridPane>
+                    </children>
+                </VBox>
+
+                <!-- Outras formas e movimentos -->
+                <VBox spacing="8.0" HBox.hgrow="ALWAYS" prefWidth="400.0"
+                      style="-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 16;">
+                    <children>
+                        <Label text="OUTRAS ENTRADAS (NÃO FICAM NA GAVETA)" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                        <GridPane hgap="12.0" vgap="8.0">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints halignment="RIGHT" />
+                            </columnConstraints>
+                            <children>
+                                <Label text="PIX (vendas + fiado recebido)" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="0" />
+                                <Label fx:id="valPix" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                                <Label text="Cartão (vendas + fiado recebido)" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="1" />
+                                <Label fx:id="valCartao" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                <Label text="Vendido no fiado (a receber)" style="-fx-font-size: 15px; -fx-text-fill: white;" GridPane.rowIndex="2" />
+                                <Label fx:id="valFiadoVendido" text="R$ 0,00" style="-fx-font-size: 15px; -fx-text-fill: #f39c12;" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                                <Separator GridPane.columnSpan="2" GridPane.rowIndex="3" />
+                                <Label text="Total vendido no dia" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.rowIndex="4" />
+                                <Label fx:id="valTotalVendido" text="R$ 0,00" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                                <Label text="Total de fiado recebido" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.rowIndex="5" />
+                                <Label fx:id="valFiadoRecebido" text="R$ 0,00" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                            </children>
+                        </GridPane>
+                        <Label text="Retiradas e reforços do dia" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;">
+                            <VBox.margin><Insets top="6.0" /></VBox.margin>
+                        </Label>
+                        <ListView fx:id="listaMovimentos" prefHeight="90.0" style="-fx-font-size: 13px;">
+                            <placeholder><Label text="Nenhuma retirada ou reforço." /></placeholder>
+                        </ListView>
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <!-- Conferência (opcional) -->
+        <HBox alignment="CENTER_LEFT" spacing="14.0" style="-fx-background-color: rgba(0,0,0,0.3);">
+            <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+            <children>
+                <VBox spacing="4.0">
+                    <children>
+                        <Label text="Contei na gaveta (opcional)" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                        <TextField fx:id="campoContado" promptText="deixe vazio se não contou" prefWidth="210.0" prefHeight="42.0" style="-fx-font-size: 17px; -fx-font-weight: bold;" />
+                    </children>
+                </VBox>
+                <VBox spacing="4.0">
+                    <children>
+                        <Label text="Resultado" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                        <Label fx:id="labelDiferenca" text="Não conferido" prefHeight="42.0" style="-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #bdc3c7;" />
+                    </children>
+                </VBox>
+                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Observação" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: white;" />
+                        <TextField fx:id="campoObservacao" promptText="opcional" prefHeight="42.0" style="-fx-font-size: 14px;" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT" spacing="10.0">
+            <padding><Insets bottom="18.0" left="24.0" right="24.0" top="14.0" /></padding>
+            <children>
+                <Button onAction="#onCancelar" text="Cancelar" prefHeight="46.0" prefWidth="130.0"
+                        style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand;" />
+                <Button fx:id="btnFechar" onAction="#onFecharCaixa" text="Fechar caixa" prefHeight="46.0" prefWidth="180.0"
+                        style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-background-color: #c0392b; -fx-text-fill: white; -fx-cursor: hand;" />
+            </children>
+        </HBox>
+    </children>
+</VBox>

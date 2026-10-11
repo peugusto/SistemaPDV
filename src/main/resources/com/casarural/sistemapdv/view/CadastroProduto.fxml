@@ -39,6 +39,13 @@
             <TextField fx:id="txtEstoque" prefWidth="150"
                        GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
+            <Label text="Fiado:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+            <VBox spacing="2" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" selected="true"/>
+                <Label text="Desmarque para cigarro, bebida alcoólica e outros produtos que só podem ser pagos na hora."
+                       wrapText="true" maxWidth="350" style="-fx-font-size: 11px; -fx-opacity: 0.75;"/>
+            </VBox>
+
         </GridPane>
     </center>
 

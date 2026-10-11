@@ -23,6 +23,7 @@
             <RowConstraints minHeight="30" />
             <RowConstraints minHeight="30" />
             <RowConstraints minHeight="30" />
+            <RowConstraints minHeight="30" />
         </rowConstraints>
 
         <Label text="Código de Barras:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
@@ -36,6 +37,9 @@
 
         <Label text="Estoque Atual:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
         <TextField fx:id="txtEstoque" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+        <Label text="Fiado:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+        <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
     </GridPane>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">

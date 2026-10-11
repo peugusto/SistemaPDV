@@ -9,6 +9,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -25,6 +26,7 @@ public class CadastroProdutosController implements Initializable {
     @FXML private TextField txtNome;
     @FXML private TextField txtPreco;
     @FXML private TextField txtEstoque;
+    @FXML private CheckBox chkPermiteFiado;
     @FXML private Button botaoSalvar;
     @FXML private Button botaoCancelar;
 
@@ -84,10 +86,12 @@ public class CadastroProdutosController implements Initializable {
 
                     txtNome.setText(product.getNomeProduto());
                     txtPreco.setText(Money.toInput(product.getPrecoProduto()));
+                    chkPermiteFiado.setSelected(product.isPermiteFiado());
 
-
+                    // Produto existente: aqui só entra estoque; nome, preço e fiado mudam em "Editar"
                     txtNome.setEditable(false);
                     txtPreco.setEditable(false);
+                    chkPermiteFiado.setDisable(true);
                     txtEstoque.requestFocus();
                 },
                 () -> {
@@ -128,6 +132,7 @@ public class CadastroProdutosController implements Initializable {
             entity.adicionarEstoque(qtdInformada);
         } else {
             entity.setEstoque(qtdInformada);
+            entity.setPermiteFiado(chkPermiteFiado.isSelected());
         }
     }
 
@@ -135,6 +140,8 @@ public class CadastroProdutosController implements Initializable {
         isExistingProduct = false;
         txtNome.setEditable(true);
         txtPreco.setEditable(true);
+        chkPermiteFiado.setDisable(false);
+        chkPermiteFiado.setSelected(true);
         txtNome.setStyle("");
         txtPreco.setStyle("");
     }

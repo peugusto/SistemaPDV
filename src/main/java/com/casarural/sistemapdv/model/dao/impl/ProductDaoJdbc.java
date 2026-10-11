@@ -20,13 +20,14 @@ public class ProductDaoJdbc implements ProductDao {
     public void insert(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque) VALUES (?, ?, ?, ?)",
+                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado) VALUES (?, ?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
             st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
+            st.setBoolean(5, obj.isPermiteFiado());
 
             int rowsAffected = st.executeUpdate();
 
@@ -80,13 +81,14 @@ public class ProductDaoJdbc implements ProductDao {
     public void update(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ? WHERE id_produto = ?")) {
+                     "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ? WHERE id_produto = ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
             st.setBigDecimal(3, obj.getPrecoProduto());
             st.setInt(4, obj.getEstoque());
-            st.setInt(5, obj.getIdProduto());
+            st.setBoolean(5, obj.isPermiteFiado());
+            st.setInt(6, obj.getIdProduto());
 
             st.executeUpdate();
         } catch (SQLException e) {
@@ -114,6 +116,7 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setPrecoProduto(rs.getBigDecimal("preco_produto"));
 
         prod.setEstoque(rs.getInt("estoque"));
+        prod.setPermiteFiado(rs.getBoolean("permite_fiado"));
         return prod;
     }
 

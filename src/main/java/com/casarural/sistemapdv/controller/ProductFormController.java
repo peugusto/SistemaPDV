@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -27,6 +28,7 @@ public class ProductFormController implements Initializable {
     @FXML private TextField txtNome;
     @FXML private TextField txtPreco;
     @FXML private TextField txtEstoque;
+    @FXML private CheckBox chkPermiteFiado;
     @FXML private Button btnSave;
     @FXML private Button btnCancel;
 
@@ -53,6 +55,7 @@ public class ProductFormController implements Initializable {
         txtNome.setText(entity.getNomeProduto());
         txtPreco.setText(Money.toInput(entity.getPrecoProduto()));
         txtEstoque.setText(String.valueOf(entity.getEstoque()));
+        chkPermiteFiado.setSelected(entity.isPermiteFiado());
     }
 
     @FXML
@@ -79,6 +82,7 @@ public class ProductFormController implements Initializable {
             entity.setNomeProduto(nome);
             entity.setPrecoProduto(preco);
             entity.setEstoque(estoque);
+            entity.setPermiteFiado(chkPermiteFiado.isSelected());
 
 
             service.saveOrUpdate(entity);

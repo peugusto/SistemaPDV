@@ -2,6 +2,7 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
@@ -15,10 +16,15 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
+import java.util.stream.Collectors;
 
 public class PaymentController implements Initializable {
 
@@ -42,6 +48,10 @@ public class PaymentController implements Initializable {
     private BigDecimal saldoRestante = Money.ZERO;
     private Customer clienteFiado;
     private boolean vendaConcluida = false;
+    /** Produtos sem fiado que o operador escolheu tirar da venda. */
+    private final List<OrderItem> itensRetirados = new ArrayList<>();
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
 
     public boolean isVendaConcluida() {
         return vendaConcluida;
@@ -177,6 +187,15 @@ public class PaymentController implements Initializable {
             BigDecimal valorFiado = Money.min(valor, saldoRestante);
             BigDecimal disponivel = clienteSelecionado.getLimiteCredito().subtract(devendo).subtract(fiadoNestaVenda);
 
+            // Produtos que não podem ser fiados (cigarro, bebida...): o fiado só cobre os demais
+            if (valorFiado.compareTo(order.getFiadoAindaPermitido()) > 0) {
+                if (!tirarItensSemFiado(clienteSelecionado, disponivel)) {
+                    return;
+                }
+                // Itens tirados da venda: o que sobrou vai inteiro para o fiado
+                valorFiado = saldoRestante;
+            }
+
             if (valorFiado.compareTo(disponivel) > 0) {
                 Alerts.showAlert("Venda Recusada", "Limite de crédito excedido",
                         String.format("O cliente '%s' tem limite de %s e deve %s.%nDisponível para fiado: %s.",
@@ -187,6 +206,7 @@ public class PaymentController implements Initializable {
             }
 
             clienteFiado = clienteSelecionado;
+            valor = valorFiado;
         }
 
         // No dinheiro o cliente pode entregar mais que o saldo: registra só o saldo, o resto é troco
@@ -200,6 +220,65 @@ public class PaymentController implements Initializable {
         if (saldoRestante.signum() == 0) {
             salvarVenda();
         }
+    }
+
+    /**
+     * A venda tem produtos que não podem ser fiados e o fiado tentou cobri-los.
+     * Mostra quais são e oferece tirar esses produtos da venda e lançar o resto no fiado.
+     * Retorna true se os itens foram tirados (o saldo passa a ser só o dos outros produtos).
+     */
+    private boolean tirarItensSemFiado(Customer cliente, BigDecimal limiteDisponivel) {
+        List<OrderItem> semFiado = order.getItensSemFiado();
+        String lista = semFiado.stream()
+                .map(i -> String.format("  •  %d x %s  (%s)", i.getQtd(), i.getNomeProduto(), Money.format(i.getSubtotal())))
+                .collect(Collectors.joining("\n"));
+
+        if (order.getTotalPermitidoNoFiado().signum() == 0) {
+            Alerts.showAlertAndWait("Fiado não permitido", "Nenhum produto desta venda pode ser vendido no fiado:",
+                    lista + "\n\nCobre em dinheiro, PIX ou cartão.", Alert.AlertType.WARNING);
+            return false;
+        }
+
+        BigDecimal totalSemFiado = semFiado.stream().map(OrderItem::getSubtotal).reduce(Money.ZERO, BigDecimal::add);
+        BigDecimal restoParaFiado = order.getValorTotal().subtract(totalSemFiado)
+                .subtract(order.getTotalPagoNaHora()).subtract(totalPorMetodo(PaymentMethod.FIADO));
+
+        if (restoParaFiado.signum() < 0) {
+            Alerts.showAlertAndWait("Fiado não permitido", "Estes produtos não podem ser vendidos no fiado:",
+                    lista + "\n\nOs pagamentos já lançados passam do valor dos outros produtos. "
+                            + "Cancele o pagamento e comece de novo.", Alert.AlertType.WARNING);
+            return false;
+        }
+        // Confere o limite antes de mexer na venda: se não couber, nada é tirado
+        if (restoParaFiado.compareTo(limiteDisponivel) > 0) {
+            Alerts.showAlertAndWait("Venda Recusada", "Limite de crédito excedido",
+                    String.format("Mesmo sem esses produtos, o fiado seria de %s, e o cliente '%s' só tem %s disponível.",
+                            Money.format(restoParaFiado), cliente.getNomeCliente(), Money.format(Money.max(Money.ZERO, limiteDisponivel))),
+                    Alert.AlertType.ERROR);
+            return false;
+        }
+
+        int escolha = Alerts.showChoice("Fiado não permitido",
+                "Estes produtos não podem ser vendidos no fiado:",
+                lista + "\n\n"
+                        + "Para o cliente levar esses produtos, clique em Voltar e cobre "
+                        + Money.format(order.getFaltaPagarNaHoraParaItensSemFiado()) + " em dinheiro, PIX ou cartão antes do fiado.\n\n"
+                        + "Ou tire esses produtos da venda e lance o restante (" + Money.format(restoParaFiado)
+                        + ") no fiado de " + cliente.getNomeCliente() + ".",
+                Alert.AlertType.WARNING,
+                "Voltar",
+                "Tirar da venda e lançar " + Money.format(restoParaFiado) + " no fiado");
+        if (escolha != 0) {
+            return false;
+        }
+
+        itensRetirados.addAll(semFiado);
+        order.removerItens(semFiado);
+        saldoRestante = order.getSaldo();
+        atualizarExibicao();
+        log.info("Itens sem fiado tirados da venda de {}: {}", cliente.getNomeCliente(),
+                semFiado.stream().map(OrderItem::getNomeProduto).collect(Collectors.joining(", ")));
+        return true;
     }
 
     private void salvarVenda() {
@@ -216,7 +295,14 @@ public class PaymentController implements Initializable {
 
             orderService.insert(order);
             vendaConcluida = true;
-            Alerts.showAlert("Sucesso", null, "Venda finalizada!", Alert.AlertType.INFORMATION);
+            if (itensRetirados.isEmpty()) {
+                Alerts.showAlert("Sucesso", null, "Venda finalizada!", Alert.AlertType.INFORMATION);
+            } else {
+                Alerts.showAlert("Venda finalizada", "Estes produtos foram tirados da venda. Devolva-os à prateleira:",
+                        itensRetirados.stream().map(i -> "  •  " + i.getQtd() + " x " + i.getNomeProduto())
+                                .collect(Collectors.joining("\n")),
+                        Alert.AlertType.INFORMATION);
+            }
             fecharJanela();
         } catch (Exception e) {
             Alerts.showAlert("Erro", "Erro ao salvar", e.getMessage(), Alert.AlertType.ERROR);
@@ -225,10 +311,7 @@ public class PaymentController implements Initializable {
     }
 
     private BigDecimal totalPorMetodo(PaymentMethod metodo) {
-        return order.getPagamentos().stream()
-                .filter(p -> p.getMetodo() == metodo)
-                .map(Order.PaymentSlice::getValor)
-                .reduce(Money.ZERO, BigDecimal::add);
+        return order.getTotalPagamentos(metodo);
     }
 
     private void reiniciarPagamentos() {

@@ -11,6 +11,8 @@ public class Product {
     private String nomeProduto;
     private BigDecimal precoProduto = Money.ZERO;
     private int estoque;
+    /** false = não pode ser vendido no fiado (ex.: cigarro, bebida alcoólica). Coluna produto.permite_fiado (V8). */
+    private boolean permiteFiado = true;
 
     public Product(){}
 
@@ -62,6 +64,14 @@ public class Product {
     }
 
     public void adicionarEstoque(int quantidade) { this.estoque += quantidade;}
+
+    public boolean isPermiteFiado() {
+        return permiteFiado;
+    }
+
+    public void setPermiteFiado(boolean permiteFiado) {
+        this.permiteFiado = permiteFiado;
+    }
 
     @Override
     public boolean equals(Object o) {

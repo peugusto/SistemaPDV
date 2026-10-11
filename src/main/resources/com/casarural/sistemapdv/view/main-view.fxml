@@ -89,4 +89,26 @@
         </GridPane>
     </center>
 
+    <!-- Barra do caixa: situação, dinheiro na gaveta e ações -->
+    <bottom>
+        <HBox alignment="CENTER_LEFT" spacing="12.0"
+              style="-fx-background-color: rgba(0,0,0,0.3); -fx-border-width: 1 0 0 0; -fx-border-color: rgba(255,255,255,0.1);">
+            <padding>
+                <Insets top="14" right="24" bottom="14" left="24"/>
+            </padding>
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label fx:id="labelCaixaStatus" text="CAIXA FECHADO" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"/>
+                <Label fx:id="labelCaixaGaveta" text="" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+            </VBox>
+            <Button fx:id="btnRetirar" text="Retirar dinheiro" onAction="#onRetirarAction" prefHeight="44"
+                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
+            <Button fx:id="btnColocar" text="Colocar dinheiro" onAction="#onColocarAction" prefHeight="44"
+                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
+            <Button text="Histórico de caixas" onAction="#onHistoricoCaixaAction" prefHeight="44"
+                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
+            <Button fx:id="btnCaixaAbrirFechar" text="Abrir caixa (F6)" onAction="#onCaixaAbrirFecharAction" prefHeight="44" prefWidth="190"
+                    style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-background-color: #27ae60; -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 8;"/>
+        </HBox>
+    </bottom>
+
 </BorderPane>

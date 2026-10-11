@@ -23,6 +23,23 @@ import java.util.Optional;
 
 public class OrderDaoJdbc implements OrderDao {
 
+    public static final String MENSAGEM_CAIXA_FECHADO =
+            "O caixa está fechado. Abra o caixa para registrar vendas e recebimentos de fiado.";
+
+    /**
+     * Caixa aberto, lido dentro da mesma transação que grava os pagamentos.
+     * Sem caixa aberto, lança SQLException: a transação inteira é desfeita.
+     */
+    private int idCaixaAberto(Connection conn) throws SQLException {
+        try (PreparedStatement st = conn.prepareStatement("SELECT id_caixa FROM caixa WHERE fechado_em IS NULL");
+             ResultSet rs = st.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        throw new SQLException(MENSAGEM_CAIXA_FECHADO);
+    }
+
     @Override
     public void insert(Order obj) {
         // Uma única conexão do início ao fim da transação: pedido + itens + estoque + pagamentos
@@ -31,6 +48,8 @@ public class OrderDaoJdbc implements OrderDao {
             try (PreparedStatement st = conn.prepareStatement(
                     "INSERT INTO pedido (id_cliente, valor_total, status) VALUES (?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
+
+                int idCaixa = idCaixaAberto(conn);   // antes de gravar qualquer coisa
 
                 if (obj.getCostumer() != null) {
                     st.setInt(1, obj.getCostumer().getIdCliente());
@@ -47,7 +66,7 @@ public class OrderDaoJdbc implements OrderDao {
                             int idPedido = rs.getInt(1);
                             obj.setIdPedido(idPedido);
                             inserirItensEBaixarEstoque(conn, obj.getItemPedido(), idPedido);
-                            inserirPagamento(conn, obj, idPedido);
+                            inserirPagamento(conn, obj, idPedido, idCaixa);
                         }
                     }
                 }
@@ -87,13 +106,14 @@ public class OrderDaoJdbc implements OrderDao {
         }
     }
 
-    private void inserirPagamento(Connection conn, Order obj, int idPedido) throws SQLException {
-        String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, origem) VALUES (?, ?, ?, 'VENDA')";
+    private void inserirPagamento(Connection conn, Order obj, int idPedido, int idCaixa) throws SQLException {
+        String sql = "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, origem, id_caixa) VALUES (?, ?, ?, 'VENDA', ?)";
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             for (Order.PaymentSlice fatia : obj.getPagamentos()) {
                 st.setInt(1, idPedido);
                 st.setBigDecimal(2, fatia.getValor());
                 st.setString(3, fatia.getMetodo().toString());
+                st.setInt(4, idCaixa);
                 st.addBatch();
             }
             st.executeBatch();
@@ -121,11 +141,13 @@ public class OrderDaoJdbc implements OrderDao {
                                  "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
                                  "ORDER BY p.data_pedido ASC");
                  PreparedStatement stInsert = conn.prepareStatement(
-                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, data_pagamento, origem) " +
-                                 "VALUES (?, ?, ?, ?, 'RECEBIMENTO_FIADO')");
+                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, data_pagamento, origem, id_caixa) " +
+                                 "VALUES (?, ?, ?, ?, 'RECEBIMENTO_FIADO', ?)");
                  PreparedStatement stUpdate = conn.prepareStatement(
                          "UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?")) {
 
+                // O dinheiro do recebimento entra na gaveta: precisa de caixa aberto
+                int idCaixa = idCaixaAberto(conn);
                 stSelect.setInt(1, idCliente);
 
                 try (ResultSet rs = stSelect.executeQuery()) {
@@ -144,6 +166,7 @@ public class OrderDaoJdbc implements OrderDao {
                             stInsert.setBigDecimal(2, valorAbater);
                             stInsert.setString(3, metodo.toString());
                             stInsert.setTimestamp(4, agora);
+                            stInsert.setInt(5, idCaixa);
                             stInsert.executeUpdate();
 
                             valorRestante = valorRestante.subtract(valorAbater);

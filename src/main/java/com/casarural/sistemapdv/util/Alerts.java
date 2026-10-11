@@ -45,6 +45,30 @@ public class Alerts {
         }
     }
 
+    /**
+     * Aviso com botões próprios. O primeiro botão (textoVoltar) apenas fecha o aviso.
+     * Retorna o índice da opção escolhida em "opcoes", ou -1 se a pessoa voltou ou fechou a janela.
+     */
+    public static int showChoice(String title, String header, String content, AlertType type,
+                                 String textoVoltar, String... opcoes) {
+        registrar(title, header, content, type);
+        Alert alert = criar(title, header, content, type);
+        ButtonType voltar = new ButtonType(textoVoltar, ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType[] botoes = new ButtonType[opcoes.length];
+        for (int i = 0; i < opcoes.length; i++) {
+            botoes[i] = new ButtonType(opcoes[i], ButtonBar.ButtonData.OTHER);
+        }
+        alert.getButtonTypes().setAll(voltar);
+        alert.getButtonTypes().addAll(botoes);
+
+        Optional<ButtonType> escolha = alert.showAndWait();
+        if (escolha.isEmpty()) return -1;
+        for (int i = 0; i < botoes.length; i++) {
+            if (escolha.get() == botoes[i]) return i;
+        }
+        return -1;
+    }
+
     public static boolean showConfirmation(String title, String header, String content) {
         Alert alert = new Alert(AlertType.CONFIRMATION);
         alert.setTitle(title);
