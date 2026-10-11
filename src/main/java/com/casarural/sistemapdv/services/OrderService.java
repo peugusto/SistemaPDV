@@ -5,11 +5,12 @@ import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.SaleFilter;
+import com.casarural.sistemapdv.model.entities.SaleSummary;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,8 +33,12 @@ public class OrderService {
         return dao.findById(id);
     }
 
-    public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
-        return dao.findItemsByDate(inicio, fim);
+    public List<SaleSummary> findSales(SaleFilter filtro, int limite) {
+        return dao.findSales(filtro, limite);
+    }
+
+    public List<Payment> findPaymentsByOrder(int idPedido) {
+        return dao.findPaymentsByOrder(idPedido);
     }
 
     public List<Order> findOpenFiadoOrders(int idCliente) {

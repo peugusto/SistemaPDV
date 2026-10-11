@@ -7,6 +7,8 @@ import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.SaleFilter;
+import com.casarural.sistemapdv.model.entities.SaleSummary;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.model.entities.enums.PaymentOrigin;
@@ -15,7 +17,6 @@ import com.casarural.sistemapdv.util.Money;
 
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -344,38 +345,93 @@ public class OrderDaoJdbc implements OrderDao {
         } catch (SQLException e) { throw new DbException(e.getMessage(), e); }
     }
 
-    public List<OrderItem> findItemsByDate(LocalDate inicio, LocalDate fim) {
+    /**
+     * Vendas do histórico, da mais recente para a mais antiga, com os filtros preenchidos.
+     * O período usa "data >= início AND data < dia seguinte ao fim" (e não DATE(data) BETWEEN),
+     * para o MySQL poder usar o índice idx_pedido_data.
+     */
+    @Override
+    public List<SaleSummary> findSales(SaleFilter f, int limite) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT p.id_pedido, p.data_pedido, p.valor_total, p.status, c.nome_cliente, " +
+                "(SELECT COALESCE(SUM(i.quantidade), 0) FROM itempedido i WHERE i.id_pedido = p.id_pedido) AS qtd_itens, " +
+                "(SELECT GROUP_CONCAT(DISTINCT pg.metodo_pagamento ORDER BY pg.metodo_pagamento SEPARATOR ',') " +
+                "   FROM pagamento pg WHERE pg.id_pedido = p.id_pedido AND pg.origem = 'VENDA') AS formas " +
+                "FROM pedido p LEFT JOIN cliente c ON c.id_cliente = p.id_cliente " +
+                "WHERE p.data_pedido >= ? AND p.data_pedido < ?");
+        List<Object> params = new ArrayList<>();
+        params.add(Timestamp.valueOf(f.getInicio().atStartOfDay()));
+        params.add(Timestamp.valueOf(f.getFim().plusDays(1).atStartOfDay()));
+
+        if (f.getForma() != null) {
+            sql.append(" AND EXISTS (SELECT 1 FROM pagamento pg WHERE pg.id_pedido = p.id_pedido " +
+                    "AND pg.origem = 'VENDA' AND pg.metodo_pagamento = ?)");
+            params.add(f.getForma().toString());
+        }
+        if (f.getStatus() != null) {
+            sql.append(" AND p.status = ?");
+            params.add(f.getStatus().toString());
+        }
+        if (f.getCliente() != null) {
+            sql.append(" AND c.nome_cliente LIKE ?");
+            params.add("%" + f.getCliente() + "%");
+        }
+        if (f.getProduto() != null) {
+            sql.append(" AND EXISTS (SELECT 1 FROM itempedido i JOIN produto pr ON pr.id_produto = i.id_produto " +
+                    "WHERE i.id_pedido = p.id_pedido AND (pr.nome_produto LIKE ? OR pr.cod_barras = ?))");
+            params.add("%" + f.getProduto() + "%");
+            params.add(f.getProduto());
+        }
+        sql.append(" ORDER BY p.data_pedido DESC, p.id_pedido DESC LIMIT ?");
+        params.add(limite);
+
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                st.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = st.executeQuery()) {
+                List<SaleSummary> list = new ArrayList<>();
+                while (rs.next()) {
+                    SaleSummary s = new SaleSummary();
+                    s.setIdPedido(rs.getInt("id_pedido"));
+                    s.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                    s.setValorTotal(rs.getBigDecimal("valor_total"));
+                    s.setStatus(OrderStatus.valueOf(rs.getString("status")));
+                    s.setNomeCliente(rs.getString("nome_cliente"));
+                    s.setQuantidadeItens(rs.getInt("qtd_itens"));
+                    List<PaymentMethod> formas = new ArrayList<>();
+                    String texto = rs.getString("formas");
+                    if (texto != null) {
+                        for (String forma : texto.split(",")) formas.add(PaymentMethod.valueOf(forma));
+                    }
+                    s.setFormas(formas);
+                    list.add(s);
+                }
+                return list;
+            }
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage(), e);
+        }
+    }
+
+    /** Todos os pagamentos de um pedido: os da hora da venda e os recebimentos de fiado depois. */
+    @Override
+    public List<Payment> findPaymentsByOrder(int idPedido) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "SELECT itempedido.*, produto.nome_produto, produto.cod_barras, pedido.data_pedido " +
-                             "FROM itempedido " +
-                             "INNER JOIN produto ON itempedido.id_produto = produto.id_produto " +
-                             "INNER JOIN pedido ON itempedido.id_pedido = pedido.id_pedido " +
-                             "WHERE DATE(pedido.data_pedido) BETWEEN ? AND ? " +
-                             "ORDER BY pedido.data_pedido DESC")) {
-
-            st.setDate(1, java.sql.Date.valueOf(inicio));
-            st.setDate(2, java.sql.Date.valueOf(fim));
-
+                     "SELECT metodo_pagamento, valor_pago, origem, data_pagamento FROM pagamento " +
+                             "WHERE id_pedido = ? ORDER BY data_pagamento, id_pagamento")) {
+            st.setInt(1, idPedido);
             try (ResultSet rs = st.executeQuery()) {
-                List<OrderItem> list = new ArrayList<>();
-
+                List<Payment> list = new ArrayList<>();
                 while (rs.next()) {
-                    OrderItem item = new OrderItem();
-                    item.setPrecoUnitario(rs.getBigDecimal("preco_unitario"));
-                    item.setQtd(rs.getInt("quantidade"));
-
-                    Product prod = new Product();
-                    prod.setNomeProduto(rs.getString("nome_produto"));
-                    prod.setCodBarras(rs.getString("cod_barras"));
-                    item.setProduto(prod);
-
-                    Order pedido = new Order();
-                    pedido.setIdPedido(rs.getInt("id_pedido"));
-                    pedido.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                    item.setPedido(pedido);
-
-                    list.add(item);
+                    Payment p = new Payment();
+                    p.setMetodo(PaymentMethod.valueOf(rs.getString("metodo_pagamento")));
+                    p.setValorPago(rs.getBigDecimal("valor_pago"));
+                    p.setOrigem(PaymentOrigin.valueOf(rs.getString("origem")));
+                    p.setDataPagamento(rs.getTimestamp("data_pagamento").toLocalDateTime());
+                    list.add(p);
                 }
                 return list;
             }
