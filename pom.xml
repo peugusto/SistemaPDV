@@ -82,8 +82,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>14</source>
-                    <target>14</target>
+                    <!-- release (e não source/target) também confere a biblioteca do Java 14:
+                         usar algo mais novo, como Stream.toList() (Java 16), dá erro já no Maven -->
+                    <release>14</release>
                 </configuration>
             </plugin>
             <plugin>

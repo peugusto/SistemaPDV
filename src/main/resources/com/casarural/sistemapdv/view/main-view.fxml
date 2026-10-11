@@ -18,9 +18,13 @@
                     <MenuItem text="Manual"/>
                     <MenuItem text="Sobre"/>
                 </Menu>
+                <Menu text="Relatórios">
+                    <MenuItem fx:id="menuPao" text="Pão do dia (F7)" onAction="#onMenuPaoAction"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem fx:id="menuRelatorios" text="Vendas e produtos (F8) — pede o PIN" onAction="#onMenuRelatoriosAction"/>
+                </Menu>
                 <Menu text="Extras">
                     <MenuItem text="Lista de Compras"/>
-                    <MenuItem fx:id="menuDashboardVendas" text="Dashboard de Vendas" onAction="#onMenuDashboardVendasAction"/>
                 </Menu>
             </MenuBar>
 

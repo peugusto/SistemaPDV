@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.Insets?>
+
+<!-- Pão do dia: registrar quantos pães chegaram (7h e 15h), ver sobra e a sugestão de compra -->
+<BorderPane styleClass="tela" prefWidth="1200" prefHeight="780" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.casarural.sistemapdv.controller.PaoController">
+
+    <top>
+        <HBox styleClass="cabecalho" alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label styleClass="titulo" text="Pão do dia"/>
+                <Label fx:id="lblProduto" styleClass="subtitulo" text=""/>
+            </VBox>
+            <Label styleClass="subtitulo" text="Dia"/>
+            <DatePicker fx:id="dataDia" prefWidth="150"/>
+        </HBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true">
+            <VBox spacing="16">
+                <padding><Insets top="18" right="24" bottom="20" left="24"/></padding>
+
+                <HBox spacing="16">
+                    <!-- Manhã -->
+                    <VBox styleClass="cartao" spacing="10" HBox.hgrow="ALWAYS" maxWidth="Infinity" prefWidth="300">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label styleClass="titulo-cartao" text="Manhã (7h–15h)" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Label fx:id="lblSituacaoManha" styleClass="etiqueta"/>
+                        </HBox>
+                        <Label styleClass="rotulo-secao" text="QUANTOS PÃES CHEGARAM"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="txtCompraManha" styleClass="campo-grande" promptText="0" prefWidth="120"/>
+                            <Button fx:id="btnRegistrarManha" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarManha" prefHeight="44"/>
+                        </HBox>
+                        <GridPane hgap="12" vgap="4">
+                            <Label styleClass="texto-suave" text="Vendidos" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblVendidoManha" styleClass="valor-grande" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblSobraManhaRotulo" styleClass="texto-suave" text="Sobra" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblSobraManha" styleClass="valor-grande" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Tarde -->
+                    <VBox styleClass="cartao" spacing="10" HBox.hgrow="ALWAYS" maxWidth="Infinity" prefWidth="300">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label styleClass="titulo-cartao" text="Tarde (15h–19h)" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Label fx:id="lblSituacaoTarde" styleClass="etiqueta"/>
+                        </HBox>
+                        <Label styleClass="rotulo-secao" text="QUANTOS PÃES CHEGARAM"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="txtCompraTarde" styleClass="campo-grande" promptText="0" prefWidth="120"/>
+                            <Button fx:id="btnRegistrarTarde" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarTarde" prefHeight="44"/>
+                        </HBox>
+                        <GridPane hgap="12" vgap="4">
+                            <Label styleClass="texto-suave" text="Vendidos" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblVendidoTarde" styleClass="valor-grande" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label fx:id="lblSobraTardeRotulo" styleClass="texto-suave" text="Sobra" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Label fx:id="lblSobraTarde" styleClass="valor-grande" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Sugestão -->
+                    <VBox styleClass="indicador,indicador-destaque" spacing="6" HBox.hgrow="ALWAYS" maxWidth="Infinity" prefWidth="380">
+                        <Label styleClass="indicador-rotulo" text="QUANTOS PÃES COMPRAR"/>
+                        <HBox alignment="BASELINE_LEFT" spacing="10">
+                            <Label fx:id="lblSugestaoNumero" styleClass="numero-sugestao" text="—"/>
+                            <Label fx:id="lblSugestaoQuando" styleClass="valor-grande" wrapText="true"/>
+                        </HBox>
+                        <Label fx:id="lblSugestaoExplica" styleClass="texto" wrapText="true"/>
+                        <Separator/>
+                        <Label fx:id="lblSugestaoProxima" styleClass="texto" wrapText="true"/>
+                        <Label fx:id="lblSugestaoBase" styleClass="indicador-detalhe" wrapText="true"/>
+                    </VBox>
+                </HBox>
+
+                <VBox styleClass="cartao" spacing="6">
+                    <BarChart fx:id="graficoDias" title="Últimos 14 dias: quantos chegaram e quantos venderam"
+                              animated="false" prefHeight="280" categoryGap="14" barGap="2">
+                        <xAxis><CategoryAxis/></xAxis>
+                        <yAxis><NumberAxis label="pães" minorTickVisible="false"/></yAxis>
+                    </BarChart>
+                </VBox>
+
+                <VBox styleClass="cartao" spacing="8">
+                    <Label styleClass="titulo-cartao" text="Últimos 14 dias"/>
+                    <TableView fx:id="tabelaDias" prefHeight="380">
+                        <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+                        <columns>
+                            <TableColumn fx:id="colData" text="DIA" prefWidth="110"/>
+                            <TableColumn fx:id="colManha" text="MANHÃ: chegou / vendeu" prefWidth="170"/>
+                            <TableColumn fx:id="colTarde" text="TARDE: chegou / vendeu" prefWidth="170"/>
+                            <TableColumn fx:id="colVendidoDia" text="VENDIDOS NO DIA" prefWidth="120"/>
+                            <TableColumn fx:id="colSobraDia" text="SOBROU NO FIM" prefWidth="110"/>
+                            <TableColumn fx:id="colObs" text="OBSERVAÇÃO" prefWidth="330"/>
+                        </columns>
+                    </TableView>
+                    <Label styleClass="texto-dica" wrapText="true"
+                           text="Como a sugestão é calculada: média dos últimos 4 dias iguais da semana (ex.: as últimas 4 terças). Se ainda não tiver 2 desses dias, usa os últimos 7 dias. Quando o pão acabou antes da hora, o sistema estima quanto teria vendido pelo ritmo de venda (no máximo o dobro). O resultado é arredondado para cima, de 5 em 5. Na compra da tarde, desconta o que sobrou da manhã."/>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </center>
+</BorderPane>

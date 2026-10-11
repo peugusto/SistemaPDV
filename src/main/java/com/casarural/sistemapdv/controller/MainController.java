@@ -104,6 +104,12 @@ public class MainController implements Initializable {
                     } else if (event.getCode() == KeyCode.F6) {
                         onCaixaAbrirFecharAction();
                         event.consume();
+                    } else if (event.getCode() == KeyCode.F7) {
+                        onMenuPaoAction();
+                        event.consume();
+                    } else if (event.getCode() == KeyCode.F8) {
+                        onMenuRelatoriosAction();
+                        event.consume();
                     }
                 });
             }
@@ -287,9 +293,16 @@ public class MainController implements Initializable {
         atualizarCaixa();
     }
 
+    /** Relatórios > Pão do dia (F7): sem PIN, usado todo dia na compra do pão. */
     @FXML
-    public void onMenuDashboardVendasAction() {
-        ViewLoader.showView(true, "/com/casarural/sistemapdv/view/dashboard_vendas.fxml", "Dashboard de Vendas");
+    public void onMenuPaoAction() {
+        PaoController.abrir(botaoPDV.getScene().getWindow());
+    }
+
+    /** Relatórios > Vendas e produtos (F8): pede o PIN, mostra faturamento. */
+    @FXML
+    public void onMenuRelatoriosAction() {
+        RelatoriosController.abrir(botaoPDV.getScene().getWindow());
     }
 
     @FXML

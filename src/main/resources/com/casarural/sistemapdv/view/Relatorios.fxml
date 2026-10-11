@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.Insets?>
+
+<!-- Relatórios (protegidos por PIN): período no topo, abas Vendas e Produtos -->
+<BorderPane styleClass="tela" prefWidth="1200" prefHeight="760" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.casarural.sistemapdv.controller.RelatoriosController">
+
+    <top>
+        <VBox>
+            <HBox styleClass="cabecalho" alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label styleClass="titulo" text="Relatórios"/>
+                    <Label fx:id="lblPeriodo" styleClass="subtitulo" text=""/>
+                </VBox>
+                <Button text="Trocar PIN" onAction="#onTrocarPin"/>
+            </HBox>
+
+            <HBox styleClass="cartao" alignment="CENTER_LEFT" spacing="8">
+                <VBox.margin><Insets top="16" right="24" bottom="0" left="24"/></VBox.margin>
+                <Label styleClass="rotulo-secao" text="PERÍODO" minWidth="70"/>
+                <fx:define><ToggleGroup fx:id="grupoPeriodo"/></fx:define>
+                <ToggleButton fx:id="btnHoje" styleClass="pilula" text="Hoje" toggleGroup="$grupoPeriodo"/>
+                <ToggleButton fx:id="btn7Dias" styleClass="pilula" text="7 dias" toggleGroup="$grupoPeriodo"/>
+                <ToggleButton fx:id="btn30Dias" styleClass="pilula" text="30 dias" toggleGroup="$grupoPeriodo" selected="true"/>
+                <ToggleButton fx:id="btnEsteMes" styleClass="pilula" text="Este mês" toggleGroup="$grupoPeriodo"/>
+                <ToggleButton fx:id="btnMesPassado" styleClass="pilula" text="Mês passado" toggleGroup="$grupoPeriodo"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Label styleClass="rotulo" text="De"/>
+                <DatePicker fx:id="dataDe" prefWidth="140"/>
+                <Label styleClass="rotulo" text="até"/>
+                <DatePicker fx:id="dataAte" prefWidth="140"/>
+                <Button styleClass="botao-primario" text="Ver" onAction="#onVerDatas"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane fx:id="abas" tabClosingPolicy="UNAVAILABLE">
+            <BorderPane.margin><Insets top="14" right="24" bottom="20" left="24"/></BorderPane.margin>
+
+            <!-- ============================ VENDAS ============================ -->
+            <Tab text="Vendas">
+                <ScrollPane fitToWidth="true">
+                    <VBox spacing="16">
+                        <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+                        <HBox spacing="12">
+                            <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="FATURAMENTO"/>
+                                <Label fx:id="lblFaturamento" styleClass="indicador-valor" text="R$ 0,00"/>
+                                <Label fx:id="lblFaturamentoDetalhe" styleClass="indicador-detalhe" text=""/>
+                            </VBox>
+                            <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="VENDAS"/>
+                                <Label fx:id="lblVendas" styleClass="indicador-valor" text="0"/>
+                                <Label fx:id="lblVendasDetalhe" styleClass="indicador-detalhe" text=""/>
+                            </VBox>
+                            <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="TICKET MÉDIO"/>
+                                <Label fx:id="lblTicket" styleClass="indicador-valor" text="R$ 0,00"/>
+                                <Label styleClass="indicador-detalhe" text="valor médio de cada venda"/>
+                            </VBox>
+                            <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="FOI PARA O FIADO"/>
+                                <Label fx:id="lblFiado" styleClass="indicador-valor" text="R$ 0,00"/>
+                                <Label fx:id="lblFiadoDetalhe" styleClass="indicador-detalhe" text=""/>
+                            </VBox>
+                            <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="RECEBIDO DE FIADO"/>
+                                <Label fx:id="lblRecebido" styleClass="indicador-valor" text="R$ 0,00"/>
+                                <Label styleClass="indicador-detalhe" text="pagamentos de contas no período"/>
+                            </VBox>
+                        </HBox>
+
+                        <HBox spacing="16">
+                            <BarChart fx:id="graficoDias" title="Faturamento por dia" legendVisible="false"
+                                      animated="false" prefHeight="300" HBox.hgrow="ALWAYS" minWidth="300">
+                                <xAxis><CategoryAxis fx:id="eixoDias"/></xAxis>
+                                <yAxis><NumberAxis label="R$"/></yAxis>
+                            </BarChart>
+                            <BarChart fx:id="graficoFormas" title="Como foi pago" legendVisible="false"
+                                      animated="false" prefHeight="300" prefWidth="360" minWidth="300">
+                                <xAxis><CategoryAxis/></xAxis>
+                                <yAxis><NumberAxis label="R$"/></yAxis>
+                            </BarChart>
+                        </HBox>
+
+                        <HBox spacing="16">
+                            <BarChart fx:id="graficoHoras" title="Movimento por hora (número de vendas)" legendVisible="false"
+                                      animated="false" prefHeight="280" HBox.hgrow="ALWAYS" minWidth="300">
+                                <xAxis><CategoryAxis/></xAxis>
+                                <yAxis><NumberAxis label="vendas" minorTickVisible="false"/></yAxis>
+                            </BarChart>
+                            <BarChart fx:id="graficoSemana" title="Média por dia da semana" legendVisible="false"
+                                      animated="false" prefHeight="280" HBox.hgrow="ALWAYS" minWidth="300">
+                                <xAxis><CategoryAxis/></xAxis>
+                                <yAxis><NumberAxis label="R$"/></yAxis>
+                            </BarChart>
+                        </HBox>
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+            <!-- ============================ PRODUTOS ============================ -->
+            <Tab text="Produtos">
+                <VBox spacing="14">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+                    <HBox spacing="12">
+                        <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                            <Label styleClass="indicador-rotulo" text="PRODUTOS QUE VENDERAM"/>
+                            <Label fx:id="lblProdVenderam" styleClass="indicador-valor" text="0"/>
+                            <Label fx:id="lblProdVenderamDetalhe" styleClass="indicador-detalhe" text=""/>
+                        </VBox>
+                        <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                            <Label styleClass="indicador-rotulo" text="ITENS VENDIDOS"/>
+                            <Label fx:id="lblItens" styleClass="indicador-valor" text="0"/>
+                            <Label styleClass="indicador-detalhe" text="unidades + pesagens"/>
+                        </VBox>
+                        <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                            <Label styleClass="indicador-rotulo" text="PARADOS"/>
+                            <Label fx:id="lblParados" styleClass="indicador-valor" text="0"/>
+                            <Label styleClass="indicador-detalhe" text="sem nenhuma venda no período"/>
+                        </VBox>
+                        <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                            <Label styleClass="indicador-rotulo" text="CAMPEÃO"/>
+                            <Label fx:id="lblCampeao" styleClass="indicador-valor" text="—"/>
+                            <Label fx:id="lblCampeaoDetalhe" styleClass="indicador-detalhe" text=""/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <TextField fx:id="txtBuscaProduto" promptText="Buscar produto" prefWidth="220"/>
+                        <Label styleClass="rotulo-secao" text="MOSTRAR">
+                            <HBox.margin><Insets left="8"/></HBox.margin>
+                        </Label>
+                        <fx:define><ToggleGroup fx:id="grupoMostrar"/></fx:define>
+                        <ToggleButton fx:id="btnQueVenderam" styleClass="pilula" text="Que venderam" toggleGroup="$grupoMostrar" selected="true"/>
+                        <ToggleButton fx:id="btnParados" styleClass="pilula" text="Parados" toggleGroup="$grupoMostrar"/>
+                        <ToggleButton fx:id="btnTodosProdutos" styleClass="pilula" text="Todos" toggleGroup="$grupoMostrar"/>
+                        <Pane HBox.hgrow="ALWAYS"/>
+                        <ComboBox fx:id="comboTipo" prefWidth="200"/>
+                        <Label styleClass="rotulo" text="Ordenar por"/>
+                        <ComboBox fx:id="comboOrdem" prefWidth="190"/>
+                    </HBox>
+
+                    <HBox spacing="16" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="tabelaProdutos" HBox.hgrow="ALWAYS" minWidth="560">
+                            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
+                            <placeholder><Label styleClass="texto-suave" text="Nenhum produto neste filtro."/></placeholder>
+                            <columns>
+                                <TableColumn fx:id="colPosicao" text="#" prefWidth="40" sortable="false"/>
+                                <TableColumn fx:id="colProduto" text="PRODUTO" prefWidth="170"/>
+                                <TableColumn fx:id="colQtd" text="QTD" prefWidth="70"/>
+                                <TableColumn fx:id="colNumVendas" text="VENDAS" prefWidth="70"/>
+                                <TableColumn fx:id="colValor" text="FATURAMENTO" prefWidth="110"/>
+                                <TableColumn fx:id="colParticipacao" text="PARTICIPAÇÃO" prefWidth="115"/>
+                                <TableColumn fx:id="colUltima" text="ÚLTIMA VENDA" prefWidth="120"/>
+                            </columns>
+                        </TableView>
+                        <BarChart fx:id="graficoTop" styleClass="grafico-horizontal" title="Top 10" legendVisible="false"
+                                  animated="false" prefWidth="420" minWidth="340">
+                            <xAxis><NumberAxis fx:id="eixoTopValor"/></xAxis>
+                            <yAxis><CategoryAxis fx:id="eixoTopNomes"/></yAxis>
+                        </BarChart>
+                    </HBox>
+                </VBox>
+            </Tab>
+        </TabPane>
+    </center>
+</BorderPane>
