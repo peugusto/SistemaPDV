@@ -17,6 +17,8 @@ public class Payment {
     private PaymentOrigin origem = PaymentOrigin.VENDA;
     /** Pedidos abatidos por este recebimento, ex.: "#32, #36" (um recebimento pode quitar vários). */
     private String pedidos;
+    private Integer idCaixa;
+    private boolean estornado;
 
     public Payment(){}
     public Payment(Order order, BigDecimal valorPago, LocalDateTime dataPagamento, PaymentMethod metodo) {
@@ -72,6 +74,24 @@ public class Payment {
 
     public void setOrigem(PaymentOrigin origem) {
         this.origem = origem;
+    }
+
+    /** Caixa em que o pagamento entrou (só os do caixa aberto podem ser estornados). */
+    public Integer getIdCaixa() {
+        return idCaixa;
+    }
+
+    public void setIdCaixa(Integer idCaixa) {
+        this.idCaixa = idCaixa;
+    }
+
+    /** true = desfeito (venda cancelada/trocada ou recebimento estornado); vem de pagamento_estornado. */
+    public boolean isEstornado() {
+        return estornado;
+    }
+
+    public void setEstornado(boolean estornado) {
+        this.estornado = estornado;
     }
 
     public String getPedidos() {

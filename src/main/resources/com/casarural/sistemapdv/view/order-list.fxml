@@ -109,6 +109,18 @@
                                     </children>
                                 </HBox>
 
+                                <!-- Desconto e, se cancelada, o motivo -->
+                                <Label fx:id="labelVendaExtra" styleClass="texto-suave" wrapText="true" visible="false" managed="false" />
+
+                                <!-- Trocar / cancelar: só vendas do caixa aberto, com PIN -->
+                                <HBox fx:id="boxAcoes" spacing="8.0" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Button fx:id="btnTrocar" styleClass="botao-info,botao-pequeno" text="Trocar produtos" onAction="#onTrocar" />
+                                        <Button fx:id="btnCancelarVenda" styleClass="botao-perigo,botao-pequeno" text="Cancelar venda" onAction="#onCancelarVenda" />
+                                        <Label fx:id="labelAcoesDica" styleClass="texto-dica" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                                    </children>
+                                </HBox>
+
                                 <Label styleClass="rotulo-secao" text="PRODUTOS">
                                     <VBox.margin><Insets top="8.0" /></VBox.margin>
                                 </Label>

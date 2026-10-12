@@ -8,6 +8,10 @@ import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.RegraFiado;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
+import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.model.entities.RegraTroca;
+import com.casarural.sistemapdv.services.AcessoRelatoriosService;
+import com.casarural.sistemapdv.services.CashRegisterService;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
@@ -29,6 +33,7 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 /**
@@ -67,6 +72,11 @@ public class FiadoListController implements Initializable {
     @FXML private TableColumn<Payment, String> colRecForma;
     @FXML private TableColumn<Payment, BigDecimal> colRecValor;
     @FXML private TableColumn<Payment, String> colRecPedidos;
+    @FXML private Button btnEstornar;
+    @FXML private Label labelEstornoDica;
+    private final AcessoRelatoriosService acesso = new AcessoRelatoriosService(DaoFactory.createConfiguracaoDAO());
+    /** Caixa aberto agora (null = fechado): só recebimentos dele podem ser estornados. */
+    private Integer idCaixaAberto;
 
     // Compras quitadas
     @FXML private TableView<Order> tableQuitados;
@@ -142,6 +152,13 @@ public class FiadoListController implements Initializable {
         colRecValor.setCellValueFactory(new PropertyValueFactory<>("valorPago"));
         MoneyCells.format(colRecValor);
         colRecPedidos.setCellValueFactory(new PropertyValueFactory<>("pedidos"));
+        tableRecebimentos.getSelectionModel().selectedItemProperty().addListener((obs, antes, rec) -> {
+            boolean pode = rec != null && idCaixaAberto != null && idCaixaAberto.equals(rec.getIdCaixa());
+            btnEstornar.setDisable(!pode);
+            labelEstornoDica.setText(rec != null && !pode
+                    ? "Este recebimento é de um caixa já fechado: não dá para estornar."
+                    : "Recebeu errado? Selecione o pagamento e clique em Estornar (só os do caixa aberto).");
+        });
     }
 
     private void configurarQuitados() {
@@ -187,7 +204,9 @@ public class FiadoListController implements Initializable {
         tableAbertos.setItems(FXCollections.observableArrayList(abertas));
         // Recalcula o atraso com os dados de agora (muda logo depois de um pagamento)
         customer.setValorEmAtraso(RegraFiado.valorEmAtraso(abertas, LocalDateTime.now()));
+        idCaixaAberto = new CashRegisterService().findOpen().map(c -> c.getIdCaixa()).orElse(null);
         tableRecebimentos.setItems(FXCollections.observableArrayList(orderService.findFiadoReceipts(id)));
+        btnEstornar.setDisable(true);
         tableQuitados.setItems(FXCollections.observableArrayList(orderService.findPaidOrdersByCustomer(id)));
         mostrarItens(null, tableItensAberto, labelItensAberto);
         mostrarItens(null, tableItensQuitado, labelItensQuitado);
@@ -317,5 +336,35 @@ public class FiadoListController implements Initializable {
                 setText(empty || item == null ? null : DATA_HORA.format(item));
             }
         });
+    }
+
+    /** Desfaz um recebimento lançado errado: o dinheiro volta ao cliente e as compras voltam a dever. */
+    @FXML
+    public void onEstornarAction() {
+        Payment rec = tableRecebimentos.getSelectionModel().getSelectedItem();
+        if (rec == null) return;
+        javafx.stage.Window janela = tableRecebimentos.getScene().getWindow();
+        if (!PinDialogo.liberar(acesso, janela, "Estornar recebimento", "estornar este recebimento")) return;
+
+        String quando = rec.getDataPagamento().format(DateTimeFormatter.ofPattern("dd/MM HH:mm"));
+        Optional<String> motivo = Alerts.pedirTexto("Estornar recebimento",
+                "Estornar " + Money.format(rec.getValorPago()) + " (" + nomeDaForma(rec.getMetodo()) + ", " + quando + ")?",
+                "As compras " + rec.getPedidos() + " voltam a dever esse valor.\n"
+                        + "Devolva ao cliente " + Money.format(rec.getValorPago()) + " " + RegraTroca.comoDevolver(rec.getMetodo()) + ".\n\n"
+                        + "Por que está estornando?",
+                "Motivo (ex.: valor digitado errado)", "Estornar");
+        if (motivo.isEmpty()) return;
+
+        try {
+            BigDecimal valor = orderService.estornarRecebimento(customer.getIdCliente(), rec.getDataPagamento(), rec.getMetodo(), motivo.get());
+            log.warn("Recebimento de fiado estornado: {} {} de {}. Motivo: {}", Money.format(valor), rec.getMetodo(),
+                    customer.getNomeCliente(), motivo.get());
+            Alerts.showAlertAndWait("Recebimento estornado", null,
+                    "Devolva ao cliente " + Money.format(valor) + " " + RegraTroca.comoDevolver(rec.getMetodo()) + ".",
+                    Alert.AlertType.INFORMATION);
+            carregarDados();
+        } catch (RuntimeException e) {
+            Alerts.showAlert("Estornar recebimento", "Não foi possível estornar", e.getMessage(), Alert.AlertType.WARNING);
+        }
     }
 }

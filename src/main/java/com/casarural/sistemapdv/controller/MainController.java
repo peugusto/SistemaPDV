@@ -110,6 +110,9 @@ public class MainController implements Initializable {
                     } else if (event.getCode() == KeyCode.F8) {
                         onMenuRelatoriosAction();
                         event.consume();
+                    } else if (event.getCode() == KeyCode.F9) {
+                        onMenuListaComprasAction();
+                        event.consume();
                     }
                 });
             }
@@ -315,6 +318,12 @@ public class MainController implements Initializable {
     @FXML
     public void onMenuPaoAction() {
         PaoController.abrir(botaoPDV.getScene().getWindow());
+    }
+
+    /** Relatórios > Lista de compras (F9): sem PIN, só quantidades. */
+    @FXML
+    public void onMenuListaComprasAction() {
+        ListaComprasController.abrir(botaoPDV.getScene().getWindow());
     }
 
     /** Relatórios > Vendas e produtos (F8): pede o PIN, mostra faturamento. */

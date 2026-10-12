@@ -116,4 +116,33 @@ public class Alerts {
             dialog.getEditor().selectAll();
         }
     }
+
+    /**
+     * Pede um texto obrigatório (ex.: o motivo de um cancelamento), com uma explicação acima do campo.
+     * Volta vazio se a pessoa cancelar.
+     */
+    public static Optional<String> pedirTexto(String title, String header, String explicacao, String rotuloCampo,
+                                              String textoConfirmar) {
+        javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        javafx.scene.control.TextField campo = new javafx.scene.control.TextField();
+        campo.setPromptText(rotuloCampo);
+        Constraints.setTextFieldMaxLength(campo, 255);
+        javafx.scene.control.Label texto = new javafx.scene.control.Label(explicacao);
+        texto.setWrapText(true);
+        texto.setMaxWidth(420);
+        javafx.scene.layout.VBox conteudo = new javafx.scene.layout.VBox(12, texto, campo);
+        dialog.getDialogPane().setContent(conteudo);
+        ButtonType ok = new ButtonType(textoConfirmar, ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ok, new ButtonType("Voltar", ButtonBar.ButtonData.CANCEL_CLOSE));
+        // Sem motivo não deixa confirmar
+        javafx.scene.Node botaoOk = dialog.getDialogPane().lookupButton(ok);
+        botaoOk.setDisable(true);
+        campo.textProperty().addListener((obs, a, b) -> botaoOk.setDisable(b == null || b.isBlank()));
+        dialog.setResultConverter(b -> b == ok ? campo.getText().trim() : null);
+        Tema.aplicar(dialog.getDialogPane());
+        javafx.application.Platform.runLater(campo::requestFocus);
+        return dialog.showAndWait();
+    }
 }

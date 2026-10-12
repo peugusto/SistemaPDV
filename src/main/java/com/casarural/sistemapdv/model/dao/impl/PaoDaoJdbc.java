@@ -34,7 +34,7 @@ public class PaoDaoJdbc implements PaoDao {
                 "       CASE WHEN TIME(p.data_pedido) < ? THEN 'MANHA' ELSE 'TARDE' END AS turno, " +
                 "       SUM(ip.quantidade) AS vendidos, MAX(TIME(p.data_pedido)) AS ultima " +
                 "FROM itempedido ip INNER JOIN pedido p ON p.id_pedido = ip.id_pedido " +
-                "WHERE ip.id_produto = ? AND p.data_pedido >= ? AND p.data_pedido < ? AND p.status <> 'EM_ANDAMENTO' " +
+                "WHERE ip.id_produto = ? AND p.data_pedido >= ? AND p.data_pedido < ? AND p.status NOT IN ('EM_ANDAMENTO', 'CANCELADO') " +
                 "GROUP BY dia, turno";
         String sqlCompras =
                 "SELECT data_compra, turno, quantidade FROM compra_pao " +

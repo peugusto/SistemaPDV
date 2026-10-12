@@ -7,11 +7,14 @@ import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.SaleFilter;
 import com.casarural.sistemapdv.model.entities.SaleSummary;
+import com.casarural.sistemapdv.model.entities.VendaParaDesfazer;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class OrderService {
@@ -68,5 +71,24 @@ public class OrderService {
             order.setItemPedido(items);
         }
         return orders;
+    }
+
+    public Optional<VendaParaDesfazer> findParaDesfazer(int idPedido) {
+        return dao.findParaDesfazer(idPedido);
+    }
+
+    /** Cancela a venda. Devolve o que o cliente tinha pago em cada forma (para devolver a ele). */
+    public Map<PaymentMethod, BigDecimal> cancelar(int idPedido, String motivo) {
+        return dao.cancel(idPedido, motivoObrigatorio(motivo));
+    }
+
+    public BigDecimal estornarRecebimento(int idCliente, LocalDateTime dataPagamento, PaymentMethod metodo, String motivo) {
+        return dao.reverseFiadoReceipt(idCliente, dataPagamento, metodo, motivoObrigatorio(motivo));
+    }
+
+    private static String motivoObrigatorio(String motivo) {
+        if (motivo == null || motivo.isBlank()) throw new IllegalArgumentException("Escreva o motivo.");
+        String m = motivo.trim();
+        return m.length() > 255 ? m.substring(0, 255) : m;
     }
 }

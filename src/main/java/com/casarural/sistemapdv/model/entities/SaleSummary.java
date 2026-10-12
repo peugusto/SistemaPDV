@@ -18,6 +18,10 @@ public class SaleSummary {
     private OrderStatus status;
     private String nomeCliente;
     private int quantidadeItens;
+    private BigDecimal desconto = Money.ZERO;
+    private String motivoCancelamento;
+    /** Venda cancelada numa troca: a venda nova que a substituiu. */
+    private Integer idPedidoTroca;
     /** Formas usadas na hora da venda (não inclui recebimentos de fiado posteriores). */
     private List<PaymentMethod> formas = new ArrayList<>();
 
@@ -53,6 +57,15 @@ public class SaleSummary {
 
     public int getQuantidadeItens() { return quantidadeItens; }
     public void setQuantidadeItens(int quantidadeItens) { this.quantidadeItens = quantidadeItens; }
+
+    public BigDecimal getDesconto() { return desconto; }
+    public void setDesconto(BigDecimal desconto) { this.desconto = Money.of(desconto); }
+
+    public String getMotivoCancelamento() { return motivoCancelamento; }
+    public void setMotivoCancelamento(String motivoCancelamento) { this.motivoCancelamento = motivoCancelamento; }
+
+    public Integer getIdPedidoTroca() { return idPedidoTroca; }
+    public void setIdPedidoTroca(Integer idPedidoTroca) { this.idPedidoTroca = idPedidoTroca; }
 
     public List<PaymentMethod> getFormas() { return formas; }
     public void setFormas(List<PaymentMethod> formas) { this.formas = formas; }

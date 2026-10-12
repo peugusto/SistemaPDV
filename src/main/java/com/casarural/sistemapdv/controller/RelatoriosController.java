@@ -184,11 +184,15 @@ public class RelatoriosController implements Initializable {
         long dias = periodo.quantidadeDeDias();
 
         lblFaturamento.setText(Money.format(r.getFaturamento()));
-        lblFaturamentoDetalhe.setText(dias > 1
-                ? "média de " + Money.format(dividir(r.getFaturamento(), dias)) + " por dia" : "");
+        List<String> detalhe = new ArrayList<>();
+        if (dias > 1) detalhe.add("média de " + Money.format(dividir(r.getFaturamento(), dias)) + " por dia");
+        if (Money.isPositive(r.getDescontos())) detalhe.add("descontos " + Money.format(r.getDescontos()));
+        lblFaturamentoDetalhe.setText(String.join(" · ", detalhe));
         lblVendas.setText(String.valueOf(r.getQuantidadeVendas()));
-        lblVendasDetalhe.setText(dias > 1
-                ? String.format("média de %.1f por dia", (double) r.getQuantidadeVendas() / dias).replace('.', ',') : "");
+        List<String> detalheVendas = new ArrayList<>();
+        if (dias > 1) detalheVendas.add(String.format("média de %.1f por dia", (double) r.getQuantidadeVendas() / dias).replace('.', ','));
+        if (r.getCanceladas() > 0) detalheVendas.add(r.getCanceladas() + (r.getCanceladas() == 1 ? " cancelada" : " canceladas"));
+        lblVendasDetalhe.setText(String.join(" · ", detalheVendas));
         lblTicket.setText(Money.format(r.getTicketMedio()));
         lblFiado.setText(Money.format(r.getFiadoLancado()));
         lblFiadoDetalhe.setText(percentual(r.getFiadoLancado(), r.getFaturamento()) + " do faturamento");

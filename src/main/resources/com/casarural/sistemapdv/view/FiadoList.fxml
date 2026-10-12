@@ -85,6 +85,15 @@
                                     </columns>
                                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                                 </TableView>
+                                <!-- Desfazer um recebimento lançado errado: só do caixa aberto, com PIN -->
+                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label fx:id="labelEstornoDica" styleClass="texto-dica" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                               text="Recebeu errado? Selecione o pagamento e clique em Estornar (só os do caixa aberto)." />
+                                        <Button fx:id="btnEstornar" styleClass="botao-perigo,botao-pequeno" text="Estornar recebimento"
+                                                onAction="#onEstornarAction" disable="true" />
+                                    </children>
+                                </HBox>
                             </children>
                         </VBox>
                     </content>

@@ -21,6 +21,10 @@ public class ResumoVendas {
     private final Map<PaymentMethod, BigDecimal> porForma = new EnumMap<>(PaymentMethod.class);
     /** Pago na hora com forma desconhecida (registros antigos, de antes de existir a forma de pagamento). */
     private BigDecimal outrasFormas = Money.ZERO;
+    /** Soma dos descontos dados nas vendas do período. */
+    private BigDecimal descontos = Money.ZERO;
+    /** Vendas canceladas no período (sem contar as trocas). */
+    private int canceladas;
 
     public int getQuantidadeVendas() { return quantidadeVendas; }
     public void setQuantidadeVendas(int quantidadeVendas) { this.quantidadeVendas = quantidadeVendas; }
@@ -42,6 +46,12 @@ public class ResumoVendas {
 
     public BigDecimal getOutrasFormas() { return outrasFormas; }
     public void setOutrasFormas(BigDecimal outrasFormas) { this.outrasFormas = Money.of(outrasFormas); }
+
+    public BigDecimal getDescontos() { return descontos; }
+    public void setDescontos(BigDecimal descontos) { this.descontos = Money.of(descontos); }
+
+    public int getCanceladas() { return canceladas; }
+    public void setCanceladas(int canceladas) { this.canceladas = canceladas; }
 
     /** Valor médio de cada venda. */
     public BigDecimal getTicketMedio() {

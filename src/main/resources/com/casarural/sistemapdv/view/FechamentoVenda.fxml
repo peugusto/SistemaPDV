@@ -20,6 +20,10 @@
         <VBox styleClass="cartao" alignment="CENTER" spacing="2">
             <Label styleClass="rotulo-secao" text="FALTA PAGAR"/>
             <Label fx:id="labelTotalPagamento" styleClass="valor-destaque" text="R$ 0,00"/>
+            <!-- Total da compra, desconto e já lançado; na troca, o crédito e o que devolver -->
+            <Label fx:id="labelResumo" styleClass="texto-suave" wrapText="true" textAlignment="CENTER"/>
+            <Label fx:id="labelTroca" styleClass="etiqueta,etiqueta-info" wrapText="true" textAlignment="CENTER"
+                   visible="false" managed="false"/>
         </VBox>
 
         <fx:define>
@@ -59,6 +63,8 @@
         <Pane VBox.vgrow="ALWAYS"/>
 
         <HBox spacing="14" alignment="CENTER_RIGHT">
+            <Button fx:id="btnDesconto" text="Desconto (F4)" prefWidth="160" prefHeight="50"/>
+            <Pane HBox.hgrow="ALWAYS"/>
             <Button fx:id="btnCancelar" text="Voltar (Esc)" prefWidth="150" prefHeight="50"/>
             <Button fx:id="btnConfirmar" styleClass="botao-primario,botao-grande" text="Confirmar pagamento" prefWidth="260" prefHeight="54"/>
         </HBox>

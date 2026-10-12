@@ -19,6 +19,10 @@ public class Order {
     private List<OrderItem> itemPedido;
     private OrderStatus status;
     private List<PaymentSlice> pagamentos = new ArrayList<>();
+    /** Desconto em R$ (V13). valorTotal = soma dos itens - desconto. */
+    private BigDecimal desconto = Money.ZERO;
+    /** Na troca: a venda antiga que esta substitui (cancelada na mesma transação ao gravar). */
+    private Integer idPedidoTrocado;
 
     // Resumo de pagamentos de um pedido fiado (preenchido pela consulta da conta do cliente; não é gravado)
     private BigDecimal pagoNaVenda = Money.ZERO;
@@ -27,14 +31,22 @@ public class Order {
     public static class PaymentSlice {
         private BigDecimal valor;
         private PaymentMethod metodo;
+        /** true = crédito da troca (o que o cliente já tinha pago na venda trocada), não um pagamento novo. */
+        private final boolean credito;
 
         public PaymentSlice(BigDecimal valor, PaymentMethod metodo) {
+            this(valor, metodo, false);
+        }
+
+        public PaymentSlice(BigDecimal valor, PaymentMethod metodo, boolean credito) {
             this.valor = Money.of(valor);
             this.metodo = metodo;
+            this.credito = credito;
         }
 
         public BigDecimal getValor() { return valor; }
         public PaymentMethod getMetodo() { return metodo; }
+        public boolean isCredito() { return credito; }
     }
 
     public Order(){}
@@ -169,10 +181,53 @@ public class Order {
         return Money.max(Money.ZERO, semFiado.subtract(getTotalPagoNaHora()));
     }
 
-    /** Tira itens da venda e recalcula o total. */
+    /** Tira itens da venda e recalcula o total (o desconto continua, limitado ao que sobrou). */
     public void removerItens(List<OrderItem> itens) {
         itemPedido.removeAll(itens);
-        valorTotal = itemPedido.stream().map(OrderItem::getSubtotal).reduce(Money.ZERO, BigDecimal::add);
+        aplicarDesconto(desconto);
+    }
+
+    // ---------- Desconto ----------
+
+    /** Soma dos itens, antes do desconto. */
+    public BigDecimal getSubtotalItens() {
+        if (itemPedido == null) return Money.ZERO;
+        return itemPedido.stream().map(OrderItem::getSubtotal).reduce(Money.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal getDesconto() {
+        return desconto;
+    }
+
+    /** Usado ao ler do banco (o total já vem gravado). */
+    public void setDesconto(BigDecimal desconto) {
+        this.desconto = Money.of(desconto);
+    }
+
+    /** Aplica o desconto em R$ e recalcula o total: soma dos itens - desconto (nunca negativo). */
+    public void aplicarDesconto(BigDecimal valor) {
+        BigDecimal subtotal = getSubtotalItens();
+        this.desconto = Money.min(Money.max(Money.ZERO, Money.of(valor)), subtotal);
+        this.valorTotal = subtotal.subtract(this.desconto);
+    }
+
+    // ---------- Troca ----------
+
+    public Integer getIdPedidoTrocado() {
+        return idPedidoTrocado;
+    }
+
+    public void setIdPedidoTrocado(Integer idPedidoTrocado) {
+        this.idPedidoTrocado = idPedidoTrocado;
+    }
+
+    public boolean isTroca() {
+        return idPedidoTrocado != null;
+    }
+
+    /** true se já lançou algum pagamento novo (fora o crédito da troca). */
+    public boolean temPagamentoNovo() {
+        return pagamentos.stream().anyMatch(p -> !p.isCredito());
     }
 
     /** Quanto falta pagar, somando tudo que já foi lançado (inclusive fiado). */

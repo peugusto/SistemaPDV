@@ -39,6 +39,11 @@ A tela de pagamento mostra quanto FALTA PAGAR.
 ## Pagar com duas formas (ex.: parte no PIX e o resto no fiado)
 1. Escolha a primeira forma (ex.: PIX), digite o valor e aperte Enter. O FALTA PAGAR diminui.
 2. Escolha a segunda forma (ex.: FIADO), escolha o cliente e clique em "Confirmar pagamento". O resto vai todo nessa forma.
+## Dar desconto
+1. Na tela de pagamento, antes de lançar qualquer pagamento, clique em "Desconto (F4)".
+2. Digite o PIN da loja.
+3. Digite o desconto e escolha R$ ou %. A janela mostra o total que fica. Clique em "Aplicar".
+4. O FALTA PAGAR já aparece com o desconto. Para tirar o desconto, faça de novo e digite 0.
 ! "Voltar (Esc)" desiste do pagamento, mas o cupom continua lá para você terminar a venda.
 
 # Queijo, mortadela e outros pesados
@@ -123,16 +128,62 @@ O cartão verde mostra a sugestão para a próxima compra: hoje às 7h, hoje às
 - Na compra das 15h, desconta o que deve sobrar da manhã.
 ! A sugestão só aparece depois de alguns dias registrando. Fica boa com umas 2 semanas.
 
+# Lista de compras
+Relatórios > Lista de compras (F9). Não pede PIN.
+A lista mostra o que repor para a semana: quanto vendeu de cada produto nos últimos 7 dias menos o que ainda tem no estoque.
+1. Abra a lista no dia de fazer as compras.
+2. Os produtos que já acabaram aparecem primeiro, em vermelho.
+3. Mude a quantidade em "Comprar" se quiser (0 tira da lista).
+4. Clique em "Copiar lista" e cole no WhatsApp ou no bloco de notas do celular.
+5. Quando a mercadoria chegar, dê entrada em "Produtos" (F2), como sempre.
+! Pão, açaí e pesáveis não entram na lista (não controlam estoque). O pão tem a tela "Pão do dia".
+! Produto que não vendeu nada na semana não entra, mesmo zerado.
+
 # Relatórios de vendas
 Relatórios > Vendas e produtos (F8). Pede o PIN.
-- Na primeira vez, o sistema pede para criar um PIN de 4 a 6 números (digitado duas vezes). Guarde: ele é pedido toda vez.
+- Pede o PIN da loja (veja "PIN da loja"). Na primeira vez, o sistema pede para criar.
 - Aba Vendas: faturamento, número de vendas, ticket médio, fiado, formas de pagamento, horários de movimento e média por dia da semana.
 - Aba Produtos: o que mais vende, o que não vende (Parados), filtros e ordem.
 - Escolha o período no topo: Hoje, 7 dias, 30 dias, Este mês, Mês passado ou duas datas.
 - "Trocar PIN" no canto de cima troca o PIN.
 
+# Cancelar uma venda
+Use quando a venda foi feita errada ou o cliente desistiu. Só vendas do caixa que está aberto agora.
+1. Abra "Histórico de vendas" e clique na venda.
+2. Clique em "Cancelar venda" e digite o PIN da loja.
+3. A janela mostra o que vai acontecer e quanto devolver ao cliente. Escreva o motivo e confirme.
+O que muda:
+- Os produtos voltam para o estoque.
+- O dinheiro sai das contas do caixa (devolva ao cliente o que a mensagem mostrar).
+- O que tinha ficado no fiado sai da conta do cliente.
+- A venda continua no histórico como "Cancelada", com o motivo.
+
+# Trocar produtos
+O cliente levou um produto e voltou para trocar por outro.
+1. Abra "Histórico de vendas" e clique na venda dele.
+2. Clique em "Trocar produtos" e digite o PIN da loja.
+3. Abre a venda com os produtos que ele levou. Tire o produto devolvido ("Excluir item") e passe o novo.
+4. Aperte F1. O que o cliente já tinha pago entra como crédito da troca.
+5. Se a compra nova for mais cara, ele paga só a diferença. Se for mais barata, a tela diz quanto devolver.
+6. Confirme. A venda antiga fica como "Trocada" e o estoque se acerta sozinho.
+! Desistiu no meio? Aperte Esc na venda: nada muda.
+
+# Estornar recebimento de fiado
+Recebeu um pagamento de fiado errado (valor ou forma)?
+1. Abra "Clientes e fiado" e a conta do cliente.
+2. Na aba "Pagamentos recebidos", clique no pagamento.
+3. Clique em "Estornar recebimento", digite o PIN e escreva o motivo.
+4. Devolva o valor ao cliente. As compras que esse pagamento tinha quitado voltam a dever.
+! Só dá para estornar pagamentos do caixa que está aberto agora. Depois, lance o pagamento certo.
+
+# PIN da loja
+O PIN da loja protege: relatórios de vendas, cancelar venda, trocar produtos, estornar recebimento e dar desconto.
+- Ele é criado na primeira vez que alguma dessas coisas for usada (4 a 6 números, digitado duas vezes).
+- Para trocar: Relatórios > Vendas e produtos > "Trocar PIN".
+- Esqueceu? Veja "Problemas e soluções".
+
 # Histórico de vendas
-Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos.
+Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos. Nas vendas do caixa aberto aparecem os botões "Trocar produtos" e "Cancelar venda".
 
 # Atalhos do teclado
 ## Tela principal
@@ -144,6 +195,7 @@ Tela principal > "Histórico de vendas". Procure vendas antigas por período, fo
 - F6: Abrir ou fechar o caixa
 - F7: Pão do dia
 - F8: Relatórios de vendas (PIN)
+- F9: Lista de compras
 ## Na venda (PDV)
 - Enter: adicionar o produto
 - F2: buscar produto pelo nome
@@ -201,7 +253,7 @@ Cigarro, bebida e outros marcados "sem fiado" não podem ir para o fiado. Escolh
 > Não foi possível excluir
 Clientes com compras não podem ser excluídos, para não perder o histórico. Deixe o cliente Bloqueado.
 
-## Esqueci o PIN dos relatórios
+## Esqueci o PIN da loja
 Chame o responsável. Ele apaga o PIN no banco (comando: DELETE FROM configuracao WHERE chave = 'relatorios.pin';) e você cria um novo ao abrir os relatórios.
 
 ## PIN errado
@@ -214,6 +266,18 @@ Ainda não há dias suficientes registrados. Continue registrando quantos pães 
 ## Produto do pão não encontrado
 > Produto do pão não encontrado
 O produto de código 1 (PÃO FRANCÊS) foi excluído ou trocado. Chame o responsável.
+
+## Não aparece o botão de cancelar ou trocar
+> Venda de um caixa já fechado: não dá para cancelar nem trocar.
+Só vendas do caixa aberto agora podem ser desfeitas. Se o cliente voltar outro dia, combine na hora e faça uma venda nova.
+
+## Não deixa estornar o recebimento
+> Este recebimento é de um caixa já fechado: não dá para estornar.
+Só pagamentos do caixa aberto agora podem ser estornados.
+
+## Não deixa dar desconto
+> O desconto é dado antes de lançar os pagamentos.
+Clique em "Voltar (Esc)", aperte F1 de novo e dê o desconto antes de lançar qualquer pagamento.
 
 ## A tela travou ou apareceu um erro estranho
 1. Anote ou tire foto da mensagem.

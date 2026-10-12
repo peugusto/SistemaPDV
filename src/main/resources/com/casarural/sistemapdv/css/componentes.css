@@ -642,3 +642,8 @@
     -fx-font-style: italic;
     -fx-font-size: 1.05em;
 }
+
+/* Valor de pagamento desfeito (venda cancelada ou recebimento estornado) */
+.texto-riscado .text {
+    -fx-strikethrough: true;
+}

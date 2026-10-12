@@ -22,6 +22,7 @@
                 </Menu>
                 <Menu text="Relatórios">
                     <MenuItem fx:id="menuPao" text="Pão do dia (F7)" onAction="#onMenuPaoAction"/>
+                    <MenuItem text="Lista de compras (F9)" onAction="#onMenuListaComprasAction"/>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="menuRelatorios" text="Vendas e produtos (F8) — pede o PIN" onAction="#onMenuRelatoriosAction"/>
                 </Menu>

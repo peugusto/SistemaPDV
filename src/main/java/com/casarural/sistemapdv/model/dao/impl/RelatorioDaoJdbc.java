@@ -29,21 +29,31 @@ import java.util.Optional;
  */
 public class RelatorioDaoJdbc implements RelatorioDao {
 
-    /** Pedido ainda aberto não é venda. */
-    private static final String VENDA_VALIDA = " AND p.status <> 'EM_ANDAMENTO' ";
+    /** Pedido ainda aberto e venda cancelada não contam. */
+    private static final String VENDA_VALIDA = " AND p.status NOT IN ('EM_ANDAMENTO', 'CANCELADO') ";
 
     @Override
     public ResumoVendas resumo(LocalDateTime de, LocalDateTime ate) {
         ResumoVendas r = new ResumoVendas();
         try (Connection conn = DB.getConnection()) {
             try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT COUNT(*), COALESCE(SUM(p.valor_total), 0) FROM pedido p " +
+                    "SELECT COUNT(*), COALESCE(SUM(p.valor_total), 0), COALESCE(SUM(p.desconto), 0) FROM pedido p " +
                     "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA)) {
                 periodo(st, 1, de, ate);
                 try (ResultSet rs = st.executeQuery()) {
                     rs.next();
                     r.setQuantidadeVendas(rs.getInt(1));
                     r.setFaturamento(rs.getBigDecimal(2));
+                    r.setDescontos(rs.getBigDecimal(3));
+                }
+            }
+            try (PreparedStatement st = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM pedido p WHERE p.data_pedido >= ? AND p.data_pedido < ? " +
+                    "AND p.status = 'CANCELADO' AND p.id_pedido_troca IS NULL")) {
+                periodo(st, 1, de, ate);
+                try (ResultSet rs = st.executeQuery()) {
+                    rs.next();
+                    r.setCanceladas(rs.getInt(1));
                 }
             }
 

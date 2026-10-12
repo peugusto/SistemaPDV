@@ -5,13 +5,19 @@ import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.SaleFilter;
 import com.casarural.sistemapdv.model.entities.SaleSummary;
+import com.casarural.sistemapdv.model.entities.RegraTroca;
+import com.casarural.sistemapdv.model.entities.VendaParaDesfazer;
 import com.casarural.sistemapdv.model.entities.enums.OrderStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.model.entities.enums.PaymentOrigin;
+import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.services.AcessoRelatoriosService;
 import com.casarural.sistemapdv.services.OrderService;
+import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Money;
 import com.casarural.sistemapdv.util.MoneyCells;
+import com.casarural.sistemapdv.util.ViewLoader;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -29,11 +35,15 @@ import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 import java.math.BigDecimal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 
@@ -82,6 +92,16 @@ public class OrderListController implements Initializable {
     @FXML private TableColumn<OrderItem, BigDecimal> colItemSubtotal;
     @FXML private ListView<Payment> listaPagamentos;
     @FXML private Label labelContagem;
+    @FXML private Label labelVendaExtra;
+    @FXML private HBox boxAcoes;
+    @FXML private Button btnTrocar;
+    @FXML private Button btnCancelarVenda;
+    @FXML private Label labelAcoesDica;
+
+    private static final Logger log = LoggerFactory.getLogger(OrderListController.class);
+    private final AcessoRelatoriosService acesso = new AcessoRelatoriosService(DaoFactory.createConfiguracaoDAO());
+    /** Venda aberta no detalhe (para trocar/cancelar). */
+    private VendaParaDesfazer vendaDetalhe;
 
     private final OrderService service = new OrderService();
     /** Evita buscar várias vezes enquanto o código ajusta datas e botões ao mesmo tempo. */
@@ -121,7 +141,7 @@ public class OrderListController implements Initializable {
         comboForma.setValue(null);
         comboForma.valueProperty().addListener((o, a, n) -> buscar());
 
-        comboSituacao.setItems(FXCollections.observableArrayList(null, OrderStatus.PAGO, OrderStatus.FIADO));
+        comboSituacao.setItems(FXCollections.observableArrayList(null, OrderStatus.PAGO, OrderStatus.FIADO, OrderStatus.CANCELADO));
         comboSituacao.setConverter(new StringConverter<>() {
             @Override public String toString(OrderStatus s) { return s == null ? "Todas as situações" : nomeDaSituacao(s); }
             @Override public OrderStatus fromString(String s) { return null; }
@@ -159,6 +179,12 @@ public class OrderListController implements Initializable {
     // ===================== Etiquetas coloridas (classes no componentes.css) =====================
 
     private static Label etiquetaForma(PaymentMethod forma) {
+        if (forma == null) {
+            // forma antiga que não existe mais (ex.: "PAGO" nos primeiros pedidos de teste)
+            Label l = new Label("Outro");
+            l.getStyleClass().addAll("etiqueta", "etiqueta-neutra");
+            return l;
+        }
         Label l = new Label(SaleSummary.nomeDaForma(forma));
         l.getStyleClass().addAll("etiqueta", "etiqueta-" + forma.toString().toLowerCase());
         return l;
@@ -166,8 +192,9 @@ public class OrderListController implements Initializable {
 
     private static void aplicarEtiquetaSituacao(Label l, OrderStatus s) {
         l.setText(nomeDaSituacao(s));
-        l.getStyleClass().removeAll("etiqueta-paga", "etiqueta-receber");
-        l.getStyleClass().add(s == OrderStatus.FIADO ? "etiqueta-receber" : "etiqueta-paga");
+        l.getStyleClass().removeAll("etiqueta-paga", "etiqueta-receber", "etiqueta-perigo");
+        l.getStyleClass().add(s == OrderStatus.FIADO ? "etiqueta-receber"
+                : s == OrderStatus.CANCELADO ? "etiqueta-perigo" : "etiqueta-paga");
     }
 
     private void aplicarPeriodo(ToggleButton botao) {
@@ -284,6 +311,8 @@ public class OrderListController implements Initializable {
                     setGraphic(null);
                 } else {
                     aplicarEtiquetaSituacao(etiqueta, s);
+                    SaleSummary venda = getTableRow() == null ? null : getTableRow().getItem();
+                    if (venda != null && venda.getIdPedidoTroca() != null) etiqueta.setText("Trocada");
                     setGraphic(etiqueta);
                 }
             }
@@ -295,6 +324,7 @@ public class OrderListController implements Initializable {
         switch (s) {
             case PAGO: return "Paga";
             case FIADO: return "A receber";
+            case CANCELADO: return "Cancelada";
             default: return s.toString();
         }
     }
@@ -322,10 +352,11 @@ public class OrderListController implements Initializable {
                 Label etiqueta = etiquetaForma(p.getMetodo());
                 etiqueta.setMinWidth(72);
                 etiqueta.setAlignment(Pos.CENTER);
-                Label quando = new Label(descreverQuando(p));
+                Label quando = new Label(p.isEstornado() ? "desfeito (" + descreverQuando(p) + ")" : descreverQuando(p));
                 quando.getStyleClass().add("texto-suave");
                 Label valor = new Label(Money.format(p.getValorPago()));
                 valor.getStyleClass().addAll("texto", "texto-forte");
+                if (p.isEstornado()) valor.getStyleClass().add("texto-riscado");
                 Pane espaco = new Pane();
                 HBox.setHgrow(espaco, Priority.ALWAYS);
                 HBox linha = new HBox(10, etiqueta, quando, espaco, valor);
@@ -342,6 +373,7 @@ public class OrderListController implements Initializable {
         if (!temVenda) {
             tabelaItens.getItems().clear();
             listaPagamentos.getItems().clear();
+            vendaDetalhe = null;
             return;
         }
         labelVendaNumero.setText("Venda #" + venda.getIdPedido());
@@ -349,9 +381,23 @@ public class OrderListController implements Initializable {
         labelVendaData.setText(DATA_HORA.format(venda.getDataPedido()));
         labelVendaCliente.setText(venda.getNomeCliente() != null ? "·  " + venda.getNomeCliente() : "");
         aplicarEtiquetaSituacao(labelVendaSituacao, venda.getStatus());
+        if (venda.getIdPedidoTroca() != null) labelVendaSituacao.setText("Trocada");
+
+        List<String> extra = new java.util.ArrayList<>();
+        if (Money.isPositive(venda.getDesconto())) extra.add("Desconto de " + Money.format(venda.getDesconto()));
+        if (venda.getIdPedidoTroca() != null) {
+            extra.add("Trocada pela venda #" + venda.getIdPedidoTroca());
+        } else if (venda.getStatus() == OrderStatus.CANCELADO) {
+            extra.add("Cancelada" + (venda.getMotivoCancelamento() == null ? "" : ": " + venda.getMotivoCancelamento()));
+        }
+        labelVendaExtra.setText(String.join("  ·  ", extra));
+        labelVendaExtra.setVisible(!extra.isEmpty());
+        labelVendaExtra.setManaged(!extra.isEmpty());
         try {
             tabelaItens.setItems(FXCollections.observableArrayList(service.findItemsByOrderId(venda.getIdPedido())));
             listaPagamentos.setItems(FXCollections.observableArrayList(service.findPaymentsByOrder(venda.getIdPedido())));
+            vendaDetalhe = service.findParaDesfazer(venda.getIdPedido()).orElse(null);
+            mostrarAcoes();
         } catch (DbException e) {
             Alerts.showAlert("Histórico de vendas", null, e.getMessage(), Alert.AlertType.WARNING);
         }
@@ -362,5 +408,74 @@ public class OrderListController implements Initializable {
             return "recebido depois, em " + DATA_CURTA.format(p.getDataPagamento());
         }
         return p.getMetodo() == PaymentMethod.FIADO ? "ficou na conta do cliente" : "na hora da venda";
+    }
+
+    // ===================== Trocar e cancelar =====================
+
+    /** Botões só para venda do caixa aberto e não cancelada; senão explica por quê. */
+    private void mostrarAcoes() {
+        boolean pode = vendaDetalhe != null && vendaDetalhe.podeDesfazer();
+        btnTrocar.setVisible(pode);
+        btnTrocar.setManaged(pode);
+        btnCancelarVenda.setVisible(pode);
+        btnCancelarVenda.setManaged(pode);
+        String dica = "";
+        if (vendaDetalhe != null && !vendaDetalhe.isCancelada() && !vendaDetalhe.isDoCaixaAberto()) {
+            dica = "Venda de um caixa já fechado: não dá para cancelar nem trocar.";
+        }
+        labelAcoesDica.setText(dica);
+        boolean mostrar = pode || !dica.isEmpty();
+        boxAcoes.setVisible(mostrar);
+        boxAcoes.setManaged(mostrar);
+    }
+
+    @FXML
+    public void onCancelarVenda() {
+        VendaParaDesfazer v = vendaDetalhe;
+        if (v == null || !v.podeDesfazer()) return;
+        javafx.stage.Window janela = tabelaVendas.getScene().getWindow();
+        if (!PinDialogo.liberar(acesso, janela, "Cancelar venda", "cancelar a venda #" + v.getIdPedido())) return;
+
+        Map<PaymentMethod, BigDecimal> devolver = v.getDevolverAoCancelar();
+        String explicacao = "Venda #" + v.getIdPedido() + " de " + Money.format(v.getValorTotal()) + ".\n\n"
+                + "Os produtos voltam para o estoque"
+                + (v.getPagoPorForma().containsKey(PaymentMethod.FIADO)
+                    ? " e " + Money.format(v.getPagoPorForma().get(PaymentMethod.FIADO)) + " saem da conta de fiado do cliente" : "")
+                + ".\n"
+                + (devolver.isEmpty() ? "" : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolver) + ".\n")
+                + "\nPor que está cancelando?";
+        Optional<String> motivo = Alerts.pedirTexto("Cancelar venda", "Cancelar a venda #" + v.getIdPedido() + "?",
+                explicacao, "Motivo (ex.: passou produto errado)", "Cancelar venda");
+        if (motivo.isEmpty()) return;
+
+        try {
+            Map<PaymentMethod, BigDecimal> devolvido = service.cancelar(v.getIdPedido(), motivo.get());
+            log.warn("Venda #{} cancelada. Motivo: {}. Devolvido: {}", v.getIdPedido(), motivo.get(), devolvido);
+            Alerts.showAlertAndWait("Venda cancelada", "Venda #" + v.getIdPedido() + " cancelada",
+                    devolvido.isEmpty() ? "Os produtos voltaram para o estoque."
+                            : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolvido) + ".",
+                    Alert.AlertType.INFORMATION);
+            buscar();
+        } catch (RuntimeException e) {
+            Alerts.showAlert("Cancelar venda", "Não foi possível cancelar", e.getMessage(), Alert.AlertType.WARNING);
+        }
+    }
+
+    /** Troca: abre o PDV com os itens desta venda; o que o cliente pagou vira crédito. */
+    @FXML
+    public void onTrocar() {
+        VendaParaDesfazer v = vendaDetalhe;
+        if (v == null || !v.podeDesfazer()) return;
+        javafx.stage.Window janela = tabelaVendas.getScene().getWindow();
+        if (!PinDialogo.liberar(acesso, janela, "Trocar produtos", "trocar produtos da venda #" + v.getIdPedido())) return;
+
+        boolean[] trocou = new boolean[1];
+        ViewLoader.showView(true, "/com/casarural/sistemapdv/view/pdv.fxml", "Troca da venda #" + v.getIdPedido(),
+                (PDVController controller) -> {
+                    controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
+                    controller.iniciarTroca(v, () -> trocou[0] = true);
+                });
+        if (trocou[0]) buscar();
+        else mostrarDetalhe(tabelaVendas.getSelectionModel().getSelectedItem());
     }
 }

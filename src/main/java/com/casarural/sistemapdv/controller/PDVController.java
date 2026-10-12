@@ -3,6 +3,7 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.VendaParaDesfazer;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Money;
@@ -18,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -27,6 +30,11 @@ public class PDVController implements Initializable {
 
     private ProductService productService;
     private ObservableList<OrderItem> itensVenda = FXCollections.observableArrayList();
+    /** Troca em andamento: a venda que vai ser substituída (null = venda normal). */
+    private VendaParaDesfazer trocaDe;
+    /** Na troca, o estoque que a venda antiga devolve ao ser cancelada (id do produto -> quantidade). */
+    private final Map<Integer, Integer> estoqueDaTroca = new HashMap<>();
+    private Runnable aoConcluirTroca;
 
 
     @FXML private Label labelUltimoItem;
@@ -150,7 +158,8 @@ public class PDVController implements Initializable {
                     .findFirst();
 
             int qtdNoCarrinho = itemExistente.map(OrderItem::getQtd).orElse(0);
-            if (!p.temEstoquePara(qtdNoCarrinho + quantidadeFinal)) {
+            int devolveNaTroca = estoqueDaTroca.getOrDefault(p.getIdProduto(), 0);
+            if (!p.temEstoquePara(qtdNoCarrinho + quantidadeFinal - devolveNaTroca)) {
                 Alerts.showAlert("Estoque Insuficiente", null,
                         String.format("Estoque disponível de '%s': %d (já no carrinho: %d).",
                                 p.getNomeProduto(), Math.max(0, p.getEstoque()), qtdNoCarrinho),
@@ -248,6 +257,13 @@ public class PDVController implements Initializable {
     }
 
     private void onLimparVenda() {
+        if (trocaDe != null) {
+            if (Alerts.showConfirmation("Desistir da troca", null,
+                    "Desistir da troca? A venda #" + trocaDe.getIdPedido() + " continua como estava.")) {
+                fecharJanela();
+            }
+            return;
+        }
         if (itensVenda.isEmpty()) return;
 
         if (Alerts.showConfirmation("Cancelar Venda", null, "Deseja cancelar toda a venda atual?")) {
@@ -257,6 +273,28 @@ public class PDVController implements Initializable {
         }
     }
 
+    /**
+     * Começa uma troca: o cupom vem com os itens da venda antiga. O caixa tira o produto errado,
+     * passa o certo e finaliza; o que o cliente já pagou entra como crédito no pagamento.
+     */
+    public void iniciarTroca(VendaParaDesfazer venda, Runnable aoConcluir) {
+        this.trocaDe = venda;
+        this.aoConcluirTroca = aoConcluir;
+        estoqueDaTroca.clear();
+        itensVenda.clear();
+        for (OrderItem i : venda.getItens()) {
+            itensVenda.add(new OrderItem(i.getProduto(), i.getQtd(), i.getPrecoUnitario()));
+            estoqueDaTroca.merge(i.getProduto().getIdProduto(), i.getQtd(), Integer::sum);
+        }
+        atualizarTotalVenda();
+        labelUltimoItem.setText("TROCA DA VENDA #" + venda.getIdPedido());
+        campoCodigoProduto.requestFocus();
+    }
+
+    private void fecharJanela() {
+        ((javafx.stage.Stage) labelTotal.getScene().getWindow()).close();
+    }
+
     private void onFinalizarVenda() {
         if (itensVenda.isEmpty()) {
             Alerts.showAlert("Aviso", "Carrinho Vazio", "Adicione produtos antes de finalizar a venda.", Alert.AlertType.WARNING);
@@ -264,8 +302,9 @@ public class PDVController implements Initializable {
         }
 
         Order order = new Order();
-        order.setValorTotal(calcularTotalVenda());
         order.setItemPedido(new java.util.ArrayList<>(itensVenda));
+        order.aplicarDesconto(java.math.BigDecimal.ZERO);   // total = soma dos itens
+        if (trocaDe != null) order.setIdPedidoTrocado(trocaDe.getIdPedido());
         order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
 
         PaymentController[] pagamento = new PaymentController[1];
@@ -280,11 +319,16 @@ public class PDVController implements Initializable {
                             new com.casarural.sistemapdv.services.OrderService(),
                             new com.casarural.sistemapdv.services.CustomerService(com.casarural.sistemapdv.model.dao.DaoFactory.createCustomerDAO())
                     );
+                    if (trocaDe != null) controller.setTroca(trocaDe);
                 }
         );
 
         // Se o pagamento foi cancelado, mantém o carrinho para o operador continuar a venda
-        if (pagamento[0] != null && pagamento[0].isVendaConcluida()) {
+        if (pagamento[0] != null && pagamento[0].isVendaConcluida() && trocaDe != null) {
+            // Troca feita: volta para o histórico
+            if (aoConcluirTroca != null) aoConcluirTroca.run();
+            fecharJanela();
+        } else if (pagamento[0] != null && pagamento[0].isVendaConcluida()) {
             itensVenda.clear();
             atualizarTotalVenda();
             resetarCamposVisuais();
