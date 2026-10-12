@@ -101,7 +101,7 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     private void inserirItensEBaixarEstoque(Connection conn, List<OrderItem> itens, int idPedido) throws SQLException {
-        String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)";
+        String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario, custo_unitario) VALUES (?, ?, ?, ?, ?)";
         // Produto sem controle de estoque (V11): a linha é encontrada mas o estoque fica igual.
         // A decisão usa o que está no banco, não o produto carregado na tela.
         String sqlEstoque = "UPDATE produto SET estoque = IF(controla_estoque, estoque - ?, estoque) "
@@ -113,6 +113,7 @@ public class OrderDaoJdbc implements OrderDao {
                 stItem.setInt(2, item.getProduto().getIdProduto());
                 stItem.setInt(3, item.getQtd());
                 stItem.setBigDecimal(4, item.getPrecoUnitario());
+                stItem.setBigDecimal(5, item.getCustoUnitario());   // null = produto sem custo
                 stItem.addBatch();
 
                 stEstoque.setInt(1, item.getQtd());

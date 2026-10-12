@@ -18,6 +18,8 @@ public class Product {
     private TipoVenda tipoVenda = TipoVenda.UNIDADE;
     /** false = a venda não confere nem baixa estoque. Coluna produto.controla_estoque (V11). */
     private boolean controlaEstoque = true;
+    /** Último custo pago (por unidade; no pesável, por kg). null = não informado. Coluna produto.preco_custo (V14). */
+    private BigDecimal precoCusto;
 
     public Product(){}
 
@@ -76,6 +78,14 @@ public class Product {
 
     public void setPermiteFiado(boolean permiteFiado) {
         this.permiteFiado = permiteFiado;
+    }
+
+    public BigDecimal getPrecoCusto() {
+        return precoCusto;
+    }
+
+    public void setPrecoCusto(BigDecimal precoCusto) {
+        this.precoCusto = precoCusto == null ? null : Money.of(precoCusto);
     }
 
     public TipoVenda getTipoVenda() {

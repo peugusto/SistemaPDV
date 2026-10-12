@@ -38,10 +38,10 @@ public class ListaComprasController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(ListaComprasController.class);
     private static final DateTimeFormatter DIA_MES = DateTimeFormatter.ofPattern("dd/MM");
 
-    @FXML private Label lblPeriodo, lblQtdProdutos, lblAcabaram, lblUnidades, lblCopiado;
+    @FXML private Label lblPeriodo, lblQtdProdutos, lblAcabaram, lblUnidades, lblCopiado, lblCusto, lblCustoDetalhe;
     @FXML private TableView<Item> tabela;
     @FXML private TableColumn<Item, Item> colComprar;
-    @FXML private TableColumn<Item, String> colProduto, colVendeu, colTem, colSituacao;
+    @FXML private TableColumn<Item, String> colProduto, colVendeu, colTem, colSituacao, colCustoItem;
 
     private RelatorioService service;
     private LocalDate hoje = LocalDate.now();
@@ -107,6 +107,9 @@ public class ListaComprasController implements Initializable {
         colProduto.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProduto().getNomeProduto()));
         colVendeu.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getVendido())));
         colTem.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getEstoque())));
+        colCustoItem.setCellValueFactory(c -> javafx.beans.binding.Bindings.createStringBinding(
+                () -> c.getValue().getCustoEstimado() == null ? "—" : com.casarural.sistemapdv.util.Money.format(c.getValue().getCustoEstimado()),
+                c.getValue().comprarProperty()));
         colSituacao.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().acabou() ? "Acabou" : "Repor"));
         colSituacao.setCellFactory(col -> new TableCell<>() {
             private final Label etiqueta = new Label();
@@ -151,6 +154,15 @@ public class ListaComprasController implements Initializable {
         lblAcabaram.setText(String.valueOf(acabaram));
         Tema.estado(lblAcabaram, acabaram > 0 ? "texto-perigo" : null);
         lblUnidades.setText(String.valueOf(itens.stream().mapToInt(Item::getComprar).sum()));
+
+        // Custo estimado: comprar x último custo; avisa quantos produtos estão sem custo
+        java.math.BigDecimal total = itens.stream().map(Item::getCustoEstimado).filter(java.util.Objects::nonNull)
+                .reduce(com.casarural.sistemapdv.util.Money.ZERO, java.math.BigDecimal::add);
+        long semCusto = itens.stream().filter(i -> i.getComprar() > 0 && i.getProduto().getPrecoCusto() == null).count();
+        boolean algumCusto = itens.stream().anyMatch(i -> i.getComprar() > 0 && i.getProduto().getPrecoCusto() != null);
+        lblCusto.setText(algumCusto ? com.casarural.sistemapdv.util.Money.format(total) : "—");
+        lblCustoDetalhe.setText(semCusto == 0 ? "pelo último custo pago"
+                : semCusto + (semCusto == 1 ? " produto sem custo" : " produtos sem custo") + " (não somados)");
     }
 
     @FXML

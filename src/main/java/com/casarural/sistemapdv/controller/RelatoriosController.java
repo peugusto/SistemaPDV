@@ -3,6 +3,7 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.entities.Periodo;
 import com.casarural.sistemapdv.model.entities.PontoVenda;
+import com.casarural.sistemapdv.model.entities.RegraLucro;
 import com.casarural.sistemapdv.model.entities.ResumoVendas;
 import com.casarural.sistemapdv.model.entities.VendaProduto;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
@@ -55,12 +56,14 @@ public class RelatoriosController implements Initializable {
     private static final String ORDEM_QTD = "Mais vendidos (qtd)";
     private static final String ORDEM_VALOR = "Maior faturamento";
     private static final String ORDEM_VENDAS = "Em mais vendas";
+    private static final String ORDEM_LUCRO = "Maior lucro";
 
     @FXML private Label lblPeriodo;
     @FXML private ToggleGroup grupoPeriodo;
     @FXML private ToggleButton btnHoje, btn7Dias, btn30Dias, btnEsteMes, btnMesPassado;
     @FXML private DatePicker dataDe, dataAte;
 
+    @FXML private Label lblLucro, lblLucroDetalhe;
     @FXML private Label lblFaturamento, lblFaturamentoDetalhe, lblVendas, lblVendasDetalhe, lblTicket,
             lblFiado, lblFiadoDetalhe, lblRecebido;
     @FXML private BarChart<String, Number> graficoDias, graficoFormas, graficoHoras, graficoSemana;
@@ -72,7 +75,7 @@ public class RelatoriosController implements Initializable {
     @FXML private ComboBox<String> comboTipo, comboOrdem;
     @FXML private TableView<VendaProduto> tabelaProdutos;
     @FXML private TableColumn<VendaProduto, String> colPosicao, colProduto, colQtd, colNumVendas, colValor,
-            colParticipacao, colUltima;
+            colParticipacao, colUltima, colLucro, colMargem;
     @FXML private BarChart<Number, String> graficoTop;
 
     private RelatorioService service;
@@ -132,7 +135,7 @@ public class RelatoriosController implements Initializable {
         // Produtos
         comboTipo.setItems(FXCollections.observableArrayList(TIPO_TODOS, TIPO_PESAVEIS, TIPO_SEM_ESTOQUE, TIPO_SEM_FIADO));
         comboTipo.setValue(TIPO_TODOS);
-        comboOrdem.setItems(FXCollections.observableArrayList(ORDEM_QTD, ORDEM_VALOR, ORDEM_VENDAS));
+        comboOrdem.setItems(FXCollections.observableArrayList(ORDEM_QTD, ORDEM_VALOR, ORDEM_LUCRO, ORDEM_VENDAS));
         comboOrdem.setValue(ORDEM_QTD);
         comboTipo.setOnAction(e -> mostrarProdutos());
         comboOrdem.setOnAction(e -> mostrarProdutos());
@@ -198,6 +201,22 @@ public class RelatoriosController implements Initializable {
         lblFiadoDetalhe.setText(percentual(r.getFiadoLancado(), r.getFaturamento()) + " do faturamento");
         lblRecebido.setText(Money.format(r.getRecebidoDeFiado()));
 
+        // Lucro: só das vendas com custo informado; avisa quanto das vendas isso cobre
+        java.math.BigDecimal cobertura = r.getCoberturaCusto();
+        if (cobertura == null || cobertura.signum() == 0) {
+            lblLucro.setText("—");
+            lblLucroDetalhe.setText(cobertura == null ? "sem vendas no período"
+                    : "informe o custo dos produtos (Estoque > Editar)");
+        } else {
+            lblLucro.setText(Money.format(r.getLucroBruto()));
+            String detalheLucro = "margem " + RegraLucro.formatarMargem(r.getMargem());
+            if (cobertura.compareTo(java.math.BigDecimal.valueOf(100)) < 0) {
+                detalheLucro += " · só " + cobertura.toPlainString() + "% das vendas têm custo";
+            }
+            lblLucroDetalhe.setText(detalheLucro);
+        }
+        Tema.estado(lblLucro, cobertura != null && cobertura.signum() > 0 && r.getLucroBruto().signum() < 0 ? "texto-perigo" : null);
+
         // Um dia só: o gráfico "por dia" teria uma barra; mostra por hora
         Map<LocalDate, PontoVenda> porDia = service.porDia(periodo);
         List<PontoVenda> horas = service.porHora(periodo);
@@ -260,6 +279,9 @@ public class RelatoriosController implements Initializable {
         colNumVendas.setCellValueFactory(c -> new SimpleStringProperty(String.valueOf(c.getValue().getVendas())));
         colValor.setCellValueFactory(c -> new SimpleStringProperty(Money.format(c.getValue().getValor())));
         colParticipacao.setCellValueFactory(c -> new SimpleStringProperty(percentual(c.getValue().getValor(), totalProdutos)));
+        colLucro.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getLucro() == null ? "sem custo" : Money.format(c.getValue().getLucro())));
+        colMargem.setCellValueFactory(c -> new SimpleStringProperty(RegraLucro.formatarMargem(c.getValue().getMargem())));
         colUltima.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getUltimaVenda() == null ? "—" : c.getValue().getUltimaVenda().format(DATA_HORA)));
         // A posição é a do filtro atual; ordenar clicando no cabeçalho bagunçaria o "#"
@@ -298,6 +320,8 @@ public class RelatoriosController implements Initializable {
         Comparator<VendaProduto> c = switch (comboOrdem.getValue() == null ? ORDEM_QTD : comboOrdem.getValue()) {
             case ORDEM_VALOR -> Comparator.comparing(VendaProduto::getValor);
             case ORDEM_VENDAS -> Comparator.comparingInt(VendaProduto::getVendas);
+            // sem custo vai para o fim
+            case ORDEM_LUCRO -> Comparator.comparing((VendaProduto v) -> v.getLucro() == null ? java.math.BigDecimal.valueOf(Long.MIN_VALUE) : v.getLucro());
             default -> Comparator.comparingInt(VendaProduto::getQuantidade);
         };
         // maior primeiro; empate pelo nome
@@ -335,6 +359,7 @@ public class RelatoriosController implements Initializable {
             Number tamanho = switch (ordem) {
                 case ORDEM_VALOR -> v.getValor().doubleValue();
                 case ORDEM_VENDAS -> v.getVendas();
+                case ORDEM_LUCRO -> v.getLucro() == null ? 0 : v.getLucro().doubleValue();
                 default -> v.getQuantidade();
             };
             XYChart.Data<Number, String> d = new XYChart.Data<>(tamanho, nome);

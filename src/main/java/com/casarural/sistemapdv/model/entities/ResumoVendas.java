@@ -25,6 +25,12 @@ public class ResumoVendas {
     private BigDecimal descontos = Money.ZERO;
     /** Vendas canceladas no período (sem contar as trocas). */
     private int canceladas;
+    /** Soma dos itens vendidos (preço de venda, antes do desconto). */
+    private BigDecimal receitaItens = Money.ZERO;
+    /** Parte da receitaItens que tem custo informado (V14). */
+    private BigDecimal receitaComCusto = Money.ZERO;
+    /** Custo dos itens que têm custo informado. */
+    private BigDecimal custoItens = Money.ZERO;
 
     public int getQuantidadeVendas() { return quantidadeVendas; }
     public void setQuantidadeVendas(int quantidadeVendas) { this.quantidadeVendas = quantidadeVendas; }
@@ -52,6 +58,38 @@ public class ResumoVendas {
 
     public int getCanceladas() { return canceladas; }
     public void setCanceladas(int canceladas) { this.canceladas = canceladas; }
+
+    public BigDecimal getReceitaItens() { return receitaItens; }
+    public void setReceitaItens(BigDecimal v) { this.receitaItens = Money.of(v); }
+    public BigDecimal getReceitaComCusto() { return receitaComCusto; }
+    public void setReceitaComCusto(BigDecimal v) { this.receitaComCusto = Money.of(v); }
+    public BigDecimal getCustoItens() { return custoItens; }
+    public void setCustoItens(BigDecimal v) { this.custoItens = Money.of(v); }
+
+    /** Quanto das vendas tem custo informado, em % (o lucro só vale para essa parte). null sem vendas. */
+    public BigDecimal getCoberturaCusto() {
+        if (receitaItens.signum() == 0) return null;
+        return receitaComCusto.multiply(BigDecimal.valueOf(100)).divide(receitaItens, 0, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Desconto que cabe às vendas com custo: os descontos do período divididos na proporção.
+     * Com 100% de custo informado, é o desconto inteiro.
+     */
+    public BigDecimal getDescontoComCusto() {
+        if (receitaItens.signum() == 0) return Money.ZERO;
+        return descontos.multiply(receitaComCusto).divide(receitaItens, Money.SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** Lucro bruto: o que entrou nas vendas com custo, menos o custo delas e o desconto que lhes cabe. */
+    public BigDecimal getLucroBruto() {
+        return receitaComCusto.subtract(getDescontoComCusto()).subtract(custoItens);
+    }
+
+    /** Margem sobre o que foi recebido nessas vendas, em %. */
+    public BigDecimal getMargem() {
+        return RegraLucro.margem(receitaComCusto.subtract(getDescontoComCusto()), custoItens);
+    }
 
     /** Valor médio de cada venda. */
     public BigDecimal getTicketMedio() {

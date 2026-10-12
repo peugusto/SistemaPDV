@@ -35,6 +35,9 @@ public class ProductFormController implements Initializable {
     @FXML private CheckBox chkPesavel;
     @FXML private CheckBox chkControlaEstoque;
     @FXML private Label lblPreco;
+    @FXML private TextField txtCusto;
+    @FXML private Label lblCusto;
+    @FXML private Label lblMargem;
     @FXML private Button btnSave;
     @FXML private Button btnCancel;
 
@@ -51,6 +54,7 @@ public class ProductFormController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         Constraints.setTextFieldMoney(txtPreco);
         ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
+        ProdutoCampos.ligarCusto(chkPesavel, txtPreco, txtCusto, lblCusto, lblMargem);
     }
 
 
@@ -65,6 +69,7 @@ public class ProductFormController implements Initializable {
         chkPermiteFiado.setSelected(entity.isPermiteFiado());
         chkControlaEstoque.setSelected(entity.isControlaEstoque());
         chkPesavel.setSelected(entity.isPesavel());
+        txtCusto.setText(entity.getPrecoCusto() == null ? "" : Money.toInput(entity.getPrecoCusto()));
     }
 
     @FXML
@@ -94,6 +99,7 @@ public class ProductFormController implements Initializable {
             entity.setPermiteFiado(chkPermiteFiado.isSelected());
             entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
             entity.setControlaEstoque(chkControlaEstoque.isSelected());
+            entity.setPrecoCusto(ProdutoCampos.lerValor(txtCusto));
 
 
             service.saveOrUpdate(entity);

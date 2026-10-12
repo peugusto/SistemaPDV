@@ -34,10 +34,15 @@
     -fx-text-fill: -cor-cabecalho-texto;
 }
 
+/*
+ * Cartões SEM -fx-effect: dropshadow. A sombra de verdade (desfoque) é recalculada a cada redesenho
+ * (mouse, digitação, rolagem) e deixava as telas maximizadas ~8x mais lentas para desenhar.
+ * No lugar: 3 camadas de fundo simples = "sombra" de 2px embaixo, borda fina e o cartão.
+ */
 .cartao {
-    -fx-background-color: -cor-cartao;
-    -fx-background-radius: 14;
-    -fx-effect: dropshadow(gaussian, rgba(44, 62, 80, 0.10), 14, 0, 0, 3);
+    -fx-background-color: rgba(44, 62, 80, 0.07), -cor-borda, -cor-cartao;
+    -fx-background-insets: 0 0 -2 0, 0, 1;
+    -fx-background-radius: 14, 14, 13;
     -fx-padding: 16 18 16 18;
 }
 
@@ -220,10 +225,9 @@
 .bloco-menu {
     -fx-background-color: -cor-cartao;
     -fx-background-radius: 16;
-    -fx-border-color: transparent;
+    -fx-border-color: -cor-borda;
     -fx-border-width: 2;
     -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(44, 62, 80, 0.10), 16, 0, 0, 4);
     -fx-padding: 18;
     -fx-alignment: top-left;
 }

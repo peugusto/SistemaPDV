@@ -33,6 +33,9 @@ public class CadastroProdutosController implements Initializable {
     @FXML private CheckBox chkPesavel;
     @FXML private CheckBox chkControlaEstoque;
     @FXML private Label lblPreco;
+    @FXML private TextField txtCusto;
+    @FXML private Label lblCusto;
+    @FXML private Label lblMargem;
     @FXML private Button botaoSalvar;
     @FXML private Button botaoCancelar;
 
@@ -102,6 +105,8 @@ public class CadastroProdutosController implements Initializable {
                     txtNome.setText(product.getNomeProduto());
                     txtPreco.setText(Money.toInput(product.getPrecoProduto()));
                     chkPermiteFiado.setSelected(product.isPermiteFiado());
+                    // Entrada de mercadoria: o custo vem com o último pago; se mudou, é só corrigir
+                    txtCusto.setText(product.getPrecoCusto() == null ? "" : Money.toInput(product.getPrecoCusto()));
 
                     // Produto existente: aqui só entra estoque; nome, preço e fiado mudam em "Editar"
                     txtNome.setEditable(false);
@@ -144,6 +149,9 @@ public class CadastroProdutosController implements Initializable {
         entity.setPrecoProduto(Money.parse(txtPreco.getText()));
 
         int qtdInformada = ProdutoCampos.estoque(txtEstoque);
+        // Custo: novo produto ou entrada (vale o último custo pago); vazio mantém o que tinha
+        java.math.BigDecimal custo = ProdutoCampos.lerValor(txtCusto);
+        if (custo != null || !isExistingProduct) entity.setPrecoCusto(custo);
 
         if (isExistingProduct) {
             entity.adicionarEstoque(qtdInformada);
@@ -172,6 +180,7 @@ public class CadastroProdutosController implements Initializable {
     private void clearFormExceptBarcode() {
         txtNome.clear();
         txtPreco.clear();
+        txtCusto.clear();
         txtEstoque.clear();
     }
 
@@ -182,6 +191,7 @@ public class CadastroProdutosController implements Initializable {
         Constraints.setTextFieldMaxLength(txtNome,20);
 
         ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
+        ProdutoCampos.ligarCusto(chkPesavel, txtPreco, txtCusto, lblCusto, lblMargem);
 
         txtCodBarras.setOnAction(event -> onSearchProduct());
     }

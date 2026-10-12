@@ -32,6 +32,11 @@
                     <Label styleClass="indicador-rotulo" text="UNIDADES PARA COMPRAR"/>
                     <Label fx:id="lblUnidades" styleClass="indicador-valor" text="0"/>
                 </VBox>
+                <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                    <Label styleClass="indicador-rotulo" text="CUSTO ESTIMADO"/>
+                    <Label fx:id="lblCusto" styleClass="indicador-valor" text="—"/>
+                    <Label fx:id="lblCustoDetalhe" styleClass="indicador-detalhe" wrapText="true" text=""/>
+                </VBox>
             </HBox>
 
             <VBox styleClass="cartao" spacing="8" VBox.vgrow="ALWAYS">
@@ -45,6 +50,7 @@
                         <TableColumn fx:id="colProduto" text="PRODUTO" prefWidth="300"/>
                         <TableColumn fx:id="colVendeu" text="VENDEU (7 DIAS)" prefWidth="130"/>
                         <TableColumn fx:id="colTem" text="TEM NO ESTOQUE" prefWidth="130"/>
+                        <TableColumn fx:id="colCustoItem" text="CUSTO" prefWidth="110"/>
                         <TableColumn fx:id="colSituacao" text="SITUAÇÃO" prefWidth="120"/>
                     </columns>
                 </TableView>

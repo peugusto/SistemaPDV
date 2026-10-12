@@ -32,14 +32,21 @@
         <Label fx:id="lblPreco" styleClass="rotulo" text="Preço (R$)" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
         <TextField fx:id="txtPreco" maxWidth="160" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
 
-        <Label styleClass="rotulo" text="Estoque" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-        <CheckBox fx:id="chkControlaEstoque" text="Controlar estoque" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+        <Label fx:id="lblCusto" styleClass="rotulo" text="Custo (R$)" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <HBox spacing="10" alignment="CENTER_LEFT" GridPane.rowIndex="4" GridPane.columnIndex="1">
+            <TextField fx:id="txtCusto" promptText="quanto você pagou" maxWidth="160"/>
+            <Label fx:id="lblMargem" styleClass="texto-suave" wrapText="true"/>
+        </HBox>
 
-        <Label styleClass="rotulo" text="Estoque atual" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-        <TextField fx:id="txtEstoque" maxWidth="160" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
 
-        <Label styleClass="rotulo" text="Fiado" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
-        <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+        <Label styleClass="rotulo" text="Estoque" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+        <CheckBox fx:id="chkControlaEstoque" text="Controlar estoque" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+
+        <Label styleClass="rotulo" text="Estoque atual" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
+        <TextField fx:id="txtEstoque" maxWidth="160" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+
+        <Label styleClass="rotulo" text="Fiado" GridPane.columnIndex="0" GridPane.rowIndex="7"/>
+        <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
     </GridPane>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">

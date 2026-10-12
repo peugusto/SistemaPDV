@@ -21,7 +21,7 @@ public class ProductDaoJdbc implements ProductDao {
     public void insert(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado, tipo_venda, controla_estoque) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado, tipo_venda, controla_estoque, preco_custo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getCodBarras());
@@ -31,6 +31,7 @@ public class ProductDaoJdbc implements ProductDao {
             st.setBoolean(5, obj.isPermiteFiado());
             st.setString(6, obj.getTipoVenda().name());
             st.setBoolean(7, obj.isControlaEstoque());
+            st.setBigDecimal(8, obj.getPrecoCusto());
 
             int rowsAffected = st.executeUpdate();
 
@@ -85,7 +86,7 @@ public class ProductDaoJdbc implements ProductDao {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
                      "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
-                             + "tipo_venda = ?, controla_estoque = ? WHERE id_produto = ?")) {
+                             + "tipo_venda = ?, controla_estoque = ?, preco_custo = ? WHERE id_produto = ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
@@ -94,7 +95,8 @@ public class ProductDaoJdbc implements ProductDao {
             st.setBoolean(5, obj.isPermiteFiado());
             st.setString(6, obj.getTipoVenda().name());
             st.setBoolean(7, obj.isControlaEstoque());
-            st.setInt(8, obj.getIdProduto());
+            st.setBigDecimal(8, obj.getPrecoCusto());
+            st.setInt(9, obj.getIdProduto());
 
             st.executeUpdate();
         } catch (SQLException e) {
@@ -125,6 +127,7 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setPermiteFiado(rs.getBoolean("permite_fiado"));
         prod.setTipoVenda(TipoVenda.valueOf(rs.getString("tipo_venda")));
         prod.setControlaEstoque(rs.getBoolean("controla_estoque"));
+        prod.setPrecoCusto(rs.getBigDecimal("preco_custo"));
         return prod;
     }
 

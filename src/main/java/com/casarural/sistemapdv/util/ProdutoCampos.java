@@ -31,6 +31,46 @@ public final class ProdutoCampos {
         if (!controla && txtEstoque.getText().isBlank()) txtEstoque.setText("0");
     }
 
+    /**
+     * Liga também o custo: no pesável vira "Custo do kg", e ao lado aparece a margem
+     * ("Margem: 28%") ou um aviso se o custo passar do preço.
+     */
+    public static void ligarCusto(CheckBox chkPesavel, TextField txtPreco, TextField txtCusto, Label lblCusto, Label lblMargem) {
+        Constraints.setTextFieldMoney(txtCusto);
+        Runnable atualizar = () -> {
+            lblCusto.setText(chkPesavel.isSelected() ? "Custo do kg (R$)" : "Custo (R$)");
+            java.math.BigDecimal preco = lerValor(txtPreco);
+            java.math.BigDecimal custo = lerValor(txtCusto);
+            if (preco == null || custo == null) {
+                lblMargem.setText(custo == null ? "opcional: serve para ver o lucro" : "");
+                Tema.estado(lblMargem, null);
+            } else if (custo.compareTo(preco) > 0) {
+                lblMargem.setText("Custo maior que o preço: prejuízo de " + Money.format(custo.subtract(preco)));
+                Tema.estado(lblMargem, "texto-perigo");
+            } else {
+                lblMargem.setText("Margem: " + com.casarural.sistemapdv.model.entities.RegraLucro.formatarMargem(
+                        com.casarural.sistemapdv.model.entities.RegraLucro.margem(preco, custo))
+                        + " (lucro de " + Money.format(preco.subtract(custo)) + ")");
+                Tema.estado(lblMargem, null);
+            }
+        };
+        chkPesavel.selectedProperty().addListener((o, a, b) -> atualizar.run());
+        txtPreco.textProperty().addListener((o, a, b) -> atualizar.run());
+        txtCusto.textProperty().addListener((o, a, b) -> atualizar.run());
+        atualizar.run();
+    }
+
+    /** Valor em R$ digitado; vazio ou inválido = null. */
+    public static java.math.BigDecimal lerValor(TextField campo) {
+        String t = campo.getText();
+        if (t == null || t.isBlank()) return null;
+        try {
+            return Money.parse(t);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     /** Quantidade digitada; vazio conta como 0. */
     public static int estoque(TextField txtEstoque) {
         String texto = txtEstoque.getText();

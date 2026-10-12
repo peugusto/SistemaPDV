@@ -10,12 +10,16 @@ public class OrderItem {
     private Order pedido;
     private int qtd;
     private BigDecimal precoUnitario = Money.ZERO;
+    /** Custo de cada unidade no momento da venda (V14); null = produto sem custo. */
+    private BigDecimal custoUnitario;
 
     public OrderItem(){}
     public OrderItem(Product produto, int qtd, BigDecimal precoUnitario) {
         this.produto = produto;
         this.qtd = qtd;
         this.precoUnitario = Money.of(precoUnitario);
+        // custo do momento da venda (no pesável, proporcional ao valor da balança)
+        this.custoUnitario = produto == null ? null : RegraLucro.custoDoItem(produto, this.precoUnitario);
     }
 
     public Order getPedido() {
@@ -63,6 +67,14 @@ public class OrderItem {
     }
 
     // Calculado sempre a partir de preço x quantidade, nunca armazenado
+    public BigDecimal getCustoUnitario() {
+        return custoUnitario;
+    }
+
+    public void setCustoUnitario(BigDecimal custoUnitario) {
+        this.custoUnitario = custoUnitario == null ? null : Money.of(custoUnitario);
+    }
+
     public BigDecimal getSubtotal() {
         return Money.of(precoUnitario.multiply(BigDecimal.valueOf(qtd)));
     }

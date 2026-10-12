@@ -35,18 +35,25 @@
         <Label fx:id="lblPreco" styleClass="rotulo" text="Preço (R$)" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
         <TextField fx:id="txtPreco" promptText="0,00" maxWidth="160" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-        <Label styleClass="rotulo" text="Estoque" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-        <VBox spacing="4" GridPane.rowIndex="4" GridPane.columnIndex="1">
+        <Label fx:id="lblCusto" styleClass="rotulo" text="Custo (R$)" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <HBox spacing="10" alignment="CENTER_LEFT" GridPane.rowIndex="4" GridPane.columnIndex="1">
+            <TextField fx:id="txtCusto" promptText="quanto você pagou" maxWidth="160"/>
+            <Label fx:id="lblMargem" styleClass="texto-suave" wrapText="true"/>
+        </HBox>
+
+
+        <Label styleClass="rotulo" text="Estoque" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <VBox spacing="4" GridPane.rowIndex="5" GridPane.columnIndex="1">
             <CheckBox fx:id="chkControlaEstoque" text="Controlar estoque" selected="true"/>
             <Label styleClass="texto-dica" wrapText="true"
                    text="Desmarque para pão, açaí e produtos que saem sem ser registrados: a venda não confere nem baixa o estoque."/>
         </VBox>
 
-        <Label styleClass="rotulo" text="Quantidade" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-        <TextField fx:id="txtEstoque" promptText="0" maxWidth="160" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        <Label styleClass="rotulo" text="Quantidade" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtEstoque" promptText="0" maxWidth="160" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
 
-        <Label styleClass="rotulo" text="Fiado" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
-        <VBox spacing="4" GridPane.rowIndex="6" GridPane.columnIndex="1">
+        <Label styleClass="rotulo" text="Fiado" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+        <VBox spacing="4" GridPane.rowIndex="7" GridPane.columnIndex="1">
             <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" selected="true"/>
             <Label styleClass="texto-dica" wrapText="true"
                    text="Desmarque para cigarro, bebida alcoólica e outros produtos que só podem ser pagos na hora."/>

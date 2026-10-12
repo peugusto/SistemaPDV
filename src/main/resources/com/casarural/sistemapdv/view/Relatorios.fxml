@@ -59,6 +59,11 @@
                                 <Label fx:id="lblVendas" styleClass="indicador-valor" text="0"/>
                                 <Label fx:id="lblVendasDetalhe" styleClass="indicador-detalhe" text=""/>
                             </VBox>
+                            <VBox styleClass="indicador,indicador-destaque" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <Label styleClass="indicador-rotulo" text="LUCRO BRUTO"/>
+                                <Label fx:id="lblLucro" styleClass="indicador-valor" text="—"/>
+                                <Label fx:id="lblLucroDetalhe" styleClass="indicador-detalhe" wrapText="true" text=""/>
+                            </VBox>
                             <VBox styleClass="indicador" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                                 <Label styleClass="indicador-rotulo" text="TICKET MÉDIO"/>
                                 <Label fx:id="lblTicket" styleClass="indicador-valor" text="R$ 0,00"/>
@@ -158,7 +163,9 @@
                                 <TableColumn fx:id="colQtd" text="QTD" prefWidth="70"/>
                                 <TableColumn fx:id="colNumVendas" text="VENDAS" prefWidth="70"/>
                                 <TableColumn fx:id="colValor" text="FATURAMENTO" prefWidth="110"/>
-                                <TableColumn fx:id="colParticipacao" text="PARTICIPAÇÃO" prefWidth="115"/>
+                                <TableColumn fx:id="colLucro" text="LUCRO" prefWidth="95"/>
+                                <TableColumn fx:id="colMargem" text="MARGEM" prefWidth="75"/>
+                                <TableColumn fx:id="colParticipacao" text="PARTICIPAÇÃO" prefWidth="105"/>
                                 <TableColumn fx:id="colUltima" text="ÚLTIMA VENDA" prefWidth="120"/>
                             </columns>
                         </TableView>

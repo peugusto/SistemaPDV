@@ -23,13 +23,14 @@ public final class RegraListaCompras {
         private final Product produto;
         private final int vendido;
         private final int estoque;
-        private int comprar;
+        /** Observável: a coluna de custo da tela acompanha quando a pessoa muda a quantidade. */
+        private final javafx.beans.property.IntegerProperty comprar = new javafx.beans.property.SimpleIntegerProperty();
 
         Item(Product produto, int vendido, int estoque, int comprar) {
             this.produto = produto;
             this.vendido = vendido;
             this.estoque = estoque;
-            this.comprar = comprar;
+            this.comprar.set(comprar);
         }
 
         public Product getProduto() { return produto; }
@@ -38,8 +39,15 @@ public final class RegraListaCompras {
         /** Quanto tem agora (negativo vira 0). */
         public int getEstoque() { return estoque; }
         /** Quanto comprar (sugerido; a pessoa pode mudar na tela). */
-        public int getComprar() { return comprar; }
-        public void setComprar(int comprar) { this.comprar = Math.max(0, comprar); }
+        public int getComprar() { return comprar.get(); }
+        public void setComprar(int comprar) { this.comprar.set(Math.max(0, comprar)); }
+        public javafx.beans.property.IntegerProperty comprarProperty() { return comprar; }
+        /** Custo estimado desta linha (comprar x último custo); null sem custo. */
+        public java.math.BigDecimal getCustoEstimado() {
+            java.math.BigDecimal c = produto.getPrecoCusto();
+            return c == null ? null : c.multiply(java.math.BigDecimal.valueOf(getComprar()));
+        }
+
         /** Já acabou: o mais urgente. */
         public boolean acabou() { return estoque == 0; }
     }

@@ -47,6 +47,21 @@ public class RelatorioDaoJdbc implements RelatorioDao {
                     r.setDescontos(rs.getBigDecimal(3));
                 }
             }
+            // Itens: receita, parte com custo e custo (V14)
+            try (PreparedStatement st = conn.prepareStatement(
+                    "SELECT COALESCE(SUM(i.quantidade * i.preco_unitario), 0), " +
+                    "COALESCE(SUM(CASE WHEN i.custo_unitario IS NOT NULL THEN i.quantidade * i.preco_unitario END), 0), " +
+                    "COALESCE(SUM(i.quantidade * i.custo_unitario), 0) " +
+                    "FROM itempedido i JOIN pedido p ON p.id_pedido = i.id_pedido " +
+                    "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA)) {
+                periodo(st, 1, de, ate);
+                try (ResultSet rs = st.executeQuery()) {
+                    rs.next();
+                    r.setReceitaItens(rs.getBigDecimal(1));
+                    r.setReceitaComCusto(rs.getBigDecimal(2));
+                    r.setCustoItens(rs.getBigDecimal(3));
+                }
+            }
             try (PreparedStatement st = conn.prepareStatement(
                     "SELECT COUNT(*) FROM pedido p WHERE p.data_pedido >= ? AND p.data_pedido < ? " +
                     "AND p.status = 'CANCELADO' AND p.id_pedido_troca IS NULL")) {
@@ -148,9 +163,11 @@ public class RelatorioDaoJdbc implements RelatorioDao {
                 "       COALESCE(SUM(v.quantidade), 0) AS qtd, " +
                 "       COUNT(DISTINCT v.id_pedido) AS vendas, " +
                 "       COALESCE(SUM(v.quantidade * v.preco_unitario), 0) AS valor, " +
-                "       MAX(v.data_pedido) AS ultima " +
+                "       MAX(v.data_pedido) AS ultima, " +
+                "       SUM(v.quantidade * v.custo_unitario) AS custo, " +
+                "       COALESCE(SUM(CASE WHEN v.custo_unitario IS NOT NULL THEN v.quantidade * v.preco_unitario END), 0) AS valor_com_custo " +
                 "FROM produto pr " +
-                "LEFT JOIN (SELECT ip.id_produto, ip.id_pedido, ip.quantidade, ip.preco_unitario, p.data_pedido " +
+                "LEFT JOIN (SELECT ip.id_produto, ip.id_pedido, ip.quantidade, ip.preco_unitario, ip.custo_unitario, p.data_pedido " +
                 "           FROM itempedido ip INNER JOIN pedido p ON p.id_pedido = ip.id_pedido " +
                 "           WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA + ") v " +
                 "       ON v.id_produto = pr.id_produto " +
@@ -163,8 +180,10 @@ public class RelatorioDaoJdbc implements RelatorioDao {
             try (ResultSet rs = st.executeQuery()) {
                 while (rs.next()) {
                     Timestamp ultima = rs.getTimestamp("ultima");
-                    lista.add(new VendaProduto(produtos.instantiate(rs), rs.getInt("qtd"), rs.getInt("vendas"),
-                            rs.getBigDecimal("valor"), ultima == null ? null : ultima.toLocalDateTime()));
+                    VendaProduto v = new VendaProduto(produtos.instantiate(rs), rs.getInt("qtd"), rs.getInt("vendas"),
+                            rs.getBigDecimal("valor"), ultima == null ? null : ultima.toLocalDateTime());
+                    v.setCusto(rs.getBigDecimal("custo"), rs.getBigDecimal("valor_com_custo"));
+                    lista.add(v);
                 }
             }
         } catch (SQLException e) {

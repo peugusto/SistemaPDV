@@ -9,6 +9,12 @@
 ;;   linha comum = parágrafo; linhas seguidas viram um parágrafo só; linha vazia separa
 ;;   ;; comentário (não aparece)
 
+# Onde fica cada coisa
+A tela principal tem os blocos grandes (Venda, Produtos, Estoque, Clientes...) e a barra do caixa embaixo. Em cima ficam os menus:
+- Ajuda: este manual, "Problemas e soluções" e "Sobre" (versão do sistema; o botão "Copiar informações" serve para mandar a quem dá suporte).
+- Relatórios: Pão do dia (F7), Lista de compras (F9) e Vendas e produtos (F8, pede o PIN).
+- Sistema: opções do sistema.
+
 # Começando o dia
 Antes de vender, o caixa precisa estar aberto. A barra de baixo da tela principal mostra se ele está ABERTO ou FECHADO.
 ## Abrir o caixa
@@ -94,11 +100,12 @@ O pagamento abate primeiro as compras mais antigas. Se o cliente estava Em atras
 ## Produto novo
 1. Tela principal > "Produtos" (F2).
 2. Passe o leitor ou digite o código e aperte Enter. Se o código não existir, o sistema pergunta se quer cadastrar.
-3. Preencha nome e preço. Marque "Pesável" para queijo e frios. Desmarque "Controlar estoque" para pão, açaí e o que sai sem ser registrado. Desmarque "Pode vender no fiado" para cigarro e bebida.
+3. Preencha nome, preço e custo (quanto você pagou; no pesável, o custo do kg). Ao lado aparece a margem. Marque "Pesável" para queijo e frios. Desmarque "Controlar estoque" para pão, açaí e o que sai sem ser registrado. Desmarque "Pode vender no fiado" para cigarro e bebida.
 4. Salvar.
 ## Chegou mercadoria
 1. Mesma tela: passe o código do produto que chegou.
-2. Digite só a quantidade que chegou. O sistema soma ao estoque.
+2. Digite a quantidade que chegou. O sistema soma ao estoque.
+3. O custo já vem com o último preço pago. Se o fornecedor mudou o preço, corrija o custo antes de salvar.
 ! Para mudar nome, preço ou as opções de um produto que já existe, use Estoque (F3) > Editar.
 
 # Estoque
@@ -139,11 +146,21 @@ A lista mostra o que repor para a semana: quanto vendeu de cada produto nos últ
 ! Pão, açaí e pesáveis não entram na lista (não controlam estoque). O pão tem a tela "Pão do dia".
 ! Produto que não vendeu nada na semana não entra, mesmo zerado.
 
+# Custo e lucro
+O custo de cada produto é o que vocês pagaram por ele. Com o custo, os relatórios mostram quanto a loja lucrou.
+- Informe o custo no cadastro, na entrada de mercadoria (vem preenchido com o último) ou em Estoque > Editar.
+- Ao lado do custo aparece a margem: "Margem: 28% (lucro de R$ 7,00)". Se o custo passar do preço, aparece um aviso em vermelho.
+- Cada venda guarda o custo do dia. Se o custo mudar depois, o lucro das vendas antigas não muda.
+- Queijo e outros pesáveis: o custo é do kg. O sistema calcula o custo de cada pesagem pela mesma proporção do preço do kg.
+- Produto sem custo não entra no lucro. O relatório avisa quanto das vendas tem custo informado.
+- A lista de compras mostra o custo estimado da compra (quantidade x último custo).
+! O lucro aparece só nos relatórios de vendas, que pedem o PIN.
+
 # Relatórios de vendas
 Relatórios > Vendas e produtos (F8). Pede o PIN.
 - Pede o PIN da loja (veja "PIN da loja"). Na primeira vez, o sistema pede para criar.
-- Aba Vendas: faturamento, número de vendas, ticket médio, fiado, formas de pagamento, horários de movimento e média por dia da semana.
-- Aba Produtos: o que mais vende, o que não vende (Parados), filtros e ordem.
+- Aba Vendas: faturamento, lucro bruto e margem, número de vendas, ticket médio, fiado, formas de pagamento, horários de movimento e média por dia da semana.
+- Aba Produtos: o que mais vende, o que dá mais lucro (ordenar por "Maior lucro"), o que não vende (Parados) e filtros.
 - Escolha o período no topo: Hoje, 7 dias, 30 dias, Este mês, Mês passado ou duas datas.
 - "Trocar PIN" no canto de cima troca o PIN.
 
@@ -200,7 +217,17 @@ Tela principal > "Histórico de vendas". Procure vendas antigas por período, fo
 - Enter: adicionar o produto
 - F2: buscar produto pelo nome
 - F1: finalizar a venda
-- Esc: cancelar a venda
+- Esc: cancelar a venda (na troca: desistir da troca)
+## No pagamento
+- Enter: lançar o valor digitado na forma escolhida
+- F4: desconto (pede o PIN)
+- Esc: voltar para a venda
+## Na busca de produto (F2)
+- Seta para baixo: descer para a lista
+- Enter: adicionar o produto marcado
+- Esc: fechar
+## Telas de relatório, manual e lista de compras
+- Esc: fechar
 
 # Problemas e soluções
 Procure abaixo a mensagem que apareceu na tela.
@@ -278,6 +305,15 @@ Só pagamentos do caixa aberto agora podem ser estornados.
 ## Não deixa dar desconto
 > O desconto é dado antes de lançar os pagamentos.
 Clique em "Voltar (Esc)", aperte F1 de novo e dê o desconto antes de lançar qualquer pagamento.
+
+## A lista de compras está vazia ou pedindo pouco
+A lista usa as vendas dos últimos 7 dias. Se a semana foi fraca, ou se o estoque no sistema está maior que o da prateleira, ela pede pouco. Confira o estoque em Estoque (F3) e corrija em Editar. Produtos sem controle de estoque (pão, açaí, pesáveis) nunca aparecem.
+
+## O lucro aparece "—" ou com aviso de cobertura
+O lucro só conta vendas de produtos com custo informado. Informe o custo dos produtos que mais vendem (Estoque > Editar) e o número fica completo nas vendas seguintes.
+
+## Venda cancelada continua no histórico
+É de propósito: ela aparece como "Cancelada" (ou "Trocada"), com o motivo, mas não conta no caixa, no fiado nem nos relatórios.
 
 ## A tela travou ou apareceu um erro estranho
 1. Anote ou tire foto da mensagem.
