@@ -11,9 +11,23 @@
 
 # Onde fica cada coisa
 A tela principal tem os blocos grandes (Venda, Produtos, Estoque, Clientes...) e a barra do caixa embaixo. Em cima ficam os menus:
+- Acessibilidade: tamanho da letra, cores de alto contraste e destaque do campo selecionado.
 - Ajuda: este manual, "Problemas e soluções" e "Sobre" (versão do sistema; o botão "Copiar informações" serve para mandar a quem dá suporte).
 - Relatórios: Pão do dia (F7), Lista de compras (F9) e Vendas e produtos (F8, pede o PIN).
 - Sistema: opções do sistema.
+
+# Letra maior e cores (Acessibilidade)
+Menu Acessibilidade, no topo da tela principal. A escolha fica salva e vale para todas as telas, inclusive as que já estão abertas.
+## Tamanho da letra
+- Escolha Letra pequena, normal, grande ou muito grande.
+- Ou use o teclado em qualquer tela: Ctrl + aumenta, Ctrl - diminui, Ctrl 0 volta ao normal.
+- Os botões e blocos crescem junto com a letra.
+## Cores
+- Cores claras (padrão): o visual normal do sistema.
+- Alto contraste: texto preto, bordas fortes e cores mais escuras. Ajuda quem enxerga pouco ou quando bate muita luz na tela.
+## Destacar o campo selecionado
+Marque para aparecer uma borda grossa e colorida em volta de onde está o cursor (campo, botão ou lista). Ajuda a não se perder usando o teclado (Tab, setas, Enter).
+! Com letra muito grande, algumas telas menores podem precisar de rolagem. Se ficar apertado, use "Letra grande".
 
 # Começando o dia
 Antes de vender, o caixa precisa estar aberto. A barra de baixo da tela principal mostra se ele está ABERTO ou FECHADO.
@@ -203,6 +217,10 @@ O PIN da loja protege: relatórios de vendas, cancelar venda, trocar produtos, e
 Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos. Nas vendas do caixa aberto aparecem os botões "Trocar produtos" e "Cancelar venda".
 
 # Atalhos do teclado
+## Em qualquer tela
+- Ctrl +: aumentar a letra
+- Ctrl -: diminuir a letra
+- Ctrl 0: letra normal
 ## Tela principal
 - F1: Venda
 - F2: Produtos (cadastro e entrada)
@@ -314,6 +332,9 @@ O lucro só conta vendas de produtos com custo informado. Informe o custo dos pr
 
 ## Venda cancelada continua no histórico
 É de propósito: ela aparece como "Cancelada" (ou "Trocada"), com o motivo, mas não conta no caixa, no fiado nem nos relatórios.
+
+## A letra ficou grande ou pequena demais
+Aperte Ctrl 0 para voltar ao normal, ou escolha o tamanho no menu Acessibilidade.
 
 ## A tela travou ou apareceu um erro estranho
 1. Anote ou tire foto da mensagem.

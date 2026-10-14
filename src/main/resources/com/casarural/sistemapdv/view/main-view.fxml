@@ -14,6 +14,21 @@
                     <MenuItem text="Configurações" fx:id="menuConfiguracoes"/>
                     <MenuItem text="Atualizar Dados"/>
                 </Menu>
+                <Menu text="Acessibilidade">
+                    <fx:define><ToggleGroup fx:id="grupoLetra"/></fx:define>
+                    <RadioMenuItem fx:id="menuLetraPequena" text="Letra pequena" toggleGroup="$grupoLetra" onAction="#onLetraPequena"/>
+                    <RadioMenuItem fx:id="menuLetraNormal" text="Letra normal (Ctrl 0)" toggleGroup="$grupoLetra" onAction="#onLetraNormal"/>
+                    <RadioMenuItem fx:id="menuLetraGrande" text="Letra grande" toggleGroup="$grupoLetra" onAction="#onLetraGrande"/>
+                    <RadioMenuItem fx:id="menuLetraMuitoGrande" text="Letra muito grande" toggleGroup="$grupoLetra" onAction="#onLetraMuitoGrande"/>
+                    <MenuItem text="Aumentar a letra (Ctrl +)" onAction="#onAumentarLetra"/>
+                    <MenuItem text="Diminuir a letra (Ctrl -)" onAction="#onDiminuirLetra"/>
+                    <SeparatorMenuItem/>
+                    <fx:define><ToggleGroup fx:id="grupoCores"/></fx:define>
+                    <RadioMenuItem fx:id="menuCoresClaro" text="Cores claras (padrão)" toggleGroup="$grupoCores" onAction="#onCoresClaro"/>
+                    <RadioMenuItem fx:id="menuCoresContraste" text="Alto contraste" toggleGroup="$grupoCores" onAction="#onCoresContraste"/>
+                    <SeparatorMenuItem/>
+                    <CheckMenuItem fx:id="menuFoco" text="Destacar o campo selecionado" onAction="#onFoco"/>
+                </Menu>
                 <Menu text="Ajuda">
                     <MenuItem text="Manual" onAction="#onMenuManualAction"/>
                     <MenuItem text="Problemas e soluções" onAction="#onMenuProblemasAction"/>
@@ -48,10 +63,10 @@
             </padding>
 
             <Button fx:id="botaoPDV" styleClass="bloco-menu" onAction="#onBotaoPDVAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="0" GridPane.columnIndex="0">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-sucesso" text="F1"/>
                         <Label styleClass="bloco-titulo" text="Venda"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Passar produtos e receber o pagamento"/>
@@ -60,10 +75,10 @@
             </Button>
 
             <Button fx:id="botaoProdutos" styleClass="bloco-menu" onAction="#onButtonProductAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="0" GridPane.columnIndex="1">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-neutra" text="F2"/>
                         <Label styleClass="bloco-titulo" text="Produtos"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Cadastrar produto ou dar entrada no estoque"/>
@@ -72,10 +87,10 @@
             </Button>
 
             <Button fx:id="botaoConsultarProdutos" styleClass="bloco-menu" onAction="#onButtonProductListAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="0" GridPane.columnIndex="2">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-neutra" text="F3"/>
                         <Label styleClass="bloco-titulo" text="Estoque"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Ver, editar e excluir produtos"/>
@@ -84,10 +99,10 @@
             </Button>
 
             <Button fx:id="botaoClientes" styleClass="bloco-menu" onAction="#onButtonCustomerAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="1" GridPane.columnIndex="0">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-neutra" text="F4"/>
                         <Label styleClass="bloco-titulo" text="Novo cliente"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Cadastrar um cliente para o fiado"/>
@@ -96,10 +111,10 @@
             </Button>
 
             <Button fx:id="botaoFiados" styleClass="bloco-menu" onAction="#onButtonCustomerListAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="1" GridPane.columnIndex="1">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-alerta" text="F5"/>
                         <Label styleClass="bloco-titulo" text="Clientes e fiado"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Consultar clientes e receber pagamentos de fiado"/>
@@ -108,10 +123,10 @@
             </Button>
 
             <Button fx:id="botaoHistorico" styleClass="bloco-menu" onAction="#onBotaoHistoricoAction"
-                    prefWidth="270" prefHeight="150" contentDisplay="GRAPHIC_ONLY"
+                    contentDisplay="GRAPHIC_ONLY"
                     GridPane.rowIndex="1" GridPane.columnIndex="2">
                 <graphic>
-                    <VBox spacing="6" prefWidth="230">
+                    <VBox spacing="6" styleClass="bloco-conteudo">
                         <Label styleClass="etiqueta,etiqueta-info" text="Consulta"/>
                         <Label styleClass="bloco-titulo" text="Histórico de vendas"/>
                         <Label styleClass="bloco-descricao" wrapText="true" text="Encontrar vendas anteriores"/>
@@ -128,11 +143,11 @@
                 <Label fx:id="labelCaixaStatus" styleClass="etiqueta" text="CAIXA FECHADO"/>
                 <Label fx:id="labelCaixaGaveta" styleClass="valor-grande" text=""/>
             </VBox>
-            <Button fx:id="btnRetirar" text="Retirar dinheiro" onAction="#onRetirarAction" prefHeight="42"/>
-            <Button fx:id="btnColocar" text="Colocar dinheiro" onAction="#onColocarAction" prefHeight="42"/>
-            <Button text="Histórico de caixas" onAction="#onHistoricoCaixaAction" prefHeight="42"/>
+            <Button fx:id="btnRetirar" text="Retirar dinheiro" onAction="#onRetirarAction" minHeight="42"/>
+            <Button fx:id="btnColocar" text="Colocar dinheiro" onAction="#onColocarAction" minHeight="42"/>
+            <Button text="Histórico de caixas" onAction="#onHistoricoCaixaAction" minHeight="42"/>
             <Button fx:id="btnCaixaAbrirFechar" styleClass="botao-primario" text="Abrir caixa (F6)"
-                    onAction="#onCaixaAbrirFecharAction" prefHeight="42" prefWidth="190"/>
+                    onAction="#onCaixaAbrirFecharAction" minHeight="42" minWidth="190"/>
         </HBox>
     </bottom>
 

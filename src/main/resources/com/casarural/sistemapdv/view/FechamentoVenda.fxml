@@ -32,13 +32,13 @@
 
         <HBox spacing="14" alignment="CENTER">
             <ToggleButton fx:id="btnDinheiro" styleClass="opcao-grande" text="DINHEIRO" toggleGroup="$grupoPagamento" selected="true"
-                          prefWidth="140" prefHeight="80"/>
+                          minWidth="140" minHeight="80"/>
             <ToggleButton fx:id="btnCartao" styleClass="opcao-grande" text="CARTÃO" toggleGroup="$grupoPagamento"
-                          prefWidth="140" prefHeight="80"/>
+                          minWidth="140" minHeight="80"/>
             <ToggleButton fx:id="btnPix" styleClass="opcao-grande" text="PIX" toggleGroup="$grupoPagamento"
-                          prefWidth="140" prefHeight="80"/>
+                          minWidth="140" minHeight="80"/>
             <ToggleButton fx:id="btnFiado" styleClass="opcao-grande" text="FIADO" toggleGroup="$grupoPagamento"
-                          prefWidth="140" prefHeight="80"/>
+                          minWidth="140" minHeight="80"/>
         </HBox>
 
         <GridPane styleClass="cartao" hgap="16" vgap="16" alignment="CENTER">
@@ -63,10 +63,10 @@
         <Pane VBox.vgrow="ALWAYS"/>
 
         <HBox spacing="14" alignment="CENTER_RIGHT">
-            <Button fx:id="btnDesconto" text="Desconto (F4)" prefWidth="160" prefHeight="50"/>
+            <Button fx:id="btnDesconto" text="Desconto (F4)" minWidth="160" minHeight="50"/>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="btnCancelar" text="Voltar (Esc)" prefWidth="150" prefHeight="50"/>
-            <Button fx:id="btnConfirmar" styleClass="botao-primario,botao-grande" text="Confirmar pagamento" prefWidth="260" prefHeight="54"/>
+            <Button fx:id="btnCancelar" text="Voltar (Esc)" minWidth="150" minHeight="50"/>
+            <Button fx:id="btnConfirmar" styleClass="botao-primario,botao-grande" text="Confirmar pagamento" minWidth="260" minHeight="54"/>
         </HBox>
     </VBox>
 

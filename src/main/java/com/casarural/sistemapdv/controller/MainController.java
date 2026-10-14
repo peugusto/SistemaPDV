@@ -10,6 +10,7 @@ import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.Tema;
 import com.casarural.sistemapdv.util.ViewLoader;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -22,6 +23,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.util.Duration;
@@ -39,6 +42,9 @@ public class MainController implements Initializable {
     @FXML private MenuBar menuPrincipal;
     @FXML private MenuItem menuSair;
     @FXML private MenuItem menuConfiguracoes;
+    @FXML private RadioMenuItem menuLetraPequena, menuLetraNormal, menuLetraGrande, menuLetraMuitoGrande;
+    @FXML private RadioMenuItem menuCoresClaro, menuCoresContraste;
+    @FXML private CheckMenuItem menuFoco;
 
     @FXML private Label labelData;
     @FXML private Label labelHora;
@@ -61,6 +67,9 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        // Menu Acessibilidade: marca a opção em uso e acompanha os atalhos Ctrl + / Ctrl - / Ctrl 0
+        sincronizarAcessibilidade();
+        Tema.aoMudar(this::sincronizarAcessibilidade);
         iniciarRelogio();
         configurarAtalhos();
         atualizarCaixa();
@@ -337,4 +346,27 @@ public class MainController implements Initializable {
         ViewLoader.showView(true, "/com/casarural/sistemapdv/view/order-list.fxml", "Historico de Vendas"
         );
     }
+
+    // ===================== Acessibilidade =====================
+
+    private void sincronizarAcessibilidade() {
+        int letra = Tema.getTamanhoLetra();
+        menuLetraPequena.setSelected(letra == Tema.LETRA_PEQUENA);
+        menuLetraNormal.setSelected(letra == Tema.LETRA_NORMAL);
+        menuLetraGrande.setSelected(letra == Tema.LETRA_GRANDE);
+        menuLetraMuitoGrande.setSelected(letra == Tema.LETRA_MUITO_GRANDE);
+        menuCoresClaro.setSelected(Tema.getCores() == Tema.Cores.CLARO);
+        menuCoresContraste.setSelected(Tema.getCores() == Tema.Cores.ALTO_CONTRASTE);
+        menuFoco.setSelected(Tema.isFocoDestacado());
+    }
+
+    @FXML public void onLetraPequena() { Tema.setTamanhoLetra(Tema.LETRA_PEQUENA); }
+    @FXML public void onLetraNormal() { Tema.setTamanhoLetra(Tema.LETRA_NORMAL); }
+    @FXML public void onLetraGrande() { Tema.setTamanhoLetra(Tema.LETRA_GRANDE); }
+    @FXML public void onLetraMuitoGrande() { Tema.setTamanhoLetra(Tema.LETRA_MUITO_GRANDE); }
+    @FXML public void onAumentarLetra() { Tema.mudarLetra(+1); }
+    @FXML public void onDiminuirLetra() { Tema.mudarLetra(-1); }
+    @FXML public void onCoresClaro() { Tema.setCores(Tema.Cores.CLARO); }
+    @FXML public void onCoresContraste() { Tema.setCores(Tema.Cores.ALTO_CONTRASTE); }
+    @FXML public void onFoco() { Tema.setFocoDestacado(menuFoco.isSelected()); }
 }

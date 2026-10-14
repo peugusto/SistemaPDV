@@ -1,0 +1,49 @@
+/*
+ * TEMA ALTO CONTRASTE (Acessibilidade > Cores)
+ *
+ * Mesmas variáveis do tema-claro.css, com mais contraste: texto preto, bordas escuras,
+ * cores de estado mais escuras e fundos claros puros. Para quem enxerga pouco ou para
+ * telas com muito reflexo de luz.
+ */
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica", "Arial", sans-serif;
+    -fx-font-size: 14px;
+
+    /* Superfícies */
+    -cor-fundo: #ffffff;
+    -cor-cartao: #ffffff;
+    -cor-borda: #1a1a1a;
+    -cor-linha: #8a8a8a;
+    -cor-neutro: #e6e6e6;
+    -cor-neutro-hover: #cfcfcf;
+    -cor-hover: #fff3b0;
+
+    /* Texto */
+    -cor-texto: #000000;
+    -cor-texto-suave: #262626;
+
+    /* Faixa do topo das telas */
+    -cor-cabecalho: #000000;
+    -cor-cabecalho-texto: #ffffff;
+    -cor-cabecalho-suave: #f0f0f0;
+
+    /* Ações e situações */
+    -cor-primaria: #006b2e;
+    -cor-primaria-escura: #004d21;
+    -cor-primaria-clara: #c8f0d4;
+    -cor-perigo: #a30000;
+    -cor-perigo-escura: #7a0000;
+    -cor-perigo-clara: #ffd6d6;
+    -cor-alerta: #7a4a00;
+    -cor-alerta-clara: #ffe7a8;
+    -cor-info: #0033a0;
+    -cor-info-escura: #002170;
+    -cor-info-clara: #d6e2ff;
+    -cor-pix: #00574d;
+    -cor-pix-clara: #c9f2ec;
+
+    -fx-accent: -cor-primaria;
+    -fx-focus-color: #000000;
+    -fx-faint-focus-color: transparent;
+    -fx-background-color: -cor-fundo;
+}

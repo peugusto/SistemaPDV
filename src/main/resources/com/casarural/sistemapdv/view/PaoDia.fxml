@@ -35,7 +35,7 @@
                         <Label styleClass="rotulo-secao" text="QUANTOS PÃES CHEGARAM"/>
                         <HBox spacing="8">
                             <TextField fx:id="txtCompraManha" styleClass="campo-grande" promptText="0" prefWidth="120"/>
-                            <Button fx:id="btnRegistrarManha" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarManha" prefHeight="44"/>
+                            <Button fx:id="btnRegistrarManha" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarManha" minHeight="44"/>
                         </HBox>
                         <GridPane hgap="12" vgap="4">
                             <Label styleClass="texto-suave" text="Vendidos" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
@@ -54,7 +54,7 @@
                         <Label styleClass="rotulo-secao" text="QUANTOS PÃES CHEGARAM"/>
                         <HBox spacing="8">
                             <TextField fx:id="txtCompraTarde" styleClass="campo-grande" promptText="0" prefWidth="120"/>
-                            <Button fx:id="btnRegistrarTarde" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarTarde" prefHeight="44"/>
+                            <Button fx:id="btnRegistrarTarde" styleClass="botao-primario" text="Registrar" onAction="#onRegistrarTarde" minHeight="44"/>
                         </HBox>
                         <GridPane hgap="12" vgap="4">
                             <Label styleClass="texto-suave" text="Vendidos" GridPane.rowIndex="0" GridPane.columnIndex="0"/>

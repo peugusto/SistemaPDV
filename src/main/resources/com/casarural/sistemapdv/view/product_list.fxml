@@ -18,7 +18,7 @@
 
         <HBox alignment="CENTER_LEFT" spacing="10">
             <TextField fx:id="searchField" promptText="Buscar por nome ou código de barras" prefWidth="340" prefHeight="36"/>
-            <Button fx:id="searchButton" text="Buscar" prefHeight="36"/>
+            <Button fx:id="searchButton" text="Buscar" minHeight="36"/>
         </HBox>
 
         <TableView fx:id="productTable" VBox.vgrow="ALWAYS">

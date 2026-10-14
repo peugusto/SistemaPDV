@@ -4,6 +4,8 @@ import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Tema;
+import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.services.PreferenciasTelaService;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -49,6 +51,11 @@ public class Main extends Application {
         } catch (DbException e) {
             Alerts.showAlert("Banco de Dados", "Sem conexão com o banco", e.getMessage(), Alert.AlertType.WARNING);
         }
+
+        // Acessibilidade: tamanho da letra e cores escolhidos da última vez (tabela configuracao)
+        PreferenciasTelaService preferencias = new PreferenciasTelaService(DaoFactory.createConfiguracaoDAO());
+        preferencias.carregar();
+        Tema.aoMudar(preferencias::salvar);
 
         // Os atalhos F1-F5 são registrados pelo próprio MainController (configurarAtalhos)
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);

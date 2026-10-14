@@ -137,16 +137,16 @@
             <children>
                 <Label styleClass="rotulo-secao" text="RECEBER PAGAMENTO" />
                 <fx:define><ToggleGroup fx:id="grupoForma" /></fx:define>
-                <ToggleButton fx:id="btnFormaDinheiro" styleClass="pilula" text="Dinheiro" toggleGroup="$grupoForma" selected="true" prefHeight="40.0" prefWidth="100.0" />
-                <ToggleButton fx:id="btnFormaPix" styleClass="pilula" text="PIX" toggleGroup="$grupoForma" prefHeight="40.0" prefWidth="80.0" />
-                <ToggleButton fx:id="btnFormaCartao" styleClass="pilula" text="Cartão" toggleGroup="$grupoForma" prefHeight="40.0" prefWidth="90.0" />
+                <ToggleButton fx:id="btnFormaDinheiro" styleClass="pilula" text="Dinheiro" toggleGroup="$grupoForma" selected="true" minHeight="40.0" minWidth="100.0" />
+                <ToggleButton fx:id="btnFormaPix" styleClass="pilula" text="PIX" toggleGroup="$grupoForma" minHeight="40.0" minWidth="80.0" />
+                <ToggleButton fx:id="btnFormaCartao" styleClass="pilula" text="Cartão" toggleGroup="$grupoForma" minHeight="40.0" minWidth="90.0" />
                 <Pane HBox.hgrow="ALWAYS" />
                 <VBox alignment="CENTER_RIGHT" spacing="2.0">
                     <children>
                         <TextField fx:id="campoValorPagamento" promptText="Valor (vazio = tudo)" prefWidth="200" prefHeight="42" />
                     </children>
                 </VBox>
-                <Button fx:id="btnPagar" styleClass="botao-primario" onAction="#onPagarAction" prefHeight="42.0" prefWidth="150.0" text="Receber" />
+                <Button fx:id="btnPagar" styleClass="botao-primario" onAction="#onPagarAction" minHeight="42.0" minWidth="150.0" text="Receber" />
             </children>
         </HBox>
     </children>

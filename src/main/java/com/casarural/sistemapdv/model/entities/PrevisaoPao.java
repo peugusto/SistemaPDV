@@ -6,15 +6,6 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-
-/**
- * Quantos pães comprar. Regra:
- * 1. Pega os últimos 4 dias iguais da semana (ex.: as últimas 4 terças) que tiveram venda ou compra no turno.
- *    Se tiver menos de 2, usa os últimos 7 dias, de qualquer dia da semana.
- * 2. Faz a média da procura desses dias (dias em que acabou contam com a procura estimada, não só o vendido).
- * 3. Arredonda para cima, de 5 em 5.
- * Na tarde, desconta o que sobrou da manhã.
- */
 public final class PrevisaoPao {
 
     static final int DIAS_IGUAIS = 4;
@@ -67,17 +58,12 @@ public final class PrevisaoPao {
         return new Sugestao(arredondar(media), base, mesmoDia);
     }
 
-    /** Para a compra das 15h: a procura da tarde menos o que ainda tem da manhã. */
+
     public static int comprarNaTarde(int procuraTarde, Integer sobraDaManha) {
         int sobra = sobraDaManha == null ? 0 : sobraDaManha;
         return arredondar(Math.max(0, procuraTarde - sobra));
     }
 
-    /**
-     * Quanto deve sobrar da manhã na hora da compra das 15h.
-     * Antes das 15h a manhã ainda vai vender: desconta o que falta vender pela procura prevista.
-     * Ex.: tem 48 agora, a manhã costuma vender 100 e já vendeu 52 → vai vender mais 48 → sobra 0.
-     */
     public static Integer sobraPrevistaAs15h(Integer sobraAgora, int vendidoAteAgora, int procuraManha, boolean manhaAcabou) {
         if (sobraAgora == null) return null;
         if (manhaAcabou) return sobraAgora;

@@ -1,0 +1,29 @@
+/*
+ * Acessibilidade > Destacar o campo selecionado.
+ * Borda grossa e colorida em volta de onde está o cursor (campo, botão, lista), para não se perder
+ * ao usar o teclado (Tab, setas, Enter). Só borda: nada de sombra, que deixa a tela lenta.
+ */
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused,
+.date-picker:focused {
+    -fx-border-color: -cor-alerta;
+    -fx-border-width: 3;
+}
+.button:focused,
+.toggle-button:focused,
+.check-box:focused .box {
+    -fx-border-color: -cor-alerta;
+    -fx-border-width: 3;
+    -fx-border-radius: 8;
+}
+.table-view:focused,
+.list-view:focused {
+    -fx-border-color: -cor-alerta;
+    -fx-border-width: 3;
+}
+.table-row-cell:selected,
+.list-cell:filled:selected {
+    -fx-border-color: -cor-alerta;
+    -fx-border-width: 2;
+}

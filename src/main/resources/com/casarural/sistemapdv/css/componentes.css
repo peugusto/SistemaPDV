@@ -222,13 +222,22 @@
 }
 
 /* Blocos do menu principal */
+.bloco-conteudo {
+    -fx-pref-width: 16.4em;
+}
 .bloco-menu {
+    /* em = proporcional à letra: com letra grande o bloco cresce junto (Acessibilidade) */
+    -fx-min-width: 19.3em;
+    -fx-pref-width: 19.3em;
+    -fx-min-height: 9.5em;
+    -fx-pref-height: 9.5em;
+    -fx-max-height: 9.5em;
     -fx-background-color: -cor-cartao;
     -fx-background-radius: 16;
     -fx-border-color: -cor-borda;
     -fx-border-width: 2;
     -fx-border-radius: 16;
-    -fx-padding: 18;
+    -fx-padding: 1.1em;
     -fx-alignment: top-left;
 }
 .bloco-menu:hover {
@@ -469,8 +478,21 @@
     -fx-background-radius: 8;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 12, 0, 0, 3);
 }
-.menu-item .label {
+/*
+ * Itens das listas que abrem (Relatórios, Ajuda...): texto escuro.
+ * Para o JavaFX os itens são "descendentes" do menu da barra, então a regra acima
+ * (.menu-bar .menu .label, texto claro sobre a barra escura) também os pegava e eles
+ * ficavam cinza-claro no fundo branco. Mesma especificidade e vem depois: ganha.
+ */
+.menu-item .label,
+.menu-bar .menu-item .label,
+.context-menu .menu-item .label {
     -fx-text-fill: -cor-texto;
+}
+/* Marcadores dos itens de escolha (Acessibilidade) */
+.radio-menu-item:checked .left-container .radio,
+.check-menu-item:checked .left-container .check {
+    -fx-background-color: -cor-texto;
 }
 .menu-item:focused {
     -fx-background-color: -cor-primaria-clara;
