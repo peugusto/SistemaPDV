@@ -15,7 +15,11 @@ target/
 
 
 *.db
-*.properties
+# Só a configuração do banco (tem senhas). Os outros .properties (sobre.properties,
+# maven-wrapper.properties) fazem parte do projeto e precisam ir para o git.
+db.properties
+# Senha do usuário de backup (só no PC da loja)
+backup.cnf
 
 # Logs
 *.log

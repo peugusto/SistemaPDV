@@ -292,7 +292,8 @@ public class RelatoriosController implements Initializable {
         totalProdutos = produtosDoPeriodo.stream().map(VendaProduto::getValor).reduce(Money.ZERO, BigDecimal::add);
 
         List<VendaProduto> venderam = produtosDoPeriodo.stream().filter(VendaProduto::vendeu).collect(Collectors.toList());
-        long parados = produtosDoPeriodo.size() - venderam.size();
+        // Parado = ativo e sem venda (desativado não se espera que venda)
+        long parados = produtosDoPeriodo.stream().filter(v -> !v.vendeu() && v.getProduto().isAtivo()).count();
         lblProdVenderam.setText(String.valueOf(venderam.size()));
         lblProdVenderamDetalhe.setText("de " + produtosDoPeriodo.size() + " cadastrados");
         lblItens.setText(String.valueOf(venderam.stream().mapToInt(VendaProduto::getQuantidade).sum()));
@@ -330,7 +331,7 @@ public class RelatoriosController implements Initializable {
 
     private Predicate<VendaProduto> filtroMostrar() {
         if (btnQueVenderam.isSelected()) return VendaProduto::vendeu;
-        if (btnParados.isSelected()) return v -> !v.vendeu();
+        if (btnParados.isSelected()) return v -> !v.vendeu() && v.getProduto().isAtivo();
         return v -> true;
     }
 

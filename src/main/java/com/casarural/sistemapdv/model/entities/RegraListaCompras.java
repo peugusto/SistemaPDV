@@ -66,6 +66,7 @@ public final class RegraListaCompras {
         for (VendaProduto v : vendasDaSemana) {
             Product p = v.getProduto();
             if (!p.isControlaEstoque()) continue;              // pão, açaí, pesáveis
+            if (!p.isAtivo()) continue;                        // desativado: não se compra mais
             int estoque = Math.max(0, p.getEstoque());
             int comprar = quantoComprar(v.getQuantidade(), estoque);
             if (comprar > 0) lista.add(new Item(p, v.getQuantidade(), estoque, comprar));

@@ -21,7 +21,7 @@ public class ProductDaoJdbc implements ProductDao {
     public void insert(Product obj) {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
-                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado, tipo_venda, controla_estoque, preco_custo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                     "INSERT INTO produto (cod_barras, nome_produto, preco_produto, estoque, permite_fiado, tipo_venda, controla_estoque, preco_custo, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS)) {
 
             st.setString(1, obj.getCodBarras());
@@ -32,6 +32,7 @@ public class ProductDaoJdbc implements ProductDao {
             st.setString(6, obj.getTipoVenda().name());
             st.setBoolean(7, obj.isControlaEstoque());
             st.setBigDecimal(8, obj.getPrecoCusto());
+            st.setBoolean(9, obj.isAtivo());
 
             int rowsAffected = st.executeUpdate();
 
@@ -86,7 +87,7 @@ public class ProductDaoJdbc implements ProductDao {
         try (Connection conn = DB.getConnection();
              PreparedStatement st = conn.prepareStatement(
                      "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
-                             + "tipo_venda = ?, controla_estoque = ?, preco_custo = ? WHERE id_produto = ?")) {
+                             + "tipo_venda = ?, controla_estoque = ?, preco_custo = ?, ativo = ? WHERE id_produto = ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
@@ -96,7 +97,8 @@ public class ProductDaoJdbc implements ProductDao {
             st.setString(6, obj.getTipoVenda().name());
             st.setBoolean(7, obj.isControlaEstoque());
             st.setBigDecimal(8, obj.getPrecoCusto());
-            st.setInt(9, obj.getIdProduto());
+            st.setBoolean(9, obj.isAtivo());
+            st.setInt(10, obj.getIdProduto());
 
             st.executeUpdate();
         } catch (SQLException e) {
@@ -116,6 +118,24 @@ public class ProductDaoJdbc implements ProductDao {
     }
 
 
+    /** Em quantas vendas e compras de pão o produto aparece (se > 0, não pode ser excluído). */
+    @Override
+    public int contarUsos(int idProduto) {
+        try (Connection conn = DB.getConnection();
+             PreparedStatement st = conn.prepareStatement(
+                     "SELECT (SELECT COUNT(*) FROM itempedido WHERE id_produto = ?) " +
+                     "     + (SELECT COUNT(*) FROM compra_pao WHERE id_produto = ?)")) {
+            st.setInt(1, idProduto);
+            st.setInt(2, idProduto);
+            try (ResultSet rs = st.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage(), e);
+        }
+    }
+
     public Product instantiate(ResultSet rs) throws SQLException {
         Product prod = new Product();
         prod.setIdProduto(rs.getInt("id_produto"));
@@ -128,6 +148,7 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setTipoVenda(TipoVenda.valueOf(rs.getString("tipo_venda")));
         prod.setControlaEstoque(rs.getBoolean("controla_estoque"));
         prod.setPrecoCusto(rs.getBigDecimal("preco_custo"));
+        prod.setAtivo(rs.getBoolean("ativo"));
         return prod;
     }
 

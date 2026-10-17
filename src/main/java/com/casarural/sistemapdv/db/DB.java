@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.Properties;
 
 /**
@@ -143,11 +144,7 @@ public class DB {
         }
     }
 
-    /**
-     * Configuração do banco, nesta ordem:
-     *  1. C:\ProgramData\SistemaPDV\db.properties  (computador da loja; a senha fica fora do programa)
-     *  2. db.properties dentro do projeto          (desenvolvimento na IDE)
-     */
+    /** Computador da loja: a senha fica fora do programa. */
     public static Path externalConfigPath() {
         String programData = System.getenv("ProgramData");
         if (programData == null || programData.isBlank()) {
@@ -156,30 +153,50 @@ public class DB {
         return Paths.get(programData, "SistemaPDV", "db.properties");
     }
 
+    /** Desenvolvimento: config/db.properties na pasta do projeto (fora do git e fora do programa). */
+    public static Path devConfigPath() {
+        return Paths.get("config", "db.properties").toAbsolutePath();
+    }
+
+    /**
+     * Arquivo de configuração usado, nesta ordem:
+     *  1. -Dpdv.config=caminho                       (se informado ao abrir o programa)
+     *  2. C:\ProgramData\SistemaPDV\db.properties    (computador da loja)
+     *  3. config\db.properties na pasta do projeto   (desenvolvimento na IDE)
+     * Nunca de dentro do programa (.jar): assim nenhuma senha vai junto quando o programa é copiado.
+     * Vazio se nenhum existir.
+     */
+    public static Optional<Path> arquivoConfiguracao() {
+        String informado = System.getProperty("pdv.config");
+        if (informado != null && !informado.isBlank()) {
+            Path p = Paths.get(informado.trim());
+            return Files.isRegularFile(p) ? Optional.of(p) : Optional.empty();
+        }
+        for (Path p : new Path[]{externalConfigPath(), devConfigPath()}) {
+            if (Files.isRegularFile(p)) return Optional.of(p);
+        }
+        return Optional.empty();
+    }
+
     private static Properties loadProperties() {
         Properties props = new Properties();
-        Path external = externalConfigPath();
-
-        try {
-            if (Files.isRegularFile(external)) {
-                try (InputStream is = Files.newInputStream(external)) {
-                    props.load(is);
-                }
-                log.info("Configuração do banco: {}", external);
-            } else {
-                try (InputStream is = DB.class.getClassLoader().getResourceAsStream("db.properties")) {
-                    if (is == null) {
-                        log.error("Nenhum db.properties encontrado (nem em {} nem no projeto)", external);
-                        throw new DbException(MENSAGEM_SEM_CONEXAO);
-                    }
-                    props.load(is);
-                }
-                log.info("Configuração do banco: db.properties do projeto");
-            }
-        } catch (IOException e) {
-            log.error("Erro ao ler db.properties", e);
-            throw new DbException(MENSAGEM_SEM_CONEXAO, e);
+        Optional<Path> arquivo = arquivoConfiguracao();
+        if (arquivo.isEmpty()) {
+            log.error("Nenhum db.properties encontrado. Procurado em: {} e {}{}", externalConfigPath(), devConfigPath(),
+                    System.getProperty("pdv.config") == null ? "" : " e " + System.getProperty("pdv.config"));
+            throw new DbException(MENSAGEM_SEM_CONFIGURACAO);
         }
+        try (InputStream is = Files.newInputStream(arquivo.get())) {
+            props.load(is);
+        } catch (IOException e) {
+            log.error("Erro ao ler {}", arquivo.get(), e);
+            throw new DbException(MENSAGEM_SEM_CONFIGURACAO, e);
+        }
+        log.info("Configuração do banco: {}", arquivo.get());
         return props;
     }
+
+    public static final String MENSAGEM_SEM_CONFIGURACAO =
+            "O arquivo de configuração do banco não foi encontrado.\n\n"
+            + "Não use o sistema e entre em contato com o responsável pelo sistema.";
 }

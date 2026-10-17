@@ -171,7 +171,7 @@ public class BuscaProdutoController implements Initializable {
         Filtro filtro = marcado == null ? Filtro.TODOS : (Filtro) marcado.getUserData();
         String busca = txtBusca.getText();
         boolean soComEstoque = chkSoComEstoque.isSelected();
-        produtos.setPredicate(p -> BuscaProduto.combina(p, busca, filtro, soComEstoque));
+        produtos.setPredicate(p -> p.isAtivo() && BuscaProduto.combina(p, busca, filtro, soComEstoque));
 
         // Primeira linha já marcada: digitou, apertou Enter, adicionou
         if (!produtos.isEmpty()) {

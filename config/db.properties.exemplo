@@ -2,8 +2,11 @@
 #
 # Copie este arquivo para:
 #     C:\ProgramData\SistemaPDV\db.properties
-# e troque a senha. O sistema lê esse arquivo ao abrir; se ele não existir,
-# usa o db.properties de dentro do projeto (desenvolvimento).
+# e troque a senha. O sistema procura a configuração nesta ordem:
+#   1. -Dpdv.config=caminho (se informado ao abrir o programa)
+#   2. C:\ProgramData\SistemaPDV\db.properties   (computador da loja)
+#   3. config\db.properties na pasta do projeto   (desenvolvimento; fica fora do git)
+# Nunca de dentro do programa (.jar): nenhuma senha vai junto quando o programa é copiado.
 #
 # Dois usuários, nunca o root:
 #   user / password                     -> pdv_app: usado pelo sistema o tempo todo; só lê e altera dados

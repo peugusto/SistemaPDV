@@ -1,0 +1,14 @@
+# Credenciais do backup. Copie para C:\ProgramData\SistemaPDV\backup\backup.cnf
+# e troque a senha. Este arquivo fica só no PC da loja (nunca no git).
+#
+# Usuário próprio do backup, que só consegue LER o banco (criar no Workbench, como root):
+#   CREATE USER 'pdv_backup'@'localhost' IDENTIFIED BY 'uma-senha-forte';
+#   GRANT SELECT, SHOW VIEW, TRIGGER, LOCK TABLES ON casarural.* TO 'pdv_backup'@'localhost';
+#
+# Depois de criar o arquivo, deixe só o administrador e o SYSTEM lendo
+# (botão direito > Propriedades > Segurança).
+
+[mysqldump]
+user=pdv_backup
+password=TROQUE_AQUI
+host=localhost

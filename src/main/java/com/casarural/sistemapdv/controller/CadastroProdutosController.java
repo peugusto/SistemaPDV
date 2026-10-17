@@ -90,6 +90,13 @@ public class CadastroProdutosController implements Initializable {
 
         service.findByCodBarras(code).ifPresentOrElse(
                 product -> {
+                    if (!product.isAtivo()) {
+                        Alerts.showAlertAndWait("Produto desativado", product.getNomeProduto(),
+                                "Este produto está desativado. Para voltar a vender e dar entrada, "
+                                        + "marque \"Produto ativo\" em Estoque > Editar.", AlertType.INFORMATION);
+                        txtCodBarras.clear();
+                        return;
+                    }
                     // Sem controle de estoque não há entrada para dar; o resto muda em "Editar"
                     if (!product.isControlaEstoque()) {
                         Alerts.showAlertAndWait("Produto sem estoque", product.getNomeProduto(),
@@ -188,7 +195,8 @@ public class CadastroProdutosController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         Constraints.setTextFieldInteger(txtEstoque);
         Constraints.setTextFieldMoney(txtPreco);
-        Constraints.setTextFieldMaxLength(txtNome,20);
+        Constraints.setTextFieldMaxLength(txtNome, Product.TAMANHO_MAX_NOME);
+        Constraints.setTextFieldMaxLength(txtCodBarras, Product.TAMANHO_MAX_CODIGO);
 
         ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
         ProdutoCampos.ligarCusto(chkPesavel, txtPreco, txtCusto, lblCusto, lblMargem);

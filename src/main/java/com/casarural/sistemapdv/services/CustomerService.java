@@ -18,11 +18,23 @@ public class CustomerService {
     }
 
     public void insert(Customer obj) throws SQLException {
+        validarNome(obj);
         obj.setSituacaoFiado(CustomerStatus.DISPONIVEL);
         dao.insert(obj);
     }
 
+    /** Nome obrigatório, sem espaços nas pontas e dentro do tamanho do banco. */
+    static void validarNome(Customer obj) {
+        String nome = obj.getNomeCliente() == null ? "" : obj.getNomeCliente().trim();
+        if (nome.isEmpty()) throw new DbException("Digite o nome do cliente.");
+        if (nome.length() > Customer.TAMANHO_MAX_NOME) {
+            throw new DbException("O nome pode ter no máximo " + Customer.TAMANHO_MAX_NOME + " letras.");
+        }
+        obj.setNomeCliente(nome);
+    }
+
     public void saveOrUpdate(Customer obj) {
+        validarNome(obj);
         if (obj.getIdCliente() == 0) {
             try {
                 insert(obj);

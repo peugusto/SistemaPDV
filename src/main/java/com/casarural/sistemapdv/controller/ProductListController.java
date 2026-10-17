@@ -62,6 +62,21 @@ public class ProductListController implements Initializable {
         idColumn.setCellValueFactory(new PropertyValueFactory<>("idProduto"));
         barcodeColumn.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("nomeProduto"));
+        // Produto desativado aparece apagado, com "(inativo)"
+        nameColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String nome, boolean empty) {
+                super.updateItem(nome, empty);
+                Product p = getTableRow() == null ? null : getTableRow().getItem();
+                if (empty || nome == null || p == null) {
+                    setText(null);
+                    Tema.estado(this, null);
+                } else {
+                    setText(p.isAtivo() ? nome : nome + "  (inativo)");
+                    Tema.estado(this, p.isAtivo() ? null : "texto-suave");
+                }
+            }
+        });
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("precoProduto"));
         MoneyCells.format(priceColumn);
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("estoque"));
@@ -193,17 +208,39 @@ public class ProductListController implements Initializable {
         }
     }
 
+    /**
+     * Produto sem histórico: exclui. Já vendido: não pode ser excluído (o histórico precisa dele),
+     * então oferece desativar.
+     */
     private void onDeleteAction(Product obj) {
-
-        if(Alerts.showConfirmation("Confirmação","Deseja excluir o produto?",obj.getNomeProduto())){
-            try{
-                service.delete(obj.getIdProduto());
-                updateTableView();
-            }catch(DbException e){
-                Alerts.showAlert("ERROR",null, e.getMessage(),Alert.AlertType.ERROR);
+        try {
+            if (service.temHistorico(obj.getIdProduto())) {
+                if (!obj.isAtivo()) {
+                    Alerts.showAlert("Excluir produto", obj.getNomeProduto(),
+                            "Este produto já foi vendido e já está desativado. Ele fica só no histórico.",
+                            Alert.AlertType.INFORMATION);
+                    return;
+                }
+                int escolha = Alerts.showChoice("Excluir produto", obj.getNomeProduto() + " já foi vendido",
+                        "Ele não pode ser excluído, porque o histórico de vendas precisa dele.\n\n"
+                                + "Desativado, ele some da venda, da busca e da lista de compras, mas as vendas antigas continuam.\n"
+                                + "Para voltar a vender, é só marcar \"Produto ativo\" em Editar.",
+                        Alert.AlertType.WARNING, "Voltar", "Desativar produto");
+                if (escolha == 0) {
+                    service.desativar(obj);
+                    log.info("Produto {} ({}) desativado", obj.getIdProduto(), obj.getNomeProduto());
+                    updateTableView();
+                }
+                return;
             }
-
+            if (Alerts.showConfirmation("Excluir produto", "Excluir " + obj.getNomeProduto() + "?",
+                    "Ele nunca foi vendido. Excluir apaga o cadastro de vez.")) {
+                service.delete(obj.getIdProduto());
+                log.info("Produto {} ({}) excluído", obj.getIdProduto(), obj.getNomeProduto());
+                updateTableView();
+            }
+        } catch (DbException e) {
+            Alerts.showAlert("Excluir produto", "Não foi possível excluir", e.getMessage(), Alert.AlertType.WARNING);
         }
-
     }
 }

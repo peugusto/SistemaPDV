@@ -7,6 +7,10 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Product {
+    /** Tamanhos das colunas no banco (V1): passar disso dá erro ao gravar. */
+    public static final int TAMANHO_MAX_NOME = 30;
+    public static final int TAMANHO_MAX_CODIGO = 60;
+
     private int idProduto;
     private String codBarras;
     private String nomeProduto;
@@ -20,6 +24,8 @@ public class Product {
     private boolean controlaEstoque = true;
     /** Último custo pago (por unidade; no pesável, por kg). null = não informado. Coluna produto.preco_custo (V14). */
     private BigDecimal precoCusto;
+    /** false = desativado: não aparece na venda, na busca nem na lista de compras (V15). */
+    private boolean ativo = true;
 
     public Product(){}
 
@@ -78,6 +84,14 @@ public class Product {
 
     public void setPermiteFiado(boolean permiteFiado) {
         this.permiteFiado = permiteFiado;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
     }
 
     public BigDecimal getPrecoCusto() {

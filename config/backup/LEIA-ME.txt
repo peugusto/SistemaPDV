@@ -1,0 +1,75 @@
+BACKUP DO SISTEMAPDV - PASSO A PASSO (fazer no PC da loja)
+==========================================================
+
+Arquivos desta pasta:
+  backup-casarural.ps1   o script (faz a cópia, confere, compacta, manda para a nuvem, apaga as antigas)
+  backup.cnf.exemplo     modelo do arquivo com a senha do usuário de backup
+
+
+1) USUÁRIO DE BACKUP (só lê o banco)
+   No MySQL Workbench, conectado como root:
+
+     CREATE USER 'pdv_backup'@'localhost' IDENTIFIED BY 'uma-senha-forte';
+     GRANT SELECT, SHOW VIEW, TRIGGER, LOCK TABLES ON casarural.* TO 'pdv_backup'@'localhost';
+
+   Guarde a senha no gerenciador de senhas.
+
+
+2) ARQUIVOS NO PC DA LOJA
+   Crie a pasta  C:\ProgramData\SistemaPDV\backup
+   Copie para ela:  backup-casarural.ps1
+   Copie backup.cnf.exemplo para lá com o nome  backup.cnf  e troque TROQUE_AQUI pela senha do passo 1.
+   Botão direito em backup.cnf > Propriedades > Segurança: deixe só o seu usuário, Administradores e SYSTEM.
+
+
+3) NUVEM (cópia fora da loja)
+   Use o OneDrive (já vem no Windows) ou o Google Drive para computador, entrando com a conta da loja
+   (ative a verificação em duas etapas: o backup tem nomes, telefones e dívidas dos clientes).
+   Crie a pasta  Backup Casa Rural  dentro do OneDrive/Google Drive e anote o caminho, por exemplo:
+     C:\Users\Loja\OneDrive\Backup Casa Rural
+   Google Drive: em Preferências, use "Espelhar arquivos" (assim a pasta existe de verdade no disco).
+   Sem internet, a cópia fica no PC e sobe sozinha quando a internet voltar.
+
+
+4) TESTE À MÃO (antes de agendar)
+   Abra o PowerShell e rode (troque o caminho da nuvem):
+
+     powershell -NoProfile -ExecutionPolicy Bypass -File "C:\ProgramData\SistemaPDV\backup\backup-casarural.ps1" -PastaNuvem "C:\Users\Loja\OneDrive\Backup Casa Rural"
+
+   Tem que aparecer "OK: ...casarural_AAAA-MM-DD_HHMM.zip" e o .zip tem que aparecer na pasta da nuvem.
+   O histórico fica em  C:\ProgramData\SistemaPDV\backup\copias\backup.log
+
+
+5) AGENDAR (Agendador de Tarefas do Windows > Criar Tarefa...)
+   Geral:        Nome: Backup Casa Rural
+                 Usuário: o usuário do Windows da loja (o mesmo que tem o OneDrive/Google Drive)
+                 "Executar somente quando o usuário estiver conectado"
+   Disparadores: Novo > Diariamente, 12:00     e outro: Diariamente, 18:30
+                 (com a loja aberta o PC está ligado; a cópia não atrapalha o caixa)
+   Ações:        Programa:   powershell.exe
+                 Argumentos: -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\ProgramData\SistemaPDV\backup\backup-casarural.ps1" -PastaNuvem "C:\Users\Loja\OneDrive\Backup Casa Rural"
+   Configurações: marque "Executar a tarefa o mais cedo possível após uma inicialização agendada ser perdida"
+                 (se o PC estava desligado no horário, faz quando ligar)
+   Teste: botão direito na tarefa > Executar, e confira o backup.log.
+
+
+6) PENDRIVE (segunda cópia, uma vez por semana)
+   Copie a pasta  C:\ProgramData\SistemaPDV\backup\copias  para um pendrive e guarde o pendrive fora da loja.
+
+
+7) COMO RESTAURAR (se o PC quebrar ou o banco estragar)
+   - Feche o SistemaPDV.
+   - Descompacte o .zip mais recente (botão direito > Extrair tudo).
+   - MySQL Workbench (root) > Server > Data Import > "Import from Self-Contained File" > escolha o .sql
+     > Default Target Schema: casarural (crie com "New..." se não existir) > Start Import.
+   - Abra o SistemaPDV: ele confere a versão do banco sozinho.
+
+
+8) TESTE DE RESTAURAÇÃO (uma vez por mês - backup que nunca foi restaurado não é backup)
+   Faça o passo 7 com o Default Target Schema "casarural_teste" (nunca no casarural de verdade).
+   Confira no Workbench: SELECT COUNT(*) FROM casarural_teste.pedido;  (deve bater com o casarural)
+   Depois: DROP DATABASE casarural_teste;
+
+
+SE APARECER O ARQUIVO  ULTIMO_BACKUP_FALHOU.txt  na pasta copias: o backup não funcionou.
+Leia o motivo no backup.log (senha errada, MySQL parado, disco cheio...).

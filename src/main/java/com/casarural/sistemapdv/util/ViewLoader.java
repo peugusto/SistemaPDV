@@ -36,8 +36,10 @@ public class ViewLoader {
             Tema.aplicar(scene);
 
 
-            scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                if (event.getCode() == KeyCode.ESCAPE) {
+            // Handler (e não filtro): roda depois da tela. Se a tela já usou o Esc (PDV cancelando a venda,
+            // combo fechando a lista), o evento chega consumido e não pergunta se é para fechar.
+            scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+                if (event.getCode() == KeyCode.ESCAPE && !event.isConsumed()) {
                     if (Alerts.showConfirmation("Sair", null, "Deseja fechar esta tela?")) {
                         stage.close();
                     }

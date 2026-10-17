@@ -32,6 +32,7 @@ public class ProductFormController implements Initializable {
     @FXML private TextField txtPreco;
     @FXML private TextField txtEstoque;
     @FXML private CheckBox chkPermiteFiado;
+    @FXML private CheckBox chkAtivo;
     @FXML private CheckBox chkPesavel;
     @FXML private CheckBox chkControlaEstoque;
     @FXML private Label lblPreco;
@@ -53,6 +54,8 @@ public class ProductFormController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         Constraints.setTextFieldMoney(txtPreco);
+        Constraints.setTextFieldMaxLength(txtNome, Product.TAMANHO_MAX_NOME);
+        Constraints.setTextFieldMaxLength(txtCodBarras, Product.TAMANHO_MAX_CODIGO);
         ProdutoCampos.ligar(chkPesavel, chkControlaEstoque, txtEstoque, lblPreco);
         ProdutoCampos.ligarCusto(chkPesavel, txtPreco, txtCusto, lblCusto, lblMargem);
     }
@@ -67,6 +70,7 @@ public class ProductFormController implements Initializable {
         txtPreco.setText(Money.toInput(entity.getPrecoProduto()));
         txtEstoque.setText(String.valueOf(entity.getEstoque()));
         chkPermiteFiado.setSelected(entity.isPermiteFiado());
+        chkAtivo.setSelected(entity.isAtivo());
         chkControlaEstoque.setSelected(entity.isControlaEstoque());
         chkPesavel.setSelected(entity.isPesavel());
         txtCusto.setText(entity.getPrecoCusto() == null ? "" : Money.toInput(entity.getPrecoCusto()));
@@ -97,6 +101,7 @@ public class ProductFormController implements Initializable {
             entity.setPrecoProduto(preco);
             entity.setEstoque(estoque);
             entity.setPermiteFiado(chkPermiteFiado.isSelected());
+            entity.setAtivo(chkAtivo.isSelected());
             entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
             entity.setControlaEstoque(chkControlaEstoque.isSelected());
             entity.setPrecoCusto(ProdutoCampos.lerValor(txtCusto));

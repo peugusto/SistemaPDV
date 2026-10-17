@@ -124,6 +124,10 @@ O pagamento abate primeiro as compras mais antigas. Se o cliente estava Em atras
 
 # Estoque
 Tela principal > "Estoque" (F3). Mostra todos os produtos, preço e estoque. Estoque em vermelho: 15 unidades ou menos. Pesáveis e produtos sem controle aparecem como "Pesável" ou "Não controla".
+## Excluir ou desativar um produto
+- Produto que nunca foi vendido: "Excluir" apaga o cadastro.
+- Produto que já foi vendido não pode ser apagado (as vendas antigas precisam dele). O sistema oferece "Desativar produto": ele some da venda, da busca (F2) e da lista de compras, e aparece como "(inativo)" no Estoque.
+- Para voltar a vender: Estoque > Editar > marque "Produto ativo".
 
 # Caixa: retirar, colocar e fechar
 ## Retirar dinheiro (sangria)
@@ -250,6 +254,14 @@ Tela principal > "Histórico de vendas". Procure vendas antigas por período, fo
 # Problemas e soluções
 Procure abaixo a mensagem que apareceu na tela.
 
+## O sistema demora para abrir
+> Esperando o banco de dados ligar…
+Logo depois de ligar o computador, o banco de dados ainda está iniciando. O sistema espera sozinho até uns 45 segundos. Não precisa fazer nada.
+
+## O sistema já está aberto
+> O sistema já está aberto
+O programa foi aberto duas vezes. Procure a janela na barra de tarefas, embaixo na tela.
+
 ## O sistema não abre
 > O sistema não pode ser aberto. Não foi possível atualizar o banco de dados.
 O sistema não conseguiu preparar o banco ao abrir. Não use o sistema e chame o responsável. (Para o responsável: veja o log em C:\ProgramData\SistemaPDV\logs; em geral é a senha do usuário pdv_migracao faltando no db.properties.)
@@ -294,6 +306,14 @@ A dívida com esta compra passaria do limite do cliente. Receba uma parte em din
 > Fiado não permitido
 Cigarro, bebida e outros marcados "sem fiado" não podem ir para o fiado. Escolha "Tirar da venda e lançar o resto no fiado" (devolva os produtos à prateleira) ou receba a compra toda de outra forma.
 
+## Não deixa excluir o produto
+> já foi vendido
+Produto vendido não pode ser apagado. Clique em "Desativar produto": ele some da venda e da busca, e o histórico continua.
+
+## Produto desativado
+> Este produto foi desativado e não pode ser vendido.
+Alguém desativou o produto. Para vender de novo: Estoque > Editar > marque "Produto ativo".
+
 ## Não deixa excluir o cliente
 > Não foi possível excluir
 Clientes com compras não podem ser excluídos, para não perder o histórico. Deixe o cliente Bloqueado.
@@ -310,7 +330,7 @@ Ainda não há dias suficientes registrados. Continue registrando quantos pães 
 
 ## Produto do pão não encontrado
 > Produto do pão não encontrado
-O produto de código 1 (PÃO FRANCÊS) foi excluído ou trocado. Chame o responsável.
+Não existe produto com código 1. Cadastre o pão de novo com o código 1 (Produtos, F2 na tela principal): o relatório encontra sozinho.
 
 ## Não aparece o botão de cancelar ou trocar
 > Venda de um caixa já fechado: não dá para cancelar nem trocar.

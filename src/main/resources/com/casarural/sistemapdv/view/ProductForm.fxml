@@ -47,6 +47,9 @@
 
         <Label styleClass="rotulo" text="Fiado" GridPane.columnIndex="0" GridPane.rowIndex="7"/>
         <CheckBox fx:id="chkPermiteFiado" text="Pode vender no fiado" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
+
+        <Label styleClass="rotulo" text="Situação" GridPane.columnIndex="0" GridPane.rowIndex="8"/>
+        <CheckBox fx:id="chkAtivo" text="Produto ativo (aparece na venda)" GridPane.columnIndex="1" GridPane.rowIndex="8"/>
     </GridPane>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">

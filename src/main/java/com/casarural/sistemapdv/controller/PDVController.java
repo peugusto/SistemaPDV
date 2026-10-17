@@ -118,7 +118,8 @@ public class PDVController implements Initializable {
                         onBuscarProduto();
                         event.consume();
                     }
-                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                    // Esc só é do PDV quando há o que cancelar; cupom vazio: a janela pergunta se fecha
+                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && (trocaDe != null || !itensVenda.isEmpty())) {
                         onLimparVenda();
                         event.consume();
                     }
@@ -128,8 +129,8 @@ public class PDVController implements Initializable {
     }
 
     private void onAdicionarItem() {
-        String codigo = campoCodigoProduto.getText();
-        if (codigo == null || codigo.trim().isEmpty()) return;
+        String codigo = campoCodigoProduto.getText() == null ? "" : campoCodigoProduto.getText().trim();
+        if (codigo.isEmpty()) return;
 
 
         int qtdInput = 1;
@@ -142,6 +143,13 @@ public class PDVController implements Initializable {
 
         Optional<Product> prodOpt = productService.findByCodBarras(codigo);
 
+        if (prodOpt.isPresent() && !prodOpt.get().isAtivo()) {
+            Alerts.showAlert("Produto desativado", prodOpt.get().getNomeProduto(),
+                    "Este produto foi desativado e não pode ser vendido. Para vender de novo, marque "
+                            + "\"Produto ativo\" em Estoque > Editar.", Alert.AlertType.WARNING);
+            campoCodigoProduto.selectAll();
+            return;
+        }
         if (prodOpt.isPresent()) {
             Product p = prodOpt.get();
 

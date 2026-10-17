@@ -29,16 +29,27 @@ public class PaoService {
         this.produtos = produtos;
     }
 
-    /** O produto pão; vazio se a configuração não existir ou o produto foi excluído. */
+    /** Código do pão criado pela V12. */
+    public static final String CODIGO_PAO = "1";
+
+    /**
+     * O produto pão. Procura pelo número guardado na configuração; se ele não existir mais
+     * (pão excluído e cadastrado de novo), procura pelo código 1 e atualiza a configuração.
+     * Vazio só se não houver nenhum dos dois.
+     */
     public Optional<Product> produtoPao() {
-        return configuracao.get(CHAVE_PRODUTO)
-                .flatMap(id -> {
-                    try {
-                        return produtos.findById(Integer.parseInt(id.trim()));
-                    } catch (NumberFormatException e) {
-                        return Optional.empty();
-                    }
-                });
+        Optional<Product> pelaConfiguracao = configuracao.get(CHAVE_PRODUTO).flatMap(id -> {
+            try {
+                return produtos.findById(Integer.parseInt(id.trim()));
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
+        });
+        if (pelaConfiguracao.isPresent()) return pelaConfiguracao;
+
+        Optional<Product> peloCodigo = produtos.findByCodBarras(CODIGO_PAO);
+        peloCodigo.ifPresent(p -> configuracao.set(CHAVE_PRODUTO, String.valueOf(p.getIdProduto())));
+        return peloCodigo;
     }
 
     /** Do dia mais antigo até "hoje", um DiaPao por dia. */

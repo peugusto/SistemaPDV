@@ -4,7 +4,6 @@ import com.casarural.sistemapdv.db.DB;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -74,9 +73,8 @@ public class SobreService {
         g.put("Tecnologias", tec);
 
         List<String[]> arquivos = new ArrayList<>();
-        java.nio.file.Path config = DB.externalConfigPath();
         arquivos.add(par("Configuração do banco",
-                Files.isRegularFile(config) ? config.toString() : "db.properties do projeto (desenvolvimento)"));
+                DB.arquivoConfiguracao().map(java.nio.file.Path::toString).orElse("não encontrado")));
         arquivos.add(par("Logs", pastaLogs()));
         g.put("Arquivos", arquivos);
         return g;
