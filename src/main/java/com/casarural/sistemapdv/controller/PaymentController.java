@@ -13,6 +13,7 @@ import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.services.AcessoRelatoriosService;
 import com.casarural.sistemapdv.services.CustomerService;
+import com.casarural.sistemapdv.services.ImpressaoVendaService;
 import com.casarural.sistemapdv.services.OrderService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
@@ -61,6 +62,8 @@ public class PaymentController implements Initializable {
     private BigDecimal saldoRestante = Money.ZERO;
     private Customer clienteFiado;
     private boolean vendaConcluida = false;
+    private BigDecimal trocoDinheiro = Money.ZERO;
+    private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
     /** Produtos sem fiado que o operador escolheu tirar da venda. */
     private final List<OrderItem> itensRetirados = new ArrayList<>();
     /** Troca: a venda antiga; o que foi pago nela vira crédito nesta. */
@@ -305,14 +308,20 @@ public class PaymentController implements Initializable {
     }
 
     private void realizarBaixaAutomatica() {
+        if (vendaConcluida) return;
         if (Money.isPositive(saldoRestante)) {
-            processarPagamento(saldoRestante);
+            if (txtValorRecebido.getText() == null || txtValorRecebido.getText().isBlank()) {
+                processarPagamento(saldoRestante);
+            } else {
+                adicionarPagamentoManual();
+            }
         } else {
             salvarVenda();
         }
     }
 
     private void processarPagamento(BigDecimal valor) {
+        if (vendaConcluida) return;
         if (!Money.isPositive(saldoRestante)) {
             salvarVenda();
             return;
@@ -404,6 +413,9 @@ public class PaymentController implements Initializable {
 
         // No dinheiro o cliente pode entregar mais que o saldo: registra só o saldo, o resto é troco
         BigDecimal valorEfetivo = Money.min(valor, saldoRestante);
+        if (metodo == PaymentMethod.DINHEIRO) {
+            trocoDinheiro = Money.max(Money.ZERO, valor.subtract(valorEfetivo));
+        }
         order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo));
 
         saldoRestante = saldoRestante.subtract(valorEfetivo);
@@ -476,6 +488,7 @@ public class PaymentController implements Initializable {
     }
 
     private void salvarVenda() {
+        if (vendaConcluida) return;
         BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
         if (totalFiado.compareTo(order.getTotalPermitidoNoFiado()) > 0) {
             String lista = order.getItensSemFiado().stream()
@@ -499,26 +512,51 @@ public class PaymentController implements Initializable {
             }
 
             orderService.insert(order);
-            vendaConcluida = true;
-            if (trocaDe != null) {
-                log.warn("Troca: venda #{} substituída pela #{}. Devolvido: {}", trocaDe.getIdPedido(), order.getIdPedido(), devolverTroca);
-                Alerts.showAlertAndWait("Troca concluída", "Venda #" + trocaDe.getIdPedido() + " trocada pela #" + order.getIdPedido(),
-                        devolverTroca.isEmpty() ? "Os produtos devolvidos voltaram para o estoque."
-                                : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolverTroca) + ".",
-                        Alert.AlertType.INFORMATION);
-            } else if (itensRetirados.isEmpty()) {
-                Alerts.showAlert("Sucesso", null, "Venda finalizada!", Alert.AlertType.INFORMATION);
-            } else {
-                Alerts.showAlert("Venda finalizada", "Estes produtos foram tirados da venda. Devolva-os à prateleira:",
-                        itensRetirados.stream().map(i -> "  •  " + i.getQtd() + " x " + i.getNomeProduto())
-                                .collect(Collectors.joining("\n")),
-                        Alert.AlertType.INFORMATION);
-            }
-            fecharJanela();
         } catch (Exception e) {
             Alerts.showAlert("Erro", "Erro ao salvar", e.getMessage(), Alert.AlertType.ERROR);
             reiniciarPagamentos();
+            return;
         }
+
+        // A partir daqui a transação já terminou: falha de impressão nunca reinicia pagamentos.
+        vendaConcluida = true;
+        btnConfirmar.setDisable(true);
+        emitirComprovante();
+        if (trocaDe != null) {
+            log.warn("Troca: venda #{} substituída pela #{}. Devolvido: {}", trocaDe.getIdPedido(), order.getIdPedido(), devolverTroca);
+            Alerts.showAlertAndWait("Troca concluída", "Venda #" + trocaDe.getIdPedido() + " trocada pela #" + order.getIdPedido(),
+                    devolverTroca.isEmpty() ? "Os produtos devolvidos voltaram para o estoque."
+                            : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolverTroca) + ".",
+                    Alert.AlertType.INFORMATION);
+        } else if (itensRetirados.isEmpty()) {
+            Alerts.showAlert("Sucesso", null, "Venda finalizada!", Alert.AlertType.INFORMATION);
+        } else {
+            Alerts.showAlert("Venda finalizada", "Estes produtos foram tirados da venda. Devolva-os à prateleira:",
+                    itensRetirados.stream().map(i -> "  •  " + i.getQtd() + " x " + i.getNomeProduto())
+                            .collect(Collectors.joining("\n")),
+                    Alert.AlertType.INFORMATION);
+        }
+        fecharJanela();
+    }
+
+    private void emitirComprovante() {
+        final int idVenda = order.getIdPedido();
+        try {
+            impressaoVendaService.emitir(order, trocoDinheiro, devolverTroca).whenComplete((ignorado, erro) -> {
+                if (erro != null) avisarFalhaImpressao(idVenda, erro);
+            });
+        } catch (Exception erro) {
+            avisarFalhaImpressao(idVenda, erro);
+        }
+    }
+
+    private void avisarFalhaImpressao(int idVenda, Throwable erro) {
+        log.error("Venda #{} salva, mas o comprovante não pôde ser enviado", idVenda, erro);
+        javafx.application.Platform.runLater(() -> Alerts.showAlert("Comprovante não enviado",
+                "A venda #" + idVenda + " foi salva normalmente",
+                "Não foi possível emitir o comprovante. Não refaça a venda.\n"
+                        + "Confira a impressora e o papel. Se continuar, peça ajuda ao responsável pelo sistema.",
+                Alert.AlertType.WARNING));
     }
 
     private BigDecimal totalPorMetodo(PaymentMethod metodo) {
@@ -526,6 +564,7 @@ public class PaymentController implements Initializable {
     }
 
     private void reiniciarPagamentos() {
+        trocoDinheiro = Money.ZERO;
         order.getPagamentos().clear();
         Customer clienteDaTroca = clienteFiado != null && trocaDe != null
                 && trocaDe.getIdCliente() != null && trocaDe.getIdCliente() == clienteFiado.getIdCliente() ? clienteFiado : null;
