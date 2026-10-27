@@ -109,6 +109,7 @@ public class CadastroProdutosController implements Initializable {
                     this.entity = product;
                     isExistingProduct = true;
 
+                    txtCodBarras.setText(product.getCodBarras());
                     txtNome.setText(product.getNomeProduto());
                     txtPreco.setText(Money.toInput(product.getPrecoProduto()));
                     chkPermiteFiado.setSelected(product.isPermiteFiado());
@@ -149,9 +150,16 @@ public class CadastroProdutosController implements Initializable {
     }
 
     private void updateEntityFromForm() {
+        String codigo = txtCodBarras.getText().trim();
+        if (isExistingProduct && (entity == null
+                || !codigo.equals(entity.getCodBarras()))) {
+            throw new IllegalArgumentException(
+                    "O código foi alterado. Aperte Enter para pesquisar o produto antes de salvar.");
+        }
+
         if (entity == null) entity = new Product();
 
-        entity.setCodBarras(txtCodBarras.getText());
+        entity.setCodBarras(codigo);
         entity.setNomeProduto(txtNome.getText());
         entity.setPrecoProduto(Money.parse(txtPreco.getText()));
 
@@ -171,6 +179,7 @@ public class CadastroProdutosController implements Initializable {
     }
 
     private void enableFields() {
+        entity = new Product();
         isExistingProduct = false;
         txtNome.setEditable(true);
         txtPreco.setEditable(true);
