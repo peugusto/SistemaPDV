@@ -21,6 +21,10 @@ db.properties
 # Senha do usuário de backup (só no PC da loja)
 backup.cnf
 
+# Instalador: downloads (MySQL, ~270 MB) e o .exe gerado ficam fora do git
+instalador/terceiros/
+instalador/saida/
+
 # Logs
 *.log
 /logs/

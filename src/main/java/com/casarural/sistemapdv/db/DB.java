@@ -161,8 +161,11 @@ public class DB {
     /**
      * Arquivo de configuração usado, nesta ordem:
      *  1. -Dpdv.config=caminho                       (se informado ao abrir o programa)
-     *  2. C:\ProgramData\SistemaPDV\db.properties    (computador da loja)
-     *  3. config\db.properties na pasta do projeto   (desenvolvimento na IDE)
+     *  2. config\db.properties na pasta do projeto   (desenvolvimento na IDE)
+     *  3. C:\ProgramData\SistemaPDV\db.properties    (computador da loja; criado pelo instalador)
+     * O 2 vem antes do 3 para o instalador poder ser testado no PC de desenvolvimento: a IDE
+     * (pasta atual = projeto) continua no banco de desenvolvimento, e o programa instalado
+     * (pasta atual = C:\Program Files\SistemaPDV, sem pasta config) usa o banco do instalador.
      * Nunca de dentro do programa (.jar): assim nenhuma senha vai junto quando o programa é copiado.
      * Vazio se nenhum existir.
      */
@@ -172,7 +175,7 @@ public class DB {
             Path p = Paths.get(informado.trim());
             return Files.isRegularFile(p) ? Optional.of(p) : Optional.empty();
         }
-        for (Path p : new Path[]{externalConfigPath(), devConfigPath()}) {
+        for (Path p : new Path[]{devConfigPath(), externalConfigPath()}) {
             if (Files.isRegularFile(p)) return Optional.of(p);
         }
         return Optional.empty();
@@ -182,7 +185,7 @@ public class DB {
         Properties props = new Properties();
         Optional<Path> arquivo = arquivoConfiguracao();
         if (arquivo.isEmpty()) {
-            log.error("Nenhum db.properties encontrado. Procurado em: {} e {}{}", externalConfigPath(), devConfigPath(),
+            log.error("Nenhum db.properties encontrado. Procurado em: {} e {}{}", devConfigPath(), externalConfigPath(),
                     System.getProperty("pdv.config") == null ? "" : " e " + System.getProperty("pdv.config"));
             throw new DbException(MENSAGEM_SEM_CONFIGURACAO);
         }

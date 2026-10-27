@@ -25,6 +25,16 @@ public class OrderService {
         if (obj.getItemPedido().isEmpty()) {
             throw new IllegalArgumentException("Não é possível salvar um pedido sem itens.");
         }
+
+        // Confere a venda completa, incluindo créditos herdados de uma troca.
+        // A recusa acontece antes do DAO, que cancela a venda original ao gravar a troca.
+        BigDecimal totalFiado = obj.getTotalPagamentos(PaymentMethod.FIADO);
+        if (totalFiado.compareTo(obj.getTotalPermitidoNoFiado()) > 0) {
+            throw new IllegalArgumentException(
+                    "O fiado, incluindo créditos da troca, está cobrindo produtos "
+                            + "que precisam ser pagos à vista. Volte ao carrinho e revise a venda.");
+        }
+
         dao.insert(obj);
     }
 

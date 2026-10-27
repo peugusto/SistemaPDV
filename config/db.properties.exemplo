@@ -1,11 +1,12 @@
-# Configuração do banco para o computador da loja.
+# Configuração do banco.
 #
-# Copie este arquivo para:
+# No computador da loja o INSTALADOR cria este arquivo sozinho (com senhas sorteadas), em
 #     C:\ProgramData\SistemaPDV\db.properties
-# e troque a senha. O sistema procura a configuração nesta ordem:
+# Este modelo serve para o desenvolvimento (copie para config\db.properties) ou para montar
+# à mão um PC sem o instalador. O sistema procura a configuração nesta ordem:
 #   1. -Dpdv.config=caminho (se informado ao abrir o programa)
-#   2. C:\ProgramData\SistemaPDV\db.properties   (computador da loja)
-#   3. config\db.properties na pasta do projeto   (desenvolvimento; fica fora do git)
+#   2. config\db.properties na pasta do projeto   (desenvolvimento; fica fora do git)
+#   3. C:\ProgramData\SistemaPDV\db.properties   (computador da loja)
 # Nunca de dentro do programa (.jar): nenhuma senha vai junto quando o programa é copiado.
 #
 # Dois usuários, nunca o root:

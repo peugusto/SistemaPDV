@@ -3,6 +3,7 @@ package com.casarural.sistemapdv;
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.util.Alerts;
+import com.casarural.sistemapdv.util.Icone;
 import com.casarural.sistemapdv.util.InstanciaUnica;
 import com.casarural.sistemapdv.util.Tema;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
@@ -37,6 +38,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
         instalarTratamentoDeErros();
+        Icone.instalarEmTodasAsJanelas();
         log.info("Sistema iniciado | Java {} | {} | computador {} | usuário do Windows {}",
                 System.getProperty("java.version"), System.getProperty("os.name"),
                 System.getenv("COMPUTERNAME"), System.getProperty("user.name"));

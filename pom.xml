@@ -6,7 +6,9 @@
 
     <groupId>com.casarural</groupId>
     <artifactId>SistemaPDV</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <!-- Versão mostrada em Ajuda > Sobre e no instalador. Aumente a cada instalador novo
+         que for para a loja: 1.0.1 (correção), 1.1.0 (função nova). -->
+    <version>1.0.0</version>
     <name>SistemaPDV</name>
 
     <properties>
@@ -113,6 +115,14 @@
                          usar algo mais novo, como Stream.toList() (Java 16), dá erro já no Maven -->
                     <release>14</release>
                 </configuration>
+            </plugin>
+            <plugin>
+                <!-- Roda os testes (JUnit 5) no "mvnw package". A versão antiga, que o Maven usa
+                     se nada for dito, não enxerga o JUnit 5 e mostrava "Tests run: 0".
+                     Teste falhando = instalador não é gerado. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
             </plugin>
             <plugin>
                 <groupId>org.openjfx</groupId>

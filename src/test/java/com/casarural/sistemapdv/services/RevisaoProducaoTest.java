@@ -10,6 +10,7 @@ import com.casarural.sistemapdv.model.entities.RegraListaCompras;
 import com.casarural.sistemapdv.model.entities.VendaProduto;
 import com.casarural.sistemapdv.util.InstanciaUnica;
 import com.casarural.sistemapdv.util.Money;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -157,6 +158,14 @@ class RevisaoProducaoTest {
             if (antes == null) System.clearProperty("pdv.config"); else System.setProperty("pdv.config", antes);
             Files.deleteIfExists(tmp);
         }
+    }
+
+    /** Instalador testado no PC de desenvolvimento: a IDE continua no banco de desenvolvimento. */
+    @Test
+    void configuracaoDoProjetoVemAntesDaDoInstalador() {
+        Assumptions.assumeTrue(System.getProperty("pdv.config") == null);
+        Assumptions.assumeTrue(Files.isRegularFile(DB.devConfigPath()), "só no PC de desenvolvimento");
+        assertEquals(DB.devConfigPath(), DB.arquivoConfiguracao().orElseThrow());
     }
 
     @Test

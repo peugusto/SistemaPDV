@@ -476,9 +476,20 @@ public class PaymentController implements Initializable {
     }
 
     private void salvarVenda() {
-        try {
-            BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
+        BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
+        if (totalFiado.compareTo(order.getTotalPermitidoNoFiado()) > 0) {
+            String lista = order.getItensSemFiado().stream()
+                    .map(i -> String.format("  •  %d x %s  (%s)",
+                            i.getQtd(), i.getNomeProduto(), Money.format(i.getSubtotal())))
+                    .collect(Collectors.joining("\n"));
+            Alerts.showAlertAndWait("Fiado não permitido",
+                    "Estes produtos não podem ser vendidos no fiado:",
+                    lista + "\n\nVolte ao carrinho e retire esses produtos para continuar no fiado.",
+                    Alert.AlertType.WARNING);
+            return;
+        }
 
+        try {
             // valor_total guarda sempre o total da venda; a dívida é valor_total - pagamentos não-fiado
             if (Money.isPositive(totalFiado)) {
                 order.setCostumer(clienteFiado);

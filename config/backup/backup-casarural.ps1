@@ -9,7 +9,9 @@
 #   5. Apaga copias com mais de DiasGuardar dias.
 #   6. Escreve tudo em backup.log (na PastaLocal).
 #
-#  Agendador de Tarefas do Windows (todo dia, depois de fechar a loja):
+#  O instalador do SistemaPDV ja copia este arquivo, cria o backup.cnf e agenda a tarefa
+#  "SistemaPDV - Backup" (12:00 e 18:30). A pasta da nuvem fica no nuvem.txt, ao lado do backup.cnf.
+#  Sem o instalador, agende a mao (Agendador de Tarefas do Windows):
 #   Programa:   powershell.exe
 #   Argumentos: -NoProfile -ExecutionPolicy Bypass -File "C:\ProgramData\SistemaPDV\backup\backup-casarural.ps1"
 #
@@ -18,11 +20,11 @@
 # =====================================================================================
 
 param(
-    [string]$MysqlBin    = "C:\Program Files\MySQL\MySQL Server 8.0\bin",
+    [string]$MysqlBin    = "",          # vazio = o MySQL do instalador do SistemaPDV ou um MySQL Server instalado
     [string]$Banco       = "casarural",
     [string]$Credenciais = "C:\ProgramData\SistemaPDV\backup\backup.cnf",
     [string]$PastaLocal  = "C:\ProgramData\SistemaPDV\backup\copias",
-    [string]$PastaNuvem  = "",          # ex.: "C:\Users\Loja\Google Drive\Backup Casa Rural" (vazio = sem nuvem)
+    [string]$PastaNuvem  = "",          # ex.: "C:\Users\Loja\OneDrive\Backup Casa Rural" (vazio = le o nuvem.txt)
     [int]   $DiasGuardar = 30
 )
 
@@ -30,6 +32,24 @@ $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path $PastaLocal)) { New-Item -ItemType Directory -Force -Path $PastaLocal | Out-Null }
 $log = Join-Path $PastaLocal "backup.log"
+
+if ($MysqlBin -eq "") {
+    $candidatos = @("C:\Program Files\SistemaPDV\mysql\bin",
+                    "C:\Program Files\MySQL\MySQL Server 8.4\bin",
+                    "C:\Program Files\MySQL\MySQL Server 8.0\bin")
+    $MysqlBin = $candidatos | Where-Object { Test-Path (Join-Path $_ "mysqldump.exe") } | Select-Object -First 1
+    if (-not $MysqlBin) { $MysqlBin = $candidatos[0] }
+}
+
+# Pasta da nuvem: se nao veio no comando, a primeira linha sem # do nuvem.txt (ao lado do backup.cnf).
+# Assim da para mudar a pasta sem mexer na tarefa agendada.
+if ($PastaNuvem -eq "") {
+    $arquivoNuvem = Join-Path (Split-Path $Credenciais -Parent) "nuvem.txt"
+    if (Test-Path $arquivoNuvem) {
+        $linha = Get-Content $arquivoNuvem | Where-Object { $_.Trim() -ne "" -and -not $_.TrimStart().StartsWith("#") } | Select-Object -First 1
+        if ($linha) { $PastaNuvem = $linha.Trim().Trim('"') }
+    }
+}
 
 function Escrever([string]$texto) {
     $linha = "{0}  {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $texto

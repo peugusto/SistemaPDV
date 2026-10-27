@@ -1,0 +1,104 @@
+INSTALADOR DO SISTEMAPDV
+========================
+
+Um arquivo só (Instalar-SistemaPDV-<versão>.exe) com tudo dentro:
+  - o SistemaPDV, com o próprio Java (não precisa instalar Java no PC da loja);
+  - o MySQL 8.4 LTS, instalado como serviço do Windows "SistemaPDV-MySQL";
+  - o backup automático (opcional, vem marcado).
+Não precisa de internet para instalar.
+
+
+GERAR O INSTALADOR (no seu PC)
+------------------------------
+1. Aumente a versão no pom.xml (<version>1.0.1</version>, por exemplo).
+2. No PowerShell, na pasta do projeto:
+
+     powershell -ExecutionPolicy Bypass -File instalador\gerar-instalador.ps1
+
+   Ele compila, roda os testes (se algum falhar, para), monta o pacote e gera:
+     instalador\saida\Instalar-SistemaPDV-<versão>.exe
+   e mostra o SHA-256 do arquivo.
+
+Precisa ter neste PC (já está tudo aqui):
+  - JDK 21 (o da IntelliJ: %USERPROFILE%\.jdks\ms-21...)
+  - MySQL 8.4 ZIP descompactado em instalador\terceiros\mysql-8.4.11-winx64
+  - Inno Setup 7 (%LOCALAPPDATA%\Programs\Inno Setup 7)
+A pasta terceiros e a pasta saida não vão para o git (são grandes).
+
+
+INSTALAR NO PC DA LOJA (primeira vez)
+-------------------------------------
+1. Copie o .exe pelo pendrive. Confira se chegou inteiro, no PowerShell:
+     Get-FileHash E:\Instalar-SistemaPDV-1.0.0.exe
+   O número tem que ser igual ao que o gerar-instalador mostrou.
+2. Dê dois cliques. O Windows pede a senha de administrador.
+   Pode aparecer "O Windows protegeu o computador" (o instalador não é assinado):
+   clique em "Mais informações" > "Executar assim mesmo".
+3. Tarefas: deixe marcados o atalho e o backup automático.
+4. Senha do root: escolha uma senha forte e GUARDE NO GERENCIADOR DE SENHAS.
+   O sistema não usa essa senha; ela serve para você mexer no banco pelo Workbench.
+   As senhas que o sistema usa (pdv_app, pdv_migracao, pdv_backup) são sorteadas
+   pelo instalador e ficam só no PC da loja.
+5. No fim, "Abrir o SistemaPDV agora": na primeira abertura ele cria as tabelas sozinho.
+6. Backup na nuvem: abra  C:\ProgramData\SistemaPDV\backup\nuvem.txt  no Bloco de Notas
+   e escreva o caminho da pasta do OneDrive/Google Drive (instruções dentro do arquivo).
+   Depois teste: Agendador de Tarefas > "SistemaPDV - Backup" > botão direito > Executar,
+   e confira C:\ProgramData\SistemaPDV\backup\copias\backup.log
+   (o resto do backup - pendrive semanal, como restaurar, teste mensal - está no
+    backup-LEIA-ME.txt, na pasta instalacao do programa)
+
+
+ATUALIZAR (versão nova do sistema)
+----------------------------------
+Rode o instalador novo por cima. Ele:
+  - fecha o SistemaPDV se estiver aberto e desliga o MySQL por alguns segundos;
+  - troca os arquivos do programa;
+  - NÃO mexe no banco, nas senhas, nem no backup (e não pede a senha do root);
+  - liga o MySQL de novo. Ao abrir, o sistema atualiza as tabelas sozinho (Flyway).
+Faça com a loja fechada ou sem nenhuma venda em andamento.
+
+
+ONDE FICA CADA COISA NO PC DA LOJA
+----------------------------------
+C:\Program Files\SistemaPDV\              programa, Java e MySQL (trocados a cada atualização)
+C:\Program Files\SistemaPDV\instalacao\   scripts do instalador e estes LEIA-ME
+C:\ProgramData\SistemaPDV\db.properties   senhas do sistema (sorteadas pelo instalador)
+C:\ProgramData\SistemaPDV\mysql\data\     O BANCO (só administradores conseguem abrir)
+C:\ProgramData\SistemaPDV\mysql\my.ini    configuração do MySQL (porta, memória)
+C:\ProgramData\SistemaPDV\mysql\mysql-erros.log   erros do MySQL
+C:\ProgramData\SistemaPDV\logs\           logs do sistema
+C:\ProgramData\SistemaPDV\backup\         script, senha e cópias do backup
+C:\ProgramData\SistemaPDV\instalacao.log  o que o instalador fez (e erros)
+
+Porta do MySQL: 3306. Se já houver outro MySQL no PC usando a 3306, o instalador usa a
+3307 (ou a próxima livre) e anota no my.ini e no db.properties.
+Para conectar pelo Workbench: Hostname 127.0.0.1, porta do my.ini, usuário root.
+
+
+SE A CONFIGURAÇÃO DO BANCO FALHAR
+---------------------------------
+O instalador mostra o motivo. Detalhes em C:\ProgramData\SistemaPDV\instalacao.log
+e C:\ProgramData\SistemaPDV\mysql\mysql-erros.log. Corrija e rode o instalador de novo:
+ele só faz o que ainda falta, sem apagar nada.
+  - "senha do root não confere": o banco já existia; use a senha da primeira instalação.
+  - "MySQL não respondeu": veja o mysql-erros.log (porta ocupada, disco cheio...).
+
+
+DESINSTALAR
+-----------
+Configurações do Windows > Aplicativos > "SistemaPDV - Casa Rural" > Desinstalar.
+Remove o programa, o serviço do MySQL e a tarefa de backup.
+Pergunta se é para apagar o banco: NA LOJA, RESPONDA NÃO. Os dados ficam em
+C:\ProgramData\SistemaPDV e voltam quando o sistema for instalado de novo.
+Backups e logs nunca são apagados.
+
+
+TESTAR O INSTALADOR NO SEU PC DE DESENVOLVIMENTO
+------------------------------------------------
+Pode testar sem medo de misturar os bancos:
+  - o instalador usa a porta 3307, porque o seu MySQL 8.0 está na 3306;
+  - a IntelliJ continua no seu banco de desenvolvimento (o config\db.properties do projeto
+    vem antes do C:\ProgramData\SistemaPDV\db.properties);
+  - o SistemaPDV instalado (atalho) usa o banco do instalador.
+Se marcar o backup, a tarefa vai rodar às 12:00 e 18:30 no seu PC também.
+Para limpar depois: desinstale e responda SIM para apagar o banco (só no seu PC!).
