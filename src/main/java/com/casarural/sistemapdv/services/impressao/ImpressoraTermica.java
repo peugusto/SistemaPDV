@@ -29,14 +29,14 @@ public final class ImpressoraTermica {
 
     public ImpressoraTermica(String nome) { this.nome = nome; }
 
-    public void enviar(ComprovanteVenda comprovante) throws PrinterException {
+    public void enviar(Comprovante comprovante) throws PrinterException {
         PrintService impressora = Arrays.stream(PrinterJob.lookupPrintServices())
                 .filter(p -> p.getName().equalsIgnoreCase(nome)).findFirst()
                 .orElseThrow(() -> new PrinterException("Impressora '" + nome + "' não encontrada no Windows."));
         PrinterJob trabalho = PrinterJob.getPrinterJob();
         trabalho.setPrintService(impressora);
         trabalho.setCopies(1);
-        trabalho.setJobName("Casa Rural - Venda #" + comprovante.getIdVenda());
+        trabalho.setJobName(comprovante.getNomeTrabalho());
         String[] linhas = comprovante.getTexto().split("\n");
         PageFormat formato = trabalho.validatePage(formatoEtiqueta());
         validarFormato(formato);

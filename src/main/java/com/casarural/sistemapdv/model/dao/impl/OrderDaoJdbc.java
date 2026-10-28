@@ -4,6 +4,8 @@ import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.Customer;
+import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.Product;
@@ -24,8 +26,19 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OrderDaoJdbc implements OrderDao {
+    private static final Logger log = LoggerFactory.getLogger(OrderDaoJdbc.class);
+    private final Supplier<Connection> conexaoRecebimento;
+
+    public OrderDaoJdbc() { this(DB::getConnection); }
+
+    OrderDaoJdbc(Supplier<Connection> conexaoRecebimento) {
+        this.conexaoRecebimento = conexaoRecebimento;
+    }
 
     public static final String MENSAGEM_CAIXA_FECHADO =
             "O caixa está fechado. Abra o caixa para registrar vendas e recebimentos de fiado.";
@@ -148,69 +161,138 @@ public class OrderDaoJdbc implements OrderDao {
      * mesma data/hora e forma de pagamento, para depois aparecerem juntas como um recebimento só.
      */
     @Override
-    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
+    public RecebimentoFiado registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
         if (metodo == null || metodo == PaymentMethod.FIADO) {
             throw new IllegalArgumentException("Forma de pagamento inválida para receber fiado: " + metodo);
         }
-        Timestamp agora = Timestamp.valueOf(LocalDateTime.now().withNano(0));
-
-        try (Connection conn = DB.getConnection()) {
+        if (idCliente == null || idCliente <= 0 || !Money.isPositive(Money.of(valorPago))) {
+            throw new IllegalArgumentException("Informe o cliente e um valor recebido maior que zero.");
+        }
+        RecebimentoFiado confirmado = null;
+        try (Connection conn = conexaoRecebimento.get()) {
             conn.setAutoCommit(false);
-            try (PreparedStatement stSelect = conn.prepareStatement(
-                         "SELECT p.id_pedido, p.valor_total, " +
-                                 "COALESCE((SELECT SUM(valor_pago) FROM pagamento WHERE id_pedido = p.id_pedido AND metodo_pagamento <> 'FIADO'), 0) AS ja_pago " +
-                                 "FROM pedido p " +
-                                 "WHERE p.id_cliente = ? AND p.status = 'FIADO' " +
-                                 "ORDER BY p.data_pedido ASC");
-                 PreparedStatement stInsert = conn.prepareStatement(
-                         "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, data_pagamento, origem, id_caixa) " +
-                                 "VALUES (?, ?, ?, ?, 'RECEBIMENTO_FIADO', ?)");
-                 PreparedStatement stUpdate = conn.prepareStatement(
-                         "UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?")) {
-
-                // O dinheiro do recebimento entra na gaveta: precisa de caixa aberto
-                int idCaixa = idCaixaAberto(conn);
-                stSelect.setInt(1, idCliente);
-
-                try (ResultSet rs = stSelect.executeQuery()) {
-                    BigDecimal valorRestante = Money.of(valorPago);
-
-                    while (rs.next() && Money.isPositive(valorRestante)) {
-                        int idPedido = rs.getInt("id_pedido");
-                        BigDecimal valorTotalPedido = rs.getBigDecimal("valor_total");
-                        BigDecimal jaPago = rs.getBigDecimal("ja_pago");
-                        BigDecimal saldoPedido = valorTotalPedido.subtract(jaPago);
-
-                        if (Money.isPositive(saldoPedido)) {
-                            BigDecimal valorAbater = Money.min(valorRestante, saldoPedido);
-
-                            stInsert.setInt(1, idPedido);
-                            stInsert.setBigDecimal(2, valorAbater);
-                            stInsert.setString(3, metodo.toString());
-                            stInsert.setTimestamp(4, agora);
-                            stInsert.setInt(5, idCaixa);
-                            stInsert.executeUpdate();
-
-                            valorRestante = valorRestante.subtract(valorAbater);
-
-                            // comparação exata: com BigDecimal não há resto de arredondamento
-                            if (saldoPedido.compareTo(valorAbater) == 0) {
-                                stUpdate.setInt(1, idPedido);
-                                stUpdate.executeUpdate();
-                            }
-                        }
-                    }
-                }
+            boolean transacaoEncerrada = false;
+            try {
+                RecebimentoFiado dados = receberNaTransacao(conn, idCliente, Money.of(valorPago), metodo);
                 conn.commit();
+                confirmado = dados;
+                transacaoEncerrada = true;
             } catch (SQLException | RuntimeException e) {
-                conn.rollback();
+                try {
+                    conn.rollback();
+                    transacaoEncerrada = true;
+                } catch (SQLException falhaRollback) {
+                    e.addSuppressed(falhaRollback);
+                }
                 throw e;
             } finally {
-                conn.setAutoCommit(true);
+                // setAutoCommit(true) pode confirmar operações pendentes: só limpar após commit/rollback concluído.
+                if (transacaoEncerrada) conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
+            if (confirmado == null) throw new DbException(e.getMessage(), e);
+            // Commit já confirmado: uma falha de limpeza não pode ser anunciada como pagamento não salvo.
+            log.warn("Recebimento #{} salvo; falha ao liberar conexão", confirmado.getIdRecebimento(), e);
         }
+        return confirmado;
+    }
+
+    private RecebimentoFiado receberNaTransacao(Connection conn, int idCliente, BigDecimal valorPago,
+                                                PaymentMethod metodo) throws SQLException {
+        Customer cliente = new Customer();
+        // Primeiro bloqueia o cliente, antes de qualquer leitura de saldo, para serializar seus recebimentos.
+        try (PreparedStatement st = conn.prepareStatement(
+                "SELECT id_cliente, nome_cliente, telefone FROM cliente WHERE id_cliente = ? FOR UPDATE")) {
+            st.setInt(1, idCliente);
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next()) throw new IllegalArgumentException("Cliente não encontrado.");
+                cliente.setIdCliente(rs.getInt("id_cliente"));
+                cliente.setNomeCliente(rs.getString("nome_cliente"));
+                cliente.setTelefone(rs.getString("telefone"));
+            }
+        }
+        int idCaixa = idCaixaAberto(conn);
+        List<Order> abertas = new ArrayList<>();
+        try (PreparedStatement st = conn.prepareStatement("SELECT id_pedido, data_pedido, valor_total, desconto "
+                + "FROM pedido WHERE id_cliente = ? AND status = 'FIADO' ORDER BY data_pedido, id_pedido FOR UPDATE")) {
+            st.setInt(1, idCliente);
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    Order compra = new Order();
+                    compra.setIdPedido(rs.getInt("id_pedido"));
+                    compra.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                    compra.setValorTotal(rs.getBigDecimal("valor_total"));
+                    compra.setDesconto(rs.getBigDecimal("desconto"));
+                    abertas.add(compra);
+                }
+            }
+        }
+        // Leitura corrente também dos pagamentos: não usa um saldo antigo de uma consulta da tela.
+        try (PreparedStatement st = conn.prepareStatement("SELECT valor_pago FROM pagamento "
+                + "WHERE id_pedido = ? AND metodo_pagamento <> 'FIADO' FOR UPDATE")) {
+            for (Order compra : abertas) {
+                st.setInt(1, compra.getIdPedido());
+                BigDecimal pago = Money.ZERO;
+                try (ResultSet rs = st.executeQuery()) {
+                    while (rs.next()) pago = pago.add(Money.of(rs.getBigDecimal("valor_pago")));
+                }
+                compra.setPagoNaVenda(pago);
+            }
+        }
+        BigDecimal dividaAntes = abertas.stream().map(Order::getFalta).reduce(Money.ZERO, BigDecimal::add);
+        if (valorPago.compareTo(dividaAntes) > 0) {
+            throw new IllegalArgumentException("A dívida atual é " + Money.format(dividaAntes)
+                    + ". Atualize a conta antes de receber esse valor.");
+        }
+        LocalDateTime agora = LocalDateTime.now().withNano(0);
+        int idRecebimento = 0;
+        BigDecimal restante = valorPago;
+        List<RecebimentoFiado.Compra> compras = new ArrayList<>();
+        try (PreparedStatement inserir = conn.prepareStatement(
+                "INSERT INTO pagamento (id_pedido, valor_pago, metodo_pagamento, data_pagamento, origem, id_caixa) "
+                        + "VALUES (?, ?, ?, ?, 'RECEBIMENTO_FIADO', ?)", Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement quitar = conn.prepareStatement("UPDATE pedido SET status = 'PAGO' WHERE id_pedido = ?")) {
+            for (Order compra : abertas) {
+                if (!Money.isPositive(restante)) break;
+                BigDecimal saldo = compra.getFalta();
+                if (!Money.isPositive(saldo)) continue;
+                BigDecimal abater = Money.min(restante, saldo);
+                List<RecebimentoFiado.Produto> produtos = produtosDoRecebimento(conn, compra.getIdPedido());
+                inserir.setInt(1, compra.getIdPedido());
+                inserir.setBigDecimal(2, abater);
+                inserir.setString(3, metodo.name());
+                inserir.setTimestamp(4, Timestamp.valueOf(agora));
+                inserir.setInt(5, idCaixa);
+                if (inserir.executeUpdate() != 1) throw new SQLException("O recebimento não foi registrado.");
+                try (ResultSet chaves = inserir.getGeneratedKeys()) {
+                    if (!chaves.next()) throw new SQLException("Não foi possível identificar o recebimento.");
+                    if (idRecebimento == 0) idRecebimento = chaves.getInt(1);
+                }
+                if (abater.compareTo(saldo) == 0) {
+                    quitar.setInt(1, compra.getIdPedido());
+                    if (quitar.executeUpdate() != 1) throw new SQLException("Não foi possível quitar a compra.");
+                }
+                compras.add(new RecebimentoFiado.Compra(compra.getIdPedido(), compra.getDataPedido(),
+                        compra.getValorTotal(), compra.getDesconto(), saldo, abater, produtos));
+                restante = restante.subtract(abater);
+            }
+        }
+        return new RecebimentoFiado(idRecebimento, idCliente, cliente.getNomeCliente(), cliente.getTelefone(),
+                agora, metodo, dividaAntes, valorPago, compras);
+    }
+
+    private List<RecebimentoFiado.Produto> produtosDoRecebimento(Connection conn, int idPedido) throws SQLException {
+        List<RecebimentoFiado.Produto> produtos = new ArrayList<>();
+        try (PreparedStatement st = conn.prepareStatement("SELECT i.quantidade, i.preco_unitario, p.nome_produto "
+                + "FROM itempedido i LEFT JOIN produto p ON p.id_produto = i.id_produto "
+                + "WHERE i.id_pedido = ? ORDER BY i.id_item")) {
+            st.setInt(1, idPedido);
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) produtos.add(new RecebimentoFiado.Produto(rs.getString("nome_produto"),
+                        rs.getInt("quantidade"), rs.getBigDecimal("preco_unitario")));
+            }
+        }
+        return produtos;
     }
 
     @Override

@@ -4,6 +4,19 @@ Depois de salvar uma venda, o sistema gera um comprovante não fiscal com itens,
 subtotal, desconto, total, formas de pagamento e troco. Trocas mostram os créditos
 separados dos pagamentos novos e as devoluções ao cliente.
 
+## Recebimento de fiado
+
+O recebimento de fiado também emite um comprovante após a gravação. Mostra o nome
+e telefone do cliente (quando informado), seguido pelos produtos das compras
+abatidas, separados pela data. Cada produto mostra quantidade, nome e valor.
+No final há um único resumo: total do fiado antes do pagamento, pago agora e
+restante. Não repete valores ou situações por pedido. O total do fiado representa
+a dívida da conta, considerando descontos e pagamentos anteriores.
+
+O comprovante usa os dados capturados na própria transação do recebimento e o
+mesmo formato de 70 x 40 mm. Falhas de impressão ou de atualização da tela não
+desfazem nem repetem o pagamento. Não há alteração de estrutura do banco.
+
 ## Nesta sessão, sem papel
 
 Feche a execução anterior do PDV e, na raiz do projeto, execute:

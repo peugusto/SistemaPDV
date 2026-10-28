@@ -5,6 +5,7 @@ import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.SaleFilter;
 import com.casarural.sistemapdv.model.entities.SaleSummary;
 import com.casarural.sistemapdv.model.entities.VendaParaDesfazer;
@@ -70,8 +71,8 @@ public class OrderService {
         return dao.getCustomerDebt(idCliente);
     }
 
-    public void registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
-        dao.registerPartialPayment(idCliente, valorPago, metodo);
+    public RecebimentoFiado registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo) {
+        return dao.registerPartialPayment(idCliente, valorPago, metodo);
     }
 
     public List<Order> findPaidOrdersByCustomer(Integer idCliente) {

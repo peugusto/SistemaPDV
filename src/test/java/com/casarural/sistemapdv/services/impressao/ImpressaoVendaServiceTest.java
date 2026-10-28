@@ -18,7 +18,7 @@ class ImpressaoVendaServiceTest {
     @Test
     void limparCarrinhoAntesDoEnvioNaoMudaOComprovante() {
         List<Runnable> fila = new ArrayList<>();
-        List<ComprovanteVenda> enviados = new ArrayList<>();
+        List<Comprovante> enviados = new ArrayList<>();
         ImpressaoVendaService service = new ImpressaoVendaService(enviados::add, fila::add);
         Order venda = ComprovanteVendaTest.venda();
         CompletableFuture<Void> envio = service.emitir(venda, Money.ZERO, Map.of());

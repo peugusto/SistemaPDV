@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Cópia imutável do comprovante: a impressão não acessa o carrinho nem o banco. */
-public final class ComprovanteVenda {
+public final class ComprovanteVenda implements Comprovante {
     public static final int COLUNAS = 36;
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private final int idVenda;
@@ -27,6 +27,7 @@ public final class ComprovanteVenda {
 
     public int getIdVenda() { return idVenda; }
     public String getTexto() { return texto; }
+    public String getNomeTrabalho() { return "Casa Rural - Venda #" + idVenda; }
 
     public static ComprovanteVenda gerar(Order venda, BigDecimal troco,
                                          Map<PaymentMethod, BigDecimal> devolucoes) {
@@ -89,7 +90,7 @@ public final class ComprovanteVenda {
         return new ComprovanteVenda(venda.getIdPedido(), String.join("\n", linhas) + "\n");
     }
 
-    private static String nome(PaymentMethod metodo) {
+    static String nome(PaymentMethod metodo) {
         switch (metodo) {
             case DINHEIRO: return "Dinheiro";
             case CARTAO: return "Cartão";
@@ -99,14 +100,14 @@ public final class ComprovanteVenda {
         }
     }
 
-    private static void separar(List<String> linhas) { linhas.add("-".repeat(COLUNAS)); }
+    static void separar(List<String> linhas) { linhas.add("-".repeat(COLUNAS)); }
 
     private static String limpar(String texto) {
         return Normalizer.normalize(texto == null ? "" : texto, Normalizer.Form.NFC)
                 .replaceAll("[\\p{Cntrl}\\p{Cf}]", " ").replaceAll("\\s+", " ").trim();
     }
 
-    private static void escrever(List<String> linhas, String texto) {
+    static void escrever(List<String> linhas, String texto) {
         String resto = limpar(texto);
         while (resto.length() > COLUNAS) {
             int corte = resto.lastIndexOf(' ', COLUNAS);
@@ -117,12 +118,12 @@ public final class ComprovanteVenda {
         linhas.add(resto);
     }
 
-    private static void centralizar(List<String> linhas, String texto) {
+    static void centralizar(List<String> linhas, String texto) {
         String limpo = limpar(texto);
         linhas.add(" ".repeat(Math.max(0, (COLUNAS - limpo.length()) / 2)) + limpo);
     }
 
-    private static void valores(List<String> linhas, String rotulo, String valor) {
+    static void valores(List<String> linhas, String rotulo, String valor) {
         if (rotulo.length() + valor.length() >= COLUNAS) {
             escrever(linhas, rotulo);
             linhas.add(" ".repeat(Math.max(0, COLUNAS - valor.length())) + valor);

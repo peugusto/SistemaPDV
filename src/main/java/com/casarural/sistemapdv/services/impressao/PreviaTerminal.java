@@ -11,7 +11,7 @@ public final class PreviaTerminal {
 
     public PreviaTerminal(PrintStream saida) { this.saida = saida; }
 
-    public void enviar(ComprovanteVenda comprovante) throws IOException {
+    public void enviar(Comprovante comprovante) throws IOException {
         saida.println("\n[PRÉVIA - nenhum trabalho enviado à impressora]\n" + comprovante.getTexto());
         if (saida.checkError()) throw new IOException("Não foi possível mostrar o comprovante no terminal.");
     }

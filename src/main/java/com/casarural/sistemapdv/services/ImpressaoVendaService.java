@@ -1,8 +1,11 @@
 package com.casarural.sistemapdv.services;
 
 import com.casarural.sistemapdv.model.entities.Order;
+import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.impressao.ComprovanteVenda;
+import com.casarural.sistemapdv.services.impressao.Comprovante;
+import com.casarural.sistemapdv.services.impressao.ComprovanteFiado;
 import com.casarural.sistemapdv.services.impressao.ImpressoraTermica;
 import com.casarural.sistemapdv.services.impressao.PreviaTerminal;
 
@@ -17,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ImpressaoVendaService {
     @FunctionalInterface
-    public interface Destino { void enviar(ComprovanteVenda comprovante) throws Exception; }
+    public interface Destino { void enviar(Comprovante comprovante) throws Exception; }
 
     // Uma fila preserva a ordem das vendas. A thread termina após ficar ociosa e não abandona
     // um envio em andamento quando a janela do sistema é fechada.
@@ -38,7 +41,14 @@ public class ImpressaoVendaService {
     public CompletableFuture<Void> emitir(Order venda, BigDecimal troco,
                                            Map<PaymentMethod, BigDecimal> devolucoes) {
         // Captura tudo na thread do carrinho, antes de ele ser limpo para a próxima venda.
-        ComprovanteVenda comprovante = ComprovanteVenda.gerar(venda, troco, devolucoes);
+        return enviar(ComprovanteVenda.gerar(venda, troco, devolucoes));
+    }
+
+    public CompletableFuture<Void> emitir(RecebimentoFiado recebimento) {
+        return enviar(ComprovanteFiado.gerar(recebimento));
+    }
+
+    private CompletableFuture<Void> enviar(Comprovante comprovante) {
         return CompletableFuture.runAsync(() -> {
             try {
                 destino.enviar(comprovante);
@@ -60,7 +70,7 @@ public class ImpressaoVendaService {
         private final PreviaTerminal previa = new PreviaTerminal();
 
         @Override
-        public synchronized void enviar(ComprovanteVenda comprovante) throws Exception {
+        public synchronized void enviar(Comprovante comprovante) throws Exception {
             String modo = modo(System.getProperty("pdv.impressao.modo"), System.getenv("PDV_IMPRESSAO_MODO"));
             if (modo.equals("previa")) {
                 previa.enviar(comprovante);

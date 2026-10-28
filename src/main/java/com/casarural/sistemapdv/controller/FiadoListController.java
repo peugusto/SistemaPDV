@@ -5,6 +5,7 @@ import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.RegraFiado;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
@@ -13,6 +14,7 @@ import com.casarural.sistemapdv.model.entities.RegraTroca;
 import com.casarural.sistemapdv.services.AcessoRelatoriosService;
 import com.casarural.sistemapdv.services.CashRegisterService;
 import com.casarural.sistemapdv.services.OrderService;
+import com.casarural.sistemapdv.services.ImpressaoVendaService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
@@ -101,6 +103,8 @@ public class FiadoListController implements Initializable {
     private Customer customer;
     private OrderService orderService;
     private BigDecimal dividaAtual = Money.ZERO;
+    private boolean recebendo;
+    private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -243,6 +247,7 @@ public class FiadoListController implements Initializable {
 
     @FXML
     public void onPagarAction() {
+        if (recebendo) return;
         if (customer == null || !Money.isPositive(dividaAtual)) {
             Alerts.showAlert("Aviso", null, "Este cliente não tem dívida de fiado.", Alert.AlertType.WARNING);
             return;
@@ -279,32 +284,73 @@ public class FiadoListController implements Initializable {
             return;
         }
 
-        boolean quita = valorPago.compareTo(dividaAtual) == 0;
-        boolean confirmou = Alerts.showConfirmation(
-                "Confirmar recebimento",
-                quita ? "Quitar toda a dívida" : "Recebimento parcial",
-                String.format("Receber %s em %s de %s?%n%nDívida depois do pagamento: %s",
-                        Money.format(valorPago), nomeDaForma(forma), customer.getNomeCliente(),
-                        Money.format(dividaAtual.subtract(valorPago))));
-        if (!confirmou) return;
-
+        recebendo = true;
+        btnPagar.setDisable(true);
         try {
+            boolean confirmou = Alerts.showConfirmation(
+                    "Confirmar recebimento",
+                    valorPago.compareTo(dividaAtual) == 0 ? "Quitar toda a dívida" : "Recebimento parcial",
+                    String.format("Receber %s em %s de %s?%n%nDívida depois do pagamento: %s",
+                            Money.format(valorPago), nomeDaForma(forma), customer.getNomeCliente(),
+                            Money.format(dividaAtual.subtract(valorPago))));
+            if (!confirmou) return;
             boolean estavaEmAtraso = customer.isBloqueadoPorAtraso();
-            orderService.registerPartialPayment(customer.getIdCliente(), valorPago, forma);
+            RecebimentoFiado recebimento;
+            try {
+                recebimento = orderService.registerPartialPayment(customer.getIdCliente(), valorPago, forma);
+            } catch (DbException | IllegalArgumentException e) {
+                Alerts.showAlert("Erro", "Erro ao registrar o pagamento", e.getMessage(), Alert.AlertType.ERROR);
+                return;
+            }
+
+            // Recebimento confirmado: nem a impressão nem a atualização da tela podem pedir novo pagamento.
             campoValorPagamento.clear();
-            carregarDados();
-            if (estavaEmAtraso && !customer.isBloqueadoPorAtraso()) {
+            dividaAtual = recebimento.getDividaDepois();
+            customer.setTotalDevendo(dividaAtual);
+            labelTotalDevendo.setText(Money.format(dividaAtual));
+            emitirComprovante(recebimento);
+            boolean atualizado = false;
+            try {
+                carregarDados();
+                atualizado = true;
+            } catch (DbException e) {
+                log.error("Recebimento #{} salvo, mas a conta não pôde ser atualizada na tela", recebimento.getIdRecebimento(), e);
+                Alerts.showAlert("Pagamento registrado", "O pagamento foi salvo normalmente",
+                        "Não foi possível atualizar a lista de compras. Reabra a conta para conferir. Não repita o pagamento.",
+                        Alert.AlertType.WARNING);
+            }
+            if (atualizado && estavaEmAtraso && !customer.isBloqueadoPorAtraso()) {
                 log.info("Fiado de {} liberado: compras atrasadas quitadas", customer.getNomeCliente());
                 Alerts.showAlertAndWait("Fiado liberado", null,
                         "As compras atrasadas foram pagas. O fiado de " + customer.getNomeCliente() + " está liberado.",
                         Alert.AlertType.INFORMATION);
             }
             Alerts.showAlert("Pagamento registrado", null,
-                    quita ? "Dívida quitada." : "Pagamento registrado. Ainda falta " + Money.format(dividaAtual) + ".",
+                    recebimento.getDividaDepois().signum() == 0 ? "Dívida quitada."
+                            : "Pagamento registrado. Ainda falta " + Money.format(recebimento.getDividaDepois()) + ".",
                     Alert.AlertType.INFORMATION);
-        } catch (DbException e) {
-            Alerts.showAlert("Erro", "Erro ao registrar o pagamento", e.getMessage(), Alert.AlertType.ERROR);
+        } finally {
+            recebendo = false;
+            btnPagar.setDisable(!Money.isPositive(dividaAtual));
         }
+    }
+
+    private void emitirComprovante(RecebimentoFiado recebimento) {
+        try {
+            impressaoVendaService.emitir(recebimento).whenComplete((ignorado, erro) -> {
+                if (erro != null) avisarFalhaComprovante(recebimento.getIdRecebimento(), erro);
+            });
+        } catch (Exception erro) {
+            avisarFalhaComprovante(recebimento.getIdRecebimento(), erro);
+        }
+    }
+
+    private void avisarFalhaComprovante(int idRecebimento, Throwable erro) {
+        log.error("Recebimento #{} salvo, mas o comprovante não pôde ser enviado", idRecebimento, erro);
+        javafx.application.Platform.runLater(() -> Alerts.showAlert("Comprovante não enviado",
+                "O pagamento de fiado #" + idRecebimento + " foi salvo normalmente",
+                "Não foi possível emitir o comprovante. Confira a impressora e o papel. Não repita o pagamento.",
+                Alert.AlertType.WARNING));
     }
 
     private static String nomeDaForma(PaymentMethod forma) {
