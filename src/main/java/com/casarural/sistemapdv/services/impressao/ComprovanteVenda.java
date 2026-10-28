@@ -15,7 +15,7 @@ import java.util.Map;
 
 /** Cópia imutável do comprovante: a impressão não acessa o carrinho nem o banco. */
 public final class ComprovanteVenda {
-    public static final int COLUNAS = 42;
+    public static final int COLUNAS = 36;
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private final int idVenda;
     private final String texto;
