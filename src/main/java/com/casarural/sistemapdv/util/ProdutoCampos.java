@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.util;
 
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -71,9 +72,27 @@ public final class ProdutoCampos {
         }
     }
 
+    /** Custo opcional para gravar: só o campo vazio remove o custo; texto inválido interrompe o salvamento. */
+    public static java.math.BigDecimal lerValorParaSalvar(TextField campo) {
+        String texto = campo.getText();
+        if (texto == null || texto.isBlank()) return null;
+        texto = texto.trim();
+        if (!texto.matches("(?:\\d+(?:[.,]\\d{0,2})?|[.,]\\d{1,2})")) {
+            throw new IllegalArgumentException("Custo inválido. Digite um valor como 12,50 ou deixe vazio para remover o custo.");
+        }
+        // Valida antes do setter de Product, que arredonda valores com mais de duas casas.
+        return EntradaEstoque.validarCusto(new java.math.BigDecimal(texto.replace(',', '.')));
+    }
+
     /** Quantidade digitada; vazio conta como 0. */
     public static int estoque(TextField txtEstoque) {
         String texto = txtEstoque.getText();
-        return texto == null || texto.isBlank() ? 0 : Integer.parseInt(texto.trim());
+        try {
+            int quantidade = texto == null || texto.isBlank() ? 0 : Integer.parseInt(texto.trim());
+            if (quantidade < 0) throw new NumberFormatException();
+            return quantidade;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Digite um estoque inteiro entre 0 e 2.147.483.647.", e);
+        }
     }
 }

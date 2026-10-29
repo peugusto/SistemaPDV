@@ -45,6 +45,11 @@ class RevisaoProducaoTest {
         public Optional<Product> findById(Integer id) { return Optional.ofNullable(porId.get(id)); }
         public List<Product> findAll() { return new ArrayList<>(porId.values()); }
         public void update(Product obj) { porId.put(obj.getIdProduto(), obj); }
+        public void desativarPorId(int idProduto) {
+            Product produto = porId.get(idProduto);
+            if (produto == null) throw new DbException("Produto não encontrado.");
+            produto.setAtivo(false);
+        }
         public void registrarEntrada(EntradaEstoque entrada) { throw new AssertionError("Entrada não esperada neste teste."); }
         public void deleteById(Integer id) { porId.remove(id); excluiu = true; }
         public Product instantiate(ResultSet rs) { return null; }

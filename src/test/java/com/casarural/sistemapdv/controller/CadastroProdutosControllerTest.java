@@ -7,6 +7,8 @@ import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.util.ProdutoCampos;
+import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
@@ -17,6 +19,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterAll;
@@ -155,6 +158,10 @@ class CadastroProdutosControllerTest {
         boolean falharAntes;
         boolean falharDepoisDoCommit;
         boolean falharConexao;
+        boolean falharAtualizacao;
+        int consultasCodigo;
+        int usos;
+        int desativacoes;
         Product ultimoCarregado;
         final Map<UUID, EntradaEstoque> operacoes = new LinkedHashMap<>();
         final List<EntradaEstoque> tentativas = new ArrayList<>();
@@ -172,8 +179,18 @@ class CadastroProdutosControllerTest {
         }
         public void update(Product obj) {
             atualizacoes++;
+            if (falharAtualizacao) {
+                falharAtualizacao = false;
+                throw new DbException("Falha simulada antes de atualizar o produto.");
+            }
             assertTrue(registros.containsKey(obj.getIdProduto()));
             registros.put(obj.getIdProduto(), copiar(obj));
+        }
+        public void desativarPorId(int idProduto) {
+            desativacoes++;
+            Product atual = copiar(registros.get(idProduto));
+            atual.setAtivo(false);
+            registros.put(idProduto, atual);
         }
         public void registrarEntrada(EntradaEstoque entrada) {
             tentativas.add(entrada);
@@ -199,6 +216,7 @@ class CadastroProdutosControllerTest {
             }
         }
         public Optional<Product> findByCodBarras(String codigo) {
+            consultasCodigo++;
             return registros.values().stream()
                     .filter(p -> p.getCodBarras().equalsIgnoreCase(codigo)).findFirst()
                     .map(p -> { ultimoCarregado = copiar(p); return ultimoCarregado; });
@@ -213,7 +231,7 @@ class CadastroProdutosControllerTest {
         }
         public void deleteById(Integer id) { throw new AssertionError("Exclusao inesperada."); }
         public Product instantiate(ResultSet rs) { throw new AssertionError("JDBC inesperado."); }
-        public int contarUsos(int id) { return 0; }
+        public int contarUsos(int id) { return usos; }
     }
 
     private static Product copiar(Product original) {
@@ -226,6 +244,54 @@ class CadastroProdutosControllerTest {
         copia.setControlaEstoque(original.isControlaEstoque());
         copia.setAtivo(original.isAtivo());
         return copia;
+    }
+
+    private static class ListaEditada extends ProductListController {
+        int atualizacoes;
+        boolean falhar;
+
+        @Override public void updateTableView() {
+            atualizacoes++;
+            if (falhar) throw new DbException("Falha simulada ao consultar a lista.");
+        }
+    }
+
+    private static class TelaEdicao {
+        final FXMLLoader loader;
+        final ProductFormController controller;
+        final ListaEditada lista;
+
+        TelaEdicao(ProdutosEmMemoria dao, Product original) throws Exception {
+            loader = new FXMLLoader(ProductFormController.class.getResource(
+                    "/com/casarural/sistemapdv/view/ProductForm.fxml"));
+            Parent root = loader.load();
+            Stage janela = new Stage();
+            janela.setScene(new Scene(root));
+            controller = loader.getController();
+            lista = new ListaEditada();
+            controller.setProduct(original);
+            controller.setServices(new ProductService(dao), lista);
+            controller.updateFormData();
+        }
+
+        TextField campo(String nome) { return (TextField) loader.getNamespace().get(nome); }
+        CheckBox opcao(String nome) { return (CheckBox) loader.getNamespace().get(nome); }
+        Button botao(String nome) { return (Button) loader.getNamespace().get(nome); }
+        void salvar() { botao("btnSave").fire(); }
+        void cancelar() { botao("btnCancel").fire(); }
+    }
+
+    private static void produtoPreservado(Product esperado, Product atual) {
+        assertEquals(esperado.getIdProduto(), atual.getIdProduto());
+        assertEquals(esperado.getCodBarras(), atual.getCodBarras());
+        assertEquals(esperado.getNomeProduto(), atual.getNomeProduto());
+        assertEquals(esperado.getPrecoProduto(), atual.getPrecoProduto());
+        assertEquals(esperado.getEstoque(), atual.getEstoque());
+        assertEquals(esperado.getPrecoCusto(), atual.getPrecoCusto());
+        assertEquals(esperado.getTipoVenda(), atual.getTipoVenda());
+        assertEquals(esperado.isPermiteFiado(), atual.isPermiteFiado());
+        assertEquals(esperado.isControlaEstoque(), atual.isControlaEstoque());
+        assertEquals(esperado.isAtivo(), atual.isAtivo());
     }
 
     private static void originalPreservado(ProdutosEmMemoria dao) {
@@ -481,6 +547,218 @@ class CadastroProdutosControllerTest {
                 fecharAviso();
             }
             assertEquals(10, dao.ultimoCarregado.getEstoque());
+        });
+    }
+
+    @Test
+    void edicaoRecusaEstoqueNegativoForaDeIntOuFracionadoAntesDeConsultarDao() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Product original = dao.findById(1).orElseThrow();
+            Product antes = copiar(original);
+            TelaEdicao tela = new TelaEdicao(dao, original);
+            tela.campo("txtNome").setText("Arroz alterado");
+            for (String estoque : List.of("-5", "2147483648", "1,5", "abc")) {
+                tela.campo("txtEstoque").setText(estoque);
+                tela.salvar();
+                assertEquals(estoque, tela.campo("txtEstoque").getText(), "O texto inválido não deve ser revertido silenciosamente");
+                assertEquals(0, dao.consultasCodigo);
+                assertEquals(0, dao.atualizacoes);
+                assertTrue(aviso().getContentText().contains("estoque inteiro entre 0"));
+                produtoPreservado(antes, original);
+                produtoPreservado(antes, dao.registros.get(1));
+                fecharAviso();
+            }
+        });
+    }
+
+    @Test
+    void edicaoRecusaCustoMalformadoSemApagarOCustoAnteriorNemChamarDao() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            dao.registros.get(1).setPrecoCusto(Money.parse("4"));
+            Product original = dao.findById(1).orElseThrow();
+            Product antes = copiar(original);
+            TelaEdicao tela = new TelaEdicao(dao, original);
+            tela.campo("txtNome").setText("Arroz alterado");
+            for (String custo : List.of(".", ",", "100000000")) {
+                tela.campo("txtCusto").setText(custo);
+                tela.salvar();
+                assertEquals(custo, tela.campo("txtCusto").getText());
+                assertEquals(0, dao.consultasCodigo);
+                assertEquals(0, dao.atualizacoes);
+                assertTrue(aviso().getContentText().toLowerCase().contains("custo"));
+                produtoPreservado(antes, original);
+                produtoPreservado(antes, dao.registros.get(1));
+                fecharAviso();
+            }
+        });
+    }
+
+    @Test
+    void edicaoDistingueCustoVazioZeroEValidoEPreservaTodosOsDemaisCampos() throws Exception {
+        noJavafx(() -> {
+            for (String custo : List.of("", "0", "4,25", ".50")) {
+                ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+                dao.registros.get(1).setPrecoCusto(Money.parse("5"));
+                Product original = dao.findById(1).orElseThrow();
+                Product antes = copiar(original);
+                TelaEdicao tela = new TelaEdicao(dao, original);
+                tela.campo("txtNome").setText("Arroz novo");
+                tela.campo("txtEstoque").setText("0");
+                tela.campo("txtCusto").setText(custo);
+                tela.opcao("chkPermiteFiado").setSelected(false);
+                tela.opcao("chkAtivo").setSelected(false);
+                tela.opcao("chkPesavel").setSelected(true);
+                tela.salvar();
+                assertEquals(1, dao.atualizacoes);
+                Product salvo = dao.registros.get(1);
+                assertEquals(custo.isEmpty() ? null : Money.parse(custo), salvo.getPrecoCusto());
+                assertEquals(1, salvo.getIdProduto());
+                assertEquals("900001", salvo.getCodBarras());
+                assertEquals("Arroz novo", salvo.getNomeProduto());
+                assertEquals(Money.parse("8"), salvo.getPrecoProduto());
+                assertEquals(0, salvo.getEstoque());
+                assertEquals(TipoVenda.PESAVEL, salvo.getTipoVenda());
+                assertFalse(salvo.isPermiteFiado());
+                assertFalse(salvo.isAtivo());
+                assertFalse(salvo.isControlaEstoque());
+                produtoPreservado(antes, original);
+                assertEquals(1, tela.lista.atualizacoes);
+                assertTrue(tela.botao("btnSave").isDisabled());
+                fecharAviso();
+            }
+        });
+    }
+
+    @Test
+    void cancelarDepoisDeFalhaNaEdicaoNaoAlteraObjetoDaListaNemRegistro() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            dao.registros.get(1).setPrecoCusto(Money.parse("4"));
+            Product original = dao.findById(1).orElseThrow();
+            Product antes = copiar(original);
+            TelaEdicao tela = new TelaEdicao(dao, original);
+            tela.campo("txtNome").setText("Nome que nao foi salvo");
+            tela.campo("txtCodBarras").setText("900099");
+            tela.campo("txtPreco").setText("20");
+            tela.campo("txtEstoque").setText("2");
+            tela.campo("txtCusto").setText("");
+            tela.opcao("chkAtivo").setSelected(false);
+            tela.opcao("chkPermiteFiado").setSelected(false);
+            dao.falharAtualizacao = true;
+            tela.salvar();
+            assertEquals(1, dao.atualizacoes);
+            produtoPreservado(antes, original);
+            produtoPreservado(antes, dao.registros.get(1));
+            assertEquals(0, tela.lista.atualizacoes);
+            assertFalse(tela.botao("btnSave").isDisabled());
+            assertEquals("Nome que nao foi salvo", tela.campo("txtNome").getText());
+            fecharAviso();
+            tela.cancelar();
+            assertEquals(1, dao.atualizacoes);
+            produtoPreservado(antes, original);
+            produtoPreservado(antes, dao.registros.get(1));
+        });
+    }
+
+    @Test
+    void retryDaEdicaoAposFalhaConfirmadaGravaUmaCopiaSemMutarOOriginal() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Product original = dao.findById(1).orElseThrow();
+            Product antes = copiar(original);
+            TelaEdicao tela = new TelaEdicao(dao, original);
+            tela.campo("txtNome").setText("Arroz confirmado");
+            tela.campo("txtEstoque").setText("5");
+            dao.falharAtualizacao = true;
+            tela.salvar();
+            produtoPreservado(antes, original);
+            fecharAviso();
+            tela.salvar();
+            assertEquals(2, dao.atualizacoes);
+            assertEquals("Arroz confirmado", dao.registros.get(1).getNomeProduto());
+            assertEquals(5, dao.registros.get(1).getEstoque());
+            assertEquals(1, tela.lista.atualizacoes);
+            produtoPreservado(antes, original);
+        });
+    }
+
+    @Test
+    void falhaDeRefreshDepoisDaEdicaoConfirmaSucessoEImpedeNovaGravacao() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Product original = dao.findById(1).orElseThrow();
+            TelaEdicao tela = new TelaEdicao(dao, original);
+            tela.campo("txtNome").setText("Arroz salvo");
+            tela.lista.falhar = true;
+            tela.salvar();
+            assertEquals(1, dao.atualizacoes);
+            assertEquals("Arroz salvo", dao.registros.get(1).getNomeProduto());
+            assertTrue(tela.botao("btnSave").isDisabled());
+            assertTrue(aviso().getHeaderText().contains("O produto foi salvo"));
+            assertTrue(aviso().getContentText().contains("Não salve novamente"));
+            fecharAviso();
+            // Mesmo um evento externo disparado diretamente não pode repetir a atualização confirmada.
+            Button salvar = tela.botao("btnSave");
+            tela.controller.onBtnSaveAction(new ActionEvent(salvar, salvar));
+            assertEquals(1, dao.atualizacoes);
+            assertEquals(1, tela.lista.atualizacoes);
+            tela.cancelar();
+        });
+    }
+
+    @Test
+    void parserDeCustoParaSalvarEhEstritoMasPreviewContinuaPermissivo() throws Exception {
+        noJavafx(() -> {
+            TextField campo = new TextField();
+            for (String invalido : List.of(".", ",", "abc", "1,234", "-1")) {
+                campo.setText(invalido);
+                assertThrows(IllegalArgumentException.class, () -> ProdutoCampos.lerValorParaSalvar(campo));
+                assertEquals(invalido, campo.getText());
+            }
+            campo.setText(".");
+            assertNull(ProdutoCampos.lerValor(campo));
+            campo.setText(" ");
+            assertNull(ProdutoCampos.lerValorParaSalvar(campo));
+            campo.setText("0");
+            assertEquals(Money.ZERO, ProdutoCampos.lerValorParaSalvar(campo));
+            campo.setText("99999999,99");
+            assertEquals(Money.parse("99999999,99"), ProdutoCampos.lerValorParaSalvar(campo));
+        });
+    }
+
+    @Test
+    void desativacaoConfirmadaComRefreshFalhoMantemSucessoEObjetoInativo() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            dao.usos = 1;
+            Product original = dao.findById(1).orElseThrow();
+            ProductListController lista = new ProductListController() {
+                @Override public void updateTableView() { throw new DbException("Consulta falhou depois da desativação."); }
+            };
+            FXMLLoader loader = new FXMLLoader(ProductListController.class.getResource(
+                    "/com/casarural/sistemapdv/view/product_list.fxml"));
+            loader.setControllerFactory(tipo -> lista);
+            Parent root = loader.load();
+            Stage janela = new Stage();
+            janela.setScene(new Scene(root));
+            lista.setProductService(new ProductService(dao));
+            Platform.runLater(() -> {
+                DialogPane dialogo = aviso();
+                ButtonType desativar = dialogo.getButtonTypes().stream()
+                        .filter(b -> b.getButtonData() == ButtonBar.ButtonData.OTHER).findFirst().orElseThrow();
+                ((Button) dialogo.lookupButton(desativar)).fire();
+            });
+            java.lang.reflect.Method excluir = ProductListController.class.getDeclaredMethod("onDeleteAction", Product.class);
+            excluir.setAccessible(true);
+            excluir.invoke(lista, original);
+            assertFalse(original.isAtivo());
+            assertFalse(dao.registros.get(1).isAtivo());
+            assertEquals(1, dao.desativacoes);
+            assertEquals(0, dao.atualizacoes);
+            assertTrue(aviso().getHeaderText().contains("desativado normalmente"));
+            assertFalse(aviso().getHeaderText().contains("Não foi possível excluir"));
         });
     }
 }

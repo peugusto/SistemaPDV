@@ -35,6 +35,66 @@ public class ProductDaoJdbc implements ProductDao {
     }
 
     @Override
+    public void desativarPorId(int idProduto) {
+        if (idProduto <= 0) throw new DbException("Selecione um produto válido para desativar.");
+        boolean confirmado = false;
+        try (Connection conn = conexoes.get()) {
+            conn.setAutoCommit(false);
+            boolean commitIniciado = false;
+            try {
+                int alterados;
+                try (PreparedStatement st = conn.prepareStatement("UPDATE produto SET ativo = FALSE WHERE id_produto = ?")) {
+                    st.setInt(1, idProduto);
+                    alterados = st.executeUpdate();
+                }
+                // Alguns drivers contam apenas linhas modificadas: um produto já inativo pode retornar zero.
+                if (alterados == 0) {
+                    try (PreparedStatement st = conn.prepareStatement(
+                            "SELECT id_produto FROM produto WHERE id_produto = ? FOR UPDATE")) {
+                        st.setInt(1, idProduto);
+                        try (ResultSet rs = st.executeQuery()) {
+                            if (!rs.next()) {
+                                throw new DbException("Produto não encontrado. Atualize a lista e tente novamente.");
+                            }
+                        }
+                    }
+                } else if (alterados != 1) {
+                    throw new DbException("Não foi possível confirmar a desativação do produto.");
+                }
+                commitIniciado = true;
+                conn.commit();
+                confirmado = true;
+            } catch (SQLException | RuntimeException e) {
+                boolean rollbackConfirmado = false;
+                try {
+                    conn.rollback();
+                    rollbackConfirmado = true;
+                } catch (SQLException | RuntimeException rollback) {
+                    e.addSuppressed(rollback);
+                    try {
+                        conn.abort(Runnable::run);
+                    } catch (SQLException | RuntimeException abort) {
+                        e.addSuppressed(abort);
+                    }
+                }
+                if (commitIniciado || !rollbackConfirmado) {
+                    throw new ResultadoTransacaoIncertoException("desativação do produto", e);
+                }
+                if (e instanceof RuntimeException) throw (RuntimeException) e;
+                throw new DbException("Não foi possível desativar o produto. Tente novamente.", e);
+            }
+        } catch (SQLException | RuntimeException e) {
+            if (confirmado) {
+                log.warn("Produto {} desativado, mas houve falha ao liberar a conexão.", idProduto, e);
+            } else if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            } else {
+                throw new DbException("Não foi possível iniciar a desativação do produto.", e);
+            }
+        }
+    }
+
+    @Override
     public void registrarEntrada(EntradaEstoque entrada) {
         Objects.requireNonNull(entrada, "Entrada de estoque não informada.");
         boolean confirmado = false;

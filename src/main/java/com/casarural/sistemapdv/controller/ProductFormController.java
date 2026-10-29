@@ -16,6 +16,8 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.net.URL;
@@ -23,9 +25,11 @@ import java.util.ResourceBundle;
 
 public class ProductFormController implements Initializable {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductFormController.class);
     private Product entity;
     private ProductService service;
     private ProductListController listController;
+    private boolean salvamentoConfirmado;
 
     @FXML private TextField txtCodBarras;
     @FXML private TextField txtNome;
@@ -78,6 +82,10 @@ public class ProductFormController implements Initializable {
 
     @FXML
     public void onBtnSaveAction(ActionEvent event) {
+        if (salvamentoConfirmado) {
+            closeStage(event);
+            return;
+        }
         if (entity == null || service == null) {
             throw new IllegalStateException("Service ou Entity nulos");
         }
@@ -89,39 +97,50 @@ public class ProductFormController implements Initializable {
         }
 
         try {
-
-            String codBarras = txtCodBarras.getText();
-            String nome = txtNome.getText();
-            BigDecimal preco = Money.parse(txtPreco.getText());
-            int estoque = ProdutoCampos.estoque(txtEstoque);
-
-
-            entity.setCodBarras(codBarras);
-            entity.setNomeProduto(nome);
-            entity.setPrecoProduto(preco);
-            entity.setEstoque(estoque);
-            entity.setPermiteFiado(chkPermiteFiado.isSelected());
-            entity.setAtivo(chkAtivo.isSelected());
-            entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
-            entity.setControlaEstoque(chkControlaEstoque.isSelected());
-            entity.setPrecoCusto(ProdutoCampos.lerValor(txtCusto));
-
-
-            service.saveOrUpdate(entity);
-
-
-            listController.updateTableView();
-
-
-            closeStage(event);
-
-            Alerts.showAlert("Sucesso", null, "Produto atualizado com sucesso!", Alert.AlertType.INFORMATION);
-
-        } catch (NumberFormatException e) {
-            Alerts.showAlert("Erro de Tipo", null, "Certifique-se de preencher Preço e Estoque com valores numéricos válidos.", Alert.AlertType.ERROR);
+            Product alterado = produtoDoFormulario();
+            service.saveOrUpdate(alterado);
+            entity = alterado;
+            salvamentoConfirmado = true;
+        } catch (IllegalArgumentException e) {
+            Alerts.showAlert("Erro de Validação", "Confira os dados do produto", e.getMessage(), Alert.AlertType.ERROR);
+            return;
         } catch (Exception e) {
-            Alerts.showAlert("Erro ao Salvar", "Erro no banco de dados", e.getMessage(), Alert.AlertType.ERROR);
+            Alerts.showAlert("Erro ao Salvar", "Não foi possível salvar o produto", e.getMessage(), Alert.AlertType.ERROR);
+            return;
         }
+
+        // O produto já foi gravado: erro ao consultar a lista ou fechar a tela não permite gravá-lo outra vez.
+        try {
+            btnSave.setDisable(true);
+            listController.updateTableView();
+            closeStage(event);
+            Alerts.showAlert("Sucesso", null, "Produto atualizado com sucesso!", Alert.AlertType.INFORMATION);
+        } catch (RuntimeException e) {
+            log.warn("Produto #{} salvo; falha ao atualizar a interface", entity.getIdProduto(), e);
+            Alerts.showAlert("Produto salvo", "O produto foi salvo, mas a tela não pôde ser atualizada.",
+                    "Não salve novamente. Feche esta janela e abra a lista de produtos de novo para conferir a alteração.",
+                    Alert.AlertType.WARNING);
+        }
+    }
+
+    private Product produtoDoFormulario() {
+        BigDecimal preco;
+        try {
+            preco = Money.parse(txtPreco.getText());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Preço inválido. Digite um valor como 12,50.", e);
+        }
+        int estoque = ProdutoCampos.estoque(txtEstoque);
+        BigDecimal custo = ProdutoCampos.lerValorParaSalvar(txtCusto);
+        // O objeto recebido pertence à lista. Uma falha ou Cancelar deve deixá-lo intacto.
+        Product alterado = new Product(txtCodBarras.getText(), txtNome.getText(), preco, estoque);
+        alterado.setIdProduto(entity.getIdProduto());
+        alterado.setPermiteFiado(chkPermiteFiado.isSelected());
+        alterado.setAtivo(chkAtivo.isSelected());
+        alterado.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
+        alterado.setControlaEstoque(chkControlaEstoque.isSelected());
+        alterado.setPrecoCusto(custo);
+        return alterado;
     }
 
     @FXML

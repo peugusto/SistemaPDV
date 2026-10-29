@@ -31,8 +31,11 @@ public class ProductService {
 
     /** Some da venda, da busca e da lista de compras; o histórico de vendas continua. */
     public void desativar(Product p) {
+        if (p == null || p.getIdProduto() <= 0) {
+            throw new DbException("Selecione um produto válido para desativar.");
+        }
+        dao.desativarPorId(p.getIdProduto());
         p.setAtivo(false);
-        dao.update(p);
     }
 
     /** Busca pelo código, sem os espaços das pontas (um espaço a mais não faz o produto "sumir"). */
@@ -42,6 +45,7 @@ public class ProductService {
     }
 
     public void saveOrUpdate(Product obj) throws SQLException {
+        validarValores(obj);
         normalizar(obj);
         Optional<Product> mesmoCodigo = dao.findByCodBarras(obj.getCodBarras());
         if (mesmoCodigo.isPresent() && mesmoCodigo.get().getIdProduto() != obj.getIdProduto()) {
@@ -60,6 +64,19 @@ public class ProductService {
     public void registrarEntrada(EntradaEstoque entrada) {
         if (entrada == null) throw new IllegalArgumentException("Entrada de estoque não informada.");
         dao.registrarEntrada(entrada);
+    }
+
+    /** Confere os valores antes de consultar duplicidade ou enviar qualquer escrita ao DAO. */
+    private static void validarValores(Product produto) {
+        if (produto == null) throw new DbException("Produto não informado.");
+        if (produto.getEstoque() < 0) {
+            throw new DbException("O estoque não pode ser negativo. Digite zero ou uma quantidade maior.");
+        }
+        try {
+            EntradaEstoque.validarCusto(produto.getPrecoCusto());
+        } catch (IllegalArgumentException e) {
+            throw new DbException(e.getMessage(), e);
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
@@ -229,7 +230,15 @@ public class ProductListController implements Initializable {
                 if (escolha == 0) {
                     service.desativar(obj);
                     log.info("Produto {} ({}) desativado", obj.getIdProduto(), obj.getNomeProduto());
-                    updateTableView();
+                    try {
+                        updateTableView();
+                    } catch (RuntimeException e) {
+                        log.error("Produto {} desativado, mas a lista não pôde ser atualizada", obj.getIdProduto(), e);
+                        productTable.refresh();
+                        Alerts.showAlert("Produto desativado", "O produto foi desativado normalmente",
+                                "Não foi possível atualizar a lista. Reabra o estoque para conferir. Não é preciso desativar novamente.",
+                                Alert.AlertType.WARNING);
+                    }
                 }
                 return;
             }
@@ -239,6 +248,11 @@ public class ProductListController implements Initializable {
                 log.info("Produto {} ({}) excluído", obj.getIdProduto(), obj.getNomeProduto());
                 updateTableView();
             }
+        } catch (ResultadoTransacaoIncertoException e) {
+            log.error("Resultado da desativação do produto {} precisa de conferência", obj.getIdProduto(), e);
+            Alerts.showAlert("Conferir produto", "Confira a situação de " + obj.getNomeProduto(),
+                    "Não foi possível confirmar se o produto foi desativado. Reabra o estoque para conferir a situação atual.",
+                    Alert.AlertType.WARNING);
         } catch (DbException e) {
             Alerts.showAlert("Excluir produto", "Não foi possível excluir", e.getMessage(), Alert.AlertType.WARNING);
         }
