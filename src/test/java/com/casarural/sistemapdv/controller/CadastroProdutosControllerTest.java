@@ -43,29 +43,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /** Usa o FXML/controller reais e produtos em memoria, sem conexao ao banco. */
+@org.junit.jupiter.api.extension.ExtendWith(JavafxTestSupport.class)
 class CadastroProdutosControllerTest {
-    private static boolean javafxIniciado;
-
-    @BeforeAll
-    static void iniciarJavafx() throws Exception {
-        boolean linuxSemTela = System.getProperty("os.name", "").startsWith("Linux")
-                && System.getenv("DISPLAY") == null && System.getenv("WAYLAND_DISPLAY") == null;
-        assumeFalse(Boolean.getBoolean("java.awt.headless") || linuxSemTela,
-                "Requer ambiente grafico para JavaFX.");
-        CountDownLatch pronto = new CountDownLatch(1);
-        Platform.startup(() -> {
-            Platform.setImplicitExit(false);
-            pronto.countDown();
-        });
-        assertTrue(pronto.await(10, TimeUnit.SECONDS), "JavaFX nao iniciou.");
-        javafxIniciado = true;
-    }
-
-    @AfterAll
-    static void encerrarJavafx() {
-        if (javafxIniciado) Platform.exit();
-    }
-
     @FunctionalInterface
     private interface AcaoFx { void executar() throws Exception; }
 

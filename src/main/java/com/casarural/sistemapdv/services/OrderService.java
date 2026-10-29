@@ -23,10 +23,11 @@ public class OrderService {
     private OrderDao dao = DaoFactory.createOrderDAO();
 
     public void insert(Order obj) throws SQLException {
-        if (obj.getItemPedido().isEmpty()) {
+        if (obj == null || obj.getItemPedido() == null || obj.getItemPedido().isEmpty()) {
             throw new IllegalArgumentException("Não é possível salvar um pedido sem itens.");
         }
 
+        validarVenda(obj);
         // Confere a venda completa, incluindo créditos herdados de uma troca.
         // A recusa acontece antes do DAO, que cancela a venda original ao gravar a troca.
         BigDecimal totalFiado = obj.getTotalPagamentos(PaymentMethod.FIADO);
@@ -39,6 +40,17 @@ public class OrderService {
         dao.insert(obj);
     }
 
+    private static void validarVenda(Order obj) {
+        BigDecimal maximo = new BigDecimal("99999999.99");
+        for (OrderItem item : obj.getItemPedido()) {
+            if (item == null || item.getQtd() <= 0 || item.getPrecoUnitario().signum() < 0
+                    || item.getPrecoUnitario().compareTo(maximo) > 0)
+                throw new IllegalArgumentException("Revise a quantidade e o preço dos itens antes de salvar.");
+        }
+        if (obj.getValorTotal().signum() < 0 || obj.getValorTotal().compareTo(maximo) > 0
+                || obj.getDesconto().signum() < 0 || obj.getDesconto().compareTo(obj.getSubtotalItens()) > 0)
+            throw new IllegalArgumentException("O total ou desconto da venda está fora do limite permitido.");
+    }
     public List<Order> findAll() {
         return dao.findAll();
     }

@@ -253,10 +253,12 @@ public class ProductDaoJdbc implements ProductDao {
 
     @Override
     public void update(Product obj) {
-        try (Connection conn = DB.getConnection();
+        Object[] esperado = obj.getEstadoOriginal();
+        boolean confirmado = false;
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement(
                      "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
-                             + "tipo_venda = ?, controla_estoque = ?, preco_custo = ?, ativo = ? WHERE id_produto = ?")) {
+                             + "tipo_venda = ?, controla_estoque = ?, preco_custo = ?, ativo = ? WHERE id_produto = ? AND BINARY cod_barras <=> BINARY ? AND BINARY nome_produto <=> BINARY ? AND preco_produto <=> ? AND estoque <=> ? AND permite_fiado <=> ? AND tipo_venda <=> ? AND controla_estoque <=> ? AND preco_custo <=> ? AND ativo <=> ?")) {
 
             st.setString(1, obj.getCodBarras());
             st.setString(2, obj.getNomeProduto());
@@ -269,10 +271,17 @@ public class ProductDaoJdbc implements ProductDao {
             st.setBoolean(9, obj.isAtivo());
             st.setInt(10, obj.getIdProduto());
 
-            st.executeUpdate();
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
+            for (int i = 0; i < esperado.length; i++) st.setObject(11 + i, esperado[i]);
+            if (st.executeUpdate() != 1) throw new DbException("Este produto foi alterado ou removido por outra operação. Feche e reabra a edição para conferir os dados atuais.");
+            confirmado = true;
+        } catch (SQLException | RuntimeException e) {
+            if (!confirmado) {
+                if (e instanceof RuntimeException) throw (RuntimeException)e;
+                throw new DbException(e.getMessage(), e);
+            }
+            log.warn("Produto {} salvo; falha ao liberar conexão", obj.getIdProduto(), e);
         }
+        obj.registrarEstadoOriginal();
     }
 
     @Override
@@ -318,6 +327,7 @@ public class ProductDaoJdbc implements ProductDao {
         prod.setControlaEstoque(rs.getBoolean("controla_estoque"));
         prod.setPrecoCusto(rs.getBigDecimal("preco_custo"));
         prod.setAtivo(rs.getBoolean("ativo"));
+        prod.registrarEstadoOriginal();
         return prod;
     }
 

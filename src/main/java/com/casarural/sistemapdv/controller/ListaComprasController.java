@@ -84,7 +84,13 @@ public class ListaComprasController implements Initializable {
             private final TextField campo = new TextField();
             {
                 campo.setPrefWidth(80);
-                Constraints.setTextFieldInteger(campo);
+                campo.setTextFormatter(new TextFormatter<String>(change -> {
+                    String valor = change.getControlNewText();
+                    if (!valor.matches("\\d*") || valor.length() > 10) return null;
+                    try { if (!valor.isEmpty()) Integer.parseInt(valor); }
+                    catch (NumberFormatException erro) { return null; }
+                    return change;
+                }));
                 campo.textProperty().addListener((obs, antes, agora) -> {
                     Item item = getItem();
                     if (item == null) return;
@@ -153,7 +159,7 @@ public class ListaComprasController implements Initializable {
         long acabaram = itens.stream().filter(Item::acabou).count();
         lblAcabaram.setText(String.valueOf(acabaram));
         Tema.estado(lblAcabaram, acabaram > 0 ? "texto-perigo" : null);
-        lblUnidades.setText(String.valueOf(itens.stream().mapToInt(Item::getComprar).sum()));
+        lblUnidades.setText(String.valueOf(itens.stream().mapToLong(Item::getComprar).sum()));
 
         // Custo estimado: comprar x último custo; avisa quantos produtos estão sem custo
         java.math.BigDecimal total = itens.stream().map(Item::getCustoEstimado).filter(java.util.Objects::nonNull)

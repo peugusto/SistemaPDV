@@ -135,6 +135,7 @@ public class ProductFormController implements Initializable {
         // O objeto recebido pertence à lista. Uma falha ou Cancelar deve deixá-lo intacto.
         Product alterado = new Product(txtCodBarras.getText(), txtNome.getText(), preco, estoque);
         alterado.setIdProduto(entity.getIdProduto());
+        alterado.copiarEstadoOriginal(entity);
         alterado.setPermiteFiado(chkPermiteFiado.isSelected());
         alterado.setAtivo(chkAtivo.isSelected());
         alterado.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);

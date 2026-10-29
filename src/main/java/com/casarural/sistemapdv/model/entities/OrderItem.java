@@ -9,6 +9,9 @@ public class OrderItem {
     private Product produto;
     private Order pedido;
     private int qtd;
+    private Integer estoqueBaixado;
+    public Integer getEstoqueBaixado() { return estoqueBaixado; }
+    public void setEstoqueBaixado(Integer qtd) { if (qtd != null && qtd < 0) throw new IllegalArgumentException("Baixa inválida."); estoqueBaixado = qtd; }
     private BigDecimal precoUnitario = Money.ZERO;
     /** Custo de cada unidade no momento da venda (V14); null = produto sem custo. */
     private BigDecimal custoUnitario;
@@ -16,6 +19,7 @@ public class OrderItem {
     public OrderItem(){}
     public OrderItem(Product produto, int qtd, BigDecimal precoUnitario) {
         this.produto = produto;
+        if (qtd <= 0) throw new IllegalArgumentException("A quantidade do item deve ser maior que zero.");
         this.qtd = qtd;
         this.precoUnitario = Money.of(precoUnitario);
         // custo do momento da venda (no pesável, proporcional ao valor da balança)
@@ -55,6 +59,7 @@ public class OrderItem {
     }
 
     public void setQtd(int qtd) {
+        if (qtd <= 0) throw new IllegalArgumentException("A quantidade do item deve ser maior que zero.");
         this.qtd = qtd;
     }
 
@@ -76,6 +81,7 @@ public class OrderItem {
     }
 
     public BigDecimal getSubtotal() {
+        if (qtd <= 0 || precoUnitario.signum() < 0) throw new IllegalStateException("Quantidade ou preço inválido no item.");
         return Money.of(precoUnitario.multiply(BigDecimal.valueOf(qtd)));
     }
 

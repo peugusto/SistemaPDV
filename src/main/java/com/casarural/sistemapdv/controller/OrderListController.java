@@ -424,6 +424,7 @@ public class OrderListController implements Initializable {
         if (vendaDetalhe != null && !vendaDetalhe.isCancelada() && !vendaDetalhe.isDoCaixaAberto()) {
             dica = "Venda de um caixa já fechado: não dá para cancelar nem trocar.";
         }
+        if (vendaDetalhe != null && !vendaDetalhe.isCancelada() && vendaDetalhe.isDoCaixaAberto() && !vendaDetalhe.temBaixaConhecida()) dica = "Venda anterior ao registro das baixas: troca ou cancelamento exige conferência manual do estoque.";
         labelAcoesDica.setText(dica);
         boolean mostrar = pode || !dica.isEmpty();
         boxAcoes.setVisible(mostrar);

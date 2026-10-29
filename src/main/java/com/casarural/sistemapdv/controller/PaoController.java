@@ -73,7 +73,26 @@ public class PaoController implements Initializable {
     private Product pao;
     private List<DiaPao> historico = List.of();
     /** Relógio da tela; os testes trocam para simular outro horário. */
-    private LocalDateTime agora = LocalDateTime.now();
+    private java.time.Clock relogio = java.time.Clock.systemDefaultZone();
+    private boolean atualizandoHorario;
+    private final javafx.animation.Timeline atualizacao = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(javafx.util.Duration.seconds(30), e -> atualizarHorario()));
+    private LocalDateTime agora() { return LocalDateTime.now(relogio); }
+    public void setClock(java.time.Clock clock) { relogio = java.util.Objects.requireNonNull(clock); }
+    public void recarregar() { if (pao != null) carregar(); }
+    public void atualizarHorario() {
+        if (pao == null) return;
+        atualizandoHorario = true;
+        try { mostrarDia(); mostrarSugestao(); mostrarHistorico(); }
+        finally { atualizandoHorario = false; }
+    }
+    private void observarJanela(Window janela) {
+        if (janela == null) return;
+        janela.showingProperty().addListener((o, a, visivel) -> {
+            if (visivel) atualizacao.play(); else atualizacao.stop();
+        });
+        if (janela.isShowing()) atualizacao.play();
+    }
 
     public static void abrir(Window dono) {
         try {
@@ -114,17 +133,15 @@ public class PaoController implements Initializable {
         pao = produto.get();
         lblProduto.setText(pao.getNomeProduto() + "  ·  " + Money.format(pao.getPrecoProduto())
                 + " a unidade  ·  código " + pao.getCodBarras());
-        dataDia.setValue(agora.toLocalDate());
+        dataDia.setValue(agora().toLocalDate());
         carregar();
     }
 
     /** Para os testes: finge que agora é outro horário. */
     public void setAgora(LocalDateTime agora) {
-        this.agora = agora;
-        if (pao != null) {
-            dataDia.setValue(agora.toLocalDate());
-            carregar();
-        }
+        java.time.ZoneId zona = relogio.getZone();
+        setClock(java.time.Clock.fixed(agora.atZone(zona).toInstant(), zona));
+        if (pao != null) { carregar(); }
     }
 
     @Override
@@ -137,6 +154,15 @@ public class PaoController implements Initializable {
             if (agora != null && pao != null) mostrarDia();
         });
         configurarTabela();
+        atualizacao.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        dataDia.sceneProperty().addListener((o, anterior, cena) -> {
+            if (cena == null) { atualizacao.stop(); return; }
+            observarJanela(cena.getWindow());
+            cena.windowProperty().addListener((obs, antes, janela) -> observarJanela(janela));
+            cena.addEventFilter(KeyEvent.KEY_PRESSED, evento -> {
+                if (evento.getCode() == KeyCode.F5) { recarregar(); evento.consume(); }
+            });
+        });
     }
 
     @FXML public void onRegistrarManha() { registrar(MANHA, txtCompraManha); }
@@ -145,7 +171,7 @@ public class PaoController implements Initializable {
     private void registrar(TurnoPao turno, TextField campo) {
         LocalDate dia = dataDia.getValue();
         if (dia == null) return;
-        if (dia.isAfter(agora.toLocalDate())) {
+        if (dia.isAfter(agora().toLocalDate())) {
             Alerts.showAlert("Pão do dia", null, "Não dá para registrar um dia que ainda não chegou.", Alert.AlertType.WARNING);
             return;
         }
@@ -167,7 +193,7 @@ public class PaoController implements Initializable {
     }
 
     private void carregar() {
-        historico = service.historico(pao, agora.toLocalDate());
+        historico = service.historico(pao, agora().toLocalDate());
         mostrarDia();
         mostrarSugestao();
         mostrarHistorico();
@@ -181,7 +207,7 @@ public class PaoController implements Initializable {
 
     private void mostrarDia() {
         DiaPao d = diaPao(dataDia.getValue());
-        boolean hoje = d.getData().equals(agora.toLocalDate());
+        boolean hoje = d.getData().equals(agora().toLocalDate());
         mostrarTurno(d, MANHA, hoje, txtCompraManha, btnRegistrarManha, lblVendidoManha, lblSobraManha, lblSobraManhaRotulo, lblSituacaoManha);
         mostrarTurno(d, TARDE, hoje, txtCompraTarde, btnRegistrarTarde, lblVendidoTarde, lblSobraTarde, lblSobraTardeRotulo, lblSituacaoTarde);
     }
@@ -189,11 +215,11 @@ public class PaoController implements Initializable {
     private void mostrarTurno(DiaPao d, TurnoPao t, boolean hoje, TextField campo, Button botao,
                               Label vendido, Label sobra, Label sobraRotulo, Label situacao) {
         Integer comprado = d.getComprado(t);
-        campo.setText(comprado == null ? "" : String.valueOf(comprado));
+        if (!atualizandoHorario) campo.setText(comprado == null ? "" : String.valueOf(comprado));
         botao.setText(comprado == null ? "Registrar" : "Corrigir");
         vendido.setText(String.valueOf(d.getVendido(t)));
 
-        boolean turnoAberto = hoje && agora.toLocalTime().isBefore(t.getFim());
+        boolean turnoAberto = hoje && agora().toLocalTime().isBefore(t.getFim());
         sobraRotulo.setText(turnoAberto ? "Tem agora" : "Sobrou");
         Integer s = d.getSobra(t);
         sobra.setText(s == null ? "—" : String.valueOf(s));
@@ -205,7 +231,7 @@ public class PaoController implements Initializable {
             situacao.setText(ultima == null ? "Acabou" : "Acabou às " + ultima.format(HORA));
             situacao.getStyleClass().add("etiqueta-perigo");
         } else if (comprado == null) {
-            boolean jaPassou = !hoje || !agora.toLocalTime().isBefore(t.getInicio());
+            boolean jaPassou = !hoje || !agora().toLocalTime().isBefore(t.getInicio());
             situacao.setText(jaPassou ? "Falta registrar" : "Ainda não chegou");
             situacao.getStyleClass().add(jaPassou ? "etiqueta-alerta" : "etiqueta-neutra");
         } else {
@@ -222,8 +248,8 @@ public class PaoController implements Initializable {
      * depois → amanhã às 7h.
      */
     private void mostrarSugestao() {
-        LocalDate hoje = agora.toLocalDate();
-        LocalTime hora = agora.toLocalTime();
+        LocalDate hoje = agora().toLocalDate();
+        LocalTime hora = agora().toLocalTime();
         DiaPao diaHoje = diaPao(hoje);
         LocalDate amanha = hoje.plusDays(1);
 
@@ -337,7 +363,7 @@ public class PaoController implements Initializable {
     }
 
     private void mostrarHistorico() {
-        LocalDate hoje = agora.toLocalDate();
+        LocalDate hoje = agora().toLocalDate();
         List<DiaPao> ultimos = historico.stream()
                 .filter(d -> d.getData().isAfter(hoje.minusDays(DIAS_NA_TELA)))
                 .sorted(Comparator.comparing(DiaPao::getData))
@@ -367,7 +393,7 @@ public class PaoController implements Initializable {
     /** "Amanhã (quarta-feira)" */
     private String nomeDia(LocalDate dia) {
         String semana = dia.getDayOfWeek().getDisplayName(TextStyle.FULL, PT_BR);
-        return (dia.equals(agora.toLocalDate().plusDays(1)) ? "Amanhã" : dia.format(DIA_MES)) + " (" + semana + ")";
+        return (dia.equals(agora().toLocalDate().plusDays(1)) ? "Amanhã" : dia.format(DIA_MES)) + " (" + semana + ")";
     }
 
     /** "terça" */

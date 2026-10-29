@@ -31,6 +31,8 @@ public class ResumoVendas {
     private BigDecimal receitaComCusto = Money.ZERO;
     /** Custo dos itens que têm custo informado. */
     private BigDecimal custoItens = Money.ZERO;
+    /** Soma das parcelas já rateadas dentro de cada pedido; null quando não foi carregada. */
+    private BigDecimal descontoComCusto;
 
     public int getQuantidadeVendas() { return quantidadeVendas; }
     public void setQuantidadeVendas(int quantidadeVendas) { this.quantidadeVendas = quantidadeVendas; }
@@ -66,29 +68,56 @@ public class ResumoVendas {
     public BigDecimal getCustoItens() { return custoItens; }
     public void setCustoItens(BigDecimal v) { this.custoItens = Money.of(v); }
 
-    /** Quanto das vendas tem custo informado, em % (o lucro só vale para essa parte). null sem vendas. */
+    /** Soma os custos de um pedido e só então agrega sua parcela de desconto ao período. */
+    public void adicionarCustosDoPedido(BigDecimal receita, BigDecimal receitaComCusto,
+                                       BigDecimal custo, BigDecimal descontoDoPedido) {
+        receita = Money.of(receita);
+        receitaComCusto = Money.of(receitaComCusto);
+        BigDecimal parcela = receita.signum() == 0 ? Money.ZERO
+                : Money.of(descontoDoPedido).multiply(receitaComCusto).divide(receita, Money.SCALE, Money.ROUNDING);
+        // HALF_UP por pedido: a parte sem custo fica com descontoDoPedido - parcela,
+        // preservando os centavos da venda. Nunca arredondar de novo sobre o total do período.
+        this.receitaItens = this.receitaItens.add(receita);
+        this.receitaComCusto = this.receitaComCusto.add(receitaComCusto);
+        this.custoItens = this.custoItens.add(Money.of(custo));
+        this.descontoComCusto = (this.descontoComCusto == null ? Money.ZERO : this.descontoComCusto).add(parcela);
+    }
+
+    /** Define uma parcela já apurada por pedido, sem inferi-la dos totais agregados. */
+    public void setDescontoComCusto(BigDecimal valor) {
+        this.descontoComCusto = valor == null ? null : Money.of(valor);
+    }
+
+    public boolean temReceitaComCusto() { return receitaComCusto.signum() > 0; }
+
+    public boolean temCustoParcial() {
+        return temReceitaComCusto() && receitaComCusto.compareTo(receitaItens) < 0;
+    }
+
+    /** Percentual apenas para apresentação. A existência/completude é decidida pelos valores reais. */
     public BigDecimal getCoberturaCusto() {
         if (receitaItens.signum() == 0) return null;
-        return receitaComCusto.multiply(BigDecimal.valueOf(100)).divide(receitaItens, 0, RoundingMode.HALF_UP);
+        return receitaComCusto.multiply(BigDecimal.valueOf(100)).divide(receitaItens, 1, RoundingMode.HALF_UP);
     }
 
     /**
-     * Desconto que cabe às vendas com custo: os descontos do período divididos na proporção.
-     * Com 100% de custo informado, é o desconto inteiro.
+     * Desconto explicitamente rateado por pedido. Totais do período não permitem reconstruí-lo.
+     * Sem desconto algum a parcela é necessariamente zero; com desconto e sem apuração, null.
      */
     public BigDecimal getDescontoComCusto() {
-        if (receitaItens.signum() == 0) return Money.ZERO;
-        return descontos.multiply(receitaComCusto).divide(receitaItens, Money.SCALE, RoundingMode.HALF_UP);
+        return descontoComCusto != null ? descontoComCusto : descontos.signum() == 0 ? Money.ZERO : null;
     }
 
     /** Lucro bruto: o que entrou nas vendas com custo, menos o custo delas e o desconto que lhes cabe. */
     public BigDecimal getLucroBruto() {
-        return receitaComCusto.subtract(getDescontoComCusto()).subtract(custoItens);
+        BigDecimal parcela = getDescontoComCusto();
+        return parcela == null ? null : receitaComCusto.subtract(parcela).subtract(custoItens);
     }
 
     /** Margem sobre o que foi recebido nessas vendas, em %. */
     public BigDecimal getMargem() {
-        return RegraLucro.margem(receitaComCusto.subtract(getDescontoComCusto()), custoItens);
+        BigDecimal parcela = getDescontoComCusto();
+        return parcela == null ? null : RegraLucro.margem(receitaComCusto.subtract(parcela), custoItens);
     }
 
     /** Valor médio de cada venda. */

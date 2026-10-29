@@ -53,6 +53,7 @@ class LucroTest {
         rv.setReceitaComCusto(r("150"));  // R$ 150 deles têm custo
         rv.setCustoItens(r("100"));
         rv.setDescontos(r("8"));          // descontos do período
+        rv.setDescontoComCusto(r("6"));   // parcela previamente alocada dentro do pedido
         assertEquals(0, rv.getCoberturaCusto().compareTo(BigDecimal.valueOf(75)));
         assertEquals(r("6"), rv.getDescontoComCusto());         // 8 x 150/200
         assertEquals(r("44"), rv.getLucroBruto());              // 150 - 6 - 100
@@ -63,5 +64,43 @@ class LucroTest {
     void semVendasNaoTemCobertura() {
         assertNull(new ResumoVendas().getCoberturaCusto());
         assertEquals(r("0"), new ResumoVendas().getLucroBruto());
+    }
+
+    @Test
+    void descontoDeOutraVendaNaoReduzLucroConhecido() {
+        ResumoVendas rv = new ResumoVendas();
+        rv.adicionarCustosDoPedido(r("100"), r("100"), r("50"), r("0"));
+        rv.adicionarCustosDoPedido(r("100"), r("0"), r("0"), r("20"));
+        assertEquals(r("50"), rv.getLucroBruto());
+        ResumoVendas outro = new ResumoVendas();
+        outro.adicionarCustosDoPedido(r("100"), r("100"), r("50"), r("20"));
+        outro.adicionarCustosDoPedido(r("100"), r("0"), r("0"), r("0"));
+        assertEquals(r("30"), outro.getLucroBruto());
+    }
+
+    @Test
+    void centavosSaoRateadosPorPedidoAntesDaSoma() {
+        ResumoVendas periodo = new ResumoVendas();
+        for (int i=0;i<3;i++) periodo.adicionarCustosDoPedido(r("3"),r("1"),r("0"),r("0,01"));
+        assertEquals(r("0"),periodo.getDescontoComCusto());
+        assertEquals(r("3"),periodo.getLucroBruto());
+    }
+
+    @Test
+    void coberturaNaoDecideEstadoPeloArredondamento() {
+        for(String receita : new String[]{"4", "996", "0,01", "999,99"}) {
+            ResumoVendas rv = new ResumoVendas();
+            rv.adicionarCustosDoPedido(r("1000"),r(receita),r("0"),r("0"));
+            assertTrue(rv.temReceitaComCusto());
+            assertTrue(rv.temCustoParcial());
+            assertEquals(r(receita),rv.getLucroBruto());
+        }
+    }
+
+    @Test
+    void totaisGlobaisNaoInventamRateio() {
+        ResumoVendas rv = new ResumoVendas();
+        rv.setReceitaItens(r("200")); rv.setReceitaComCusto(r("100")); rv.setDescontos(r("20"));
+        assertNull(rv.getDescontoComCusto()); assertNull(rv.getLucroBruto());
     }
 }

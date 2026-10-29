@@ -76,7 +76,28 @@ public class Product {
         this.estoque = estoque;
     }
 
-    public void adicionarEstoque(int quantidade) { this.estoque += quantidade;}
+    public void adicionarEstoque(int quantidade) {
+        if (quantidade < 0) throw new IllegalArgumentException("A entrada não pode ser negativa.");
+        final int novo;
+        try { novo = Math.addExact(estoque, quantidade); }
+        catch (ArithmeticException e) { throw new IllegalArgumentException("A quantidade ultrapassa o limite de estoque.", e); }
+        if (novo < 0) throw new IllegalArgumentException("O estoque não pode ser negativo.");
+        estoque = novo;
+    }
+
+    private Object[] estadoOriginal;
+    private Object[] valoresAtuais() {
+        return new Object[]{codBarras, nomeProduto, precoProduto, estoque, permiteFiado,
+                tipoVenda.name(), controlaEstoque, precoCusto, ativo};
+    }
+    public void registrarEstadoOriginal() { estadoOriginal = valoresAtuais(); }
+    public void copiarEstadoOriginal(Product origem) {
+        estadoOriginal = origem.estadoOriginal == null ? origem.valoresAtuais() : origem.estadoOriginal.clone();
+    }
+    public Object[] getEstadoOriginal() {
+        if (estadoOriginal == null) throw new IllegalStateException("Reabra a edição do produto para carregar seu estado atual.");
+        return estadoOriginal.clone();
+    }
 
     public boolean isPermiteFiado() {
         return permiteFiado;
@@ -125,7 +146,7 @@ public class Product {
 
     /** Se dá para vender {@code quantidade} (somando o que já está no carrinho). Sem controle, sempre dá. */
     public boolean temEstoquePara(int quantidade) {
-        return !isControlaEstoque() || quantidade <= estoque;
+        return quantidade >= 0 && (!isControlaEstoque() || quantidade <= estoque);
     }
 
     @Override

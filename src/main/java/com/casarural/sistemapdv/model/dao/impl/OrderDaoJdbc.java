@@ -176,11 +176,11 @@ public class OrderDaoJdbc implements OrderDao {
     }
 
     private void inserirItensEBaixarEstoque(Connection conn, List<OrderItem> itens, int idPedido) throws SQLException {
-        String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario, custo_unitario) VALUES (?, ?, ?, ?, ?)";
+        String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario, custo_unitario, estoque_baixado) SELECT ?, ?, ?, ?, ?, IF(controla_estoque AND tipo_venda <> 'PESAVEL', ?, 0) FROM produto WHERE id_produto = ?";
         // Produto sem controle de estoque (V11): a linha é encontrada mas o estoque fica igual.
         // A decisão usa o que está no banco, não o produto carregado na tela.
-        String sqlEstoque = "UPDATE produto SET estoque = IF(controla_estoque, estoque - ?, estoque) "
-                + "WHERE id_produto = ? AND (NOT controla_estoque OR estoque >= ?)";
+        String sqlEstoque = "UPDATE produto SET estoque = IF(controla_estoque AND tipo_venda <> 'PESAVEL', estoque - ?, estoque) "
+                + "WHERE id_produto = ? AND (NOT controla_estoque OR tipo_venda = 'PESAVEL' OR estoque >= ?)";
         try (PreparedStatement stItem = conn.prepareStatement(sqlItem);
              PreparedStatement stEstoque = conn.prepareStatement(sqlEstoque)) {
             for (OrderItem item : itens) {
@@ -189,6 +189,9 @@ public class OrderDaoJdbc implements OrderDao {
                 stItem.setInt(3, item.getQtd());
                 stItem.setBigDecimal(4, item.getPrecoUnitario());
                 stItem.setBigDecimal(5, item.getCustoUnitario());   // null = produto sem custo
+                if (item.getQtd() <= 0) throw new SQLException("Quantidade inválida na venda.");
+                stItem.setInt(6, item.getQtd());
+                stItem.setInt(7, item.getProduto().getIdProduto());
                 stItem.addBatch();
 
                 stEstoque.setInt(1, item.getQtd());
@@ -707,16 +710,33 @@ public class OrderDaoJdbc implements OrderDao {
 
         Map<PaymentMethod, BigDecimal> pago = pagoPorForma(conn, idPedido, valorTotal);
 
-        // Estoque volta (só de quem controla estoque). Soma por produto: o mesmo produto pode estar em 2 linhas.
+        // Reverte somente a baixa registrada na venda, independentemente da configuração atual.
+        Map<Integer, Integer> reposicoes = new java.util.TreeMap<>();
         try (PreparedStatement st = conn.prepareStatement(
-                "UPDATE produto pr SET pr.estoque = pr.estoque + " +
-                "(SELECT SUM(i.quantidade) FROM itempedido i WHERE i.id_pedido = ? AND i.id_produto = pr.id_produto) " +
-                "WHERE pr.controla_estoque AND pr.id_produto IN (SELECT i2.id_produto FROM itempedido i2 WHERE i2.id_pedido = ?)")) {
+                "SELECT id_produto, COALESCE(SUM(estoque_baixado), 0) AS repor, "
+                        + "SUM(CASE WHEN estoque_baixado IS NULL THEN 1 ELSE 0 END) AS legados "
+                        + "FROM itempedido WHERE id_pedido = ? GROUP BY id_produto")) {
             st.setInt(1, idPedido);
-            st.setInt(2, idPedido);
-            st.executeUpdate();
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    if (rs.getInt("legados") > 0) throw new SQLException(
+                            "Esta venda é anterior ao registro da baixa de estoque. A troca ou cancelamento exige conferência manual; nenhuma alteração foi feita.");
+                    java.math.BigDecimal repor = rs.getBigDecimal("repor");
+                    if (repor.signum() < 0 || repor.compareTo(java.math.BigDecimal.valueOf(Integer.MAX_VALUE)) > 0)
+                        throw new SQLException("A quantidade a repor ultrapassa o limite de estoque.");
+                    if (repor.signum() > 0) reposicoes.put(rs.getInt("id_produto"), repor.intValueExact());
+                }
+            }
         }
-
+        try (PreparedStatement st = conn.prepareStatement(
+                "UPDATE produto SET estoque = estoque + ? WHERE id_produto = ? AND estoque >= 0 AND estoque <= ?")) {
+            for (Map.Entry<Integer, Integer> entrada : reposicoes.entrySet()) {
+                st.setInt(1, entrada.getValue());
+                st.setInt(2, entrada.getKey());
+                st.setInt(3, Integer.MAX_VALUE - entrada.getValue());
+                if (st.executeUpdate() != 1) throw new SQLException("Não foi possível repor o estoque dentro do limite permitido. Nenhuma alteração foi confirmada.");
+            }
+        }
         arquivarPagamentos(conn, "id_pedido = ?", new Object[]{idPedido}, tipo, motivo);
 
         try (PreparedStatement st = conn.prepareStatement(
@@ -802,12 +822,15 @@ public class OrderDaoJdbc implements OrderDao {
             }
             ProductDaoJdbc produtos = new ProductDaoJdbc();
             try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT i.quantidade, i.preco_unitario, pr.* FROM itempedido i " +
+                    "SELECT i.quantidade, i.preco_unitario, i.estoque_baixado, pr.* FROM itempedido i " +
                     "JOIN produto pr ON pr.id_produto = i.id_produto WHERE i.id_pedido = ? ORDER BY i.id_item")) {
                 st.setInt(1, idPedido);
                 try (ResultSet rs = st.executeQuery()) {
                     while (rs.next()) {
-                        v.getItens().add(new OrderItem(produtos.instantiate(rs), rs.getInt("quantidade"), rs.getBigDecimal("preco_unitario")));
+                        OrderItem item = new OrderItem(produtos.instantiate(rs), rs.getInt("quantidade"), rs.getBigDecimal("preco_unitario"));
+                        Number baixa = (Number) rs.getObject("estoque_baixado");
+                        item.setEstoqueBaixado(baixa == null ? null : baixa.intValue());
+                        v.getItens().add(item);
                     }
                 }
             }

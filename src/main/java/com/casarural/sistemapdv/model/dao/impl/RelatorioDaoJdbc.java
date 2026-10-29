@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * Consultas dos dashboards. Todas filtram pedido.data_pedido por faixa (>= de AND < ate),
@@ -29,13 +31,21 @@ import java.util.Optional;
  */
 public class RelatorioDaoJdbc implements RelatorioDao {
 
+    private final Supplier<Connection> conexoes;
+
+    public RelatorioDaoJdbc() { this(DB::getConnection); }
+
+    public RelatorioDaoJdbc(Supplier<Connection> conexoes) {
+        this.conexoes = Objects.requireNonNull(conexoes);
+    }
+
     /** Pedido ainda aberto e venda cancelada não contam. */
     private static final String VENDA_VALIDA = " AND p.status NOT IN ('EM_ANDAMENTO', 'CANCELADO') ";
 
     @Override
     public ResumoVendas resumo(LocalDateTime de, LocalDateTime ate) {
         ResumoVendas r = new ResumoVendas();
-        try (Connection conn = DB.getConnection()) {
+        try (Connection conn = conexoes.get()) {
             try (PreparedStatement st = conn.prepareStatement(
                     "SELECT COUNT(*), COALESCE(SUM(p.valor_total), 0), COALESCE(SUM(p.desconto), 0) FROM pedido p " +
                     "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA)) {
@@ -47,19 +57,21 @@ public class RelatorioDaoJdbc implements RelatorioDao {
                     r.setDescontos(rs.getBigDecimal(3));
                 }
             }
-            // Itens: receita, parte com custo e custo (V14)
+            // O desconto pertence ao pedido: rateia em centavos antes de somar o período.
+            r.setDescontoComCusto(Money.ZERO);
             try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT COALESCE(SUM(i.quantidade * i.preco_unitario), 0), " +
-                    "COALESCE(SUM(CASE WHEN i.custo_unitario IS NOT NULL THEN i.quantidade * i.preco_unitario END), 0), " +
-                    "COALESCE(SUM(i.quantidade * i.custo_unitario), 0) " +
+                    "SELECT p.id_pedido, p.desconto, COALESCE(SUM(i.quantidade * i.preco_unitario), 0) AS receita, " +
+                    "COALESCE(SUM(CASE WHEN i.custo_unitario IS NOT NULL THEN i.quantidade * i.preco_unitario END), 0) AS receita_com_custo, " +
+                    "COALESCE(SUM(i.quantidade * i.custo_unitario), 0) AS custo " +
                     "FROM itempedido i JOIN pedido p ON p.id_pedido = i.id_pedido " +
-                    "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA)) {
+                    "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA +
+                    "GROUP BY p.id_pedido, p.desconto")) {
                 periodo(st, 1, de, ate);
                 try (ResultSet rs = st.executeQuery()) {
-                    rs.next();
-                    r.setReceitaItens(rs.getBigDecimal(1));
-                    r.setReceitaComCusto(rs.getBigDecimal(2));
-                    r.setCustoItens(rs.getBigDecimal(3));
+                    while (rs.next()) {
+                        r.adicionarCustosDoPedido(rs.getBigDecimal("receita"), rs.getBigDecimal("receita_com_custo"),
+                                rs.getBigDecimal("custo"), rs.getBigDecimal("desconto"));
+                    }
                 }
             }
             try (PreparedStatement st = conn.prepareStatement(

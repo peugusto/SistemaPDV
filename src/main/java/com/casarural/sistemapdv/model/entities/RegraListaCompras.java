@@ -54,7 +54,7 @@ public final class RegraListaCompras {
 
     /** Quanto comprar: o que vendeu na semana menos o que tem (nunca negativo). */
     public static int quantoComprar(int vendidoNaSemana, int estoqueAtual) {
-        return Math.max(0, vendidoNaSemana - Math.max(0, estoqueAtual));
+        return (int)Math.max(0L, (long)vendidoNaSemana - Math.max(0, estoqueAtual));
     }
 
     /**

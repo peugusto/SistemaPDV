@@ -252,6 +252,7 @@ class OrderDaoJdbcTransacaoTest {
                     if (sql.startsWith("SELECT aberto_em")) return linhas(List.of(Map.of("1", Timestamp.valueOf(DATA.minusHours(1)))));
                     if (sql.startsWith("SELECT status")) return linhas(List.of(Map.of(
                             "status", "PAGO", "data_pedido", Timestamp.valueOf(DATA), "valor_total", DEZ)));
+                    if (sql.startsWith("SELECT id_produto, COALESCE(SUM(estoque_baixado)")) return linhas(List.of(Map.of("id_produto", 7, "repor", BigDecimal.ONE, "legados", 0)));
                     if (sql.startsWith("SELECT metodo_pagamento")) return linhas(List.of(Map.of("1", "DINHEIRO", "2", DEZ)));
                     if (sql.startsWith("SELECT pg.id_pagamento")) return linhas(List.of(Map.of(
                             "id_pagamento", 11, "id_pedido", 401, "id_caixa", 10, "valor_pago", DEZ)));

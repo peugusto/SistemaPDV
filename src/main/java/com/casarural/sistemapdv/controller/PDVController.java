@@ -133,13 +133,8 @@ public class PDVController implements Initializable {
         if (codigo.isEmpty()) return;
 
 
-        int qtdInput = 1;
-        try {
-            qtdInput = Integer.parseInt(campoQuantidade.getText().trim());
-            if(qtdInput <= 0) qtdInput = 1;
-        } catch (NumberFormatException e) {
-            qtdInput = 1;
-        }
+        Integer qtdInput = quantidadeDoFormulario();
+        if (qtdInput == null) return;
 
         Optional<Product> prodOpt = productService.findByCodBarras(codigo);
 
@@ -166,8 +161,15 @@ public class PDVController implements Initializable {
                     .findFirst();
 
             int qtdNoCarrinho = itemExistente.map(OrderItem::getQtd).orElse(0);
+            int quantidadeTotal;
+            try {
+                quantidadeTotal = Math.addExact(qtdNoCarrinho, quantidadeFinal);
+            } catch (ArithmeticException e) {
+                avisarQuantidadeInvalida("A quantidade total deste produto no cupom não pode passar de 2.147.483.647.");
+                return;
+            }
             int devolveNaTroca = estoqueDaTroca.getOrDefault(p.getIdProduto(), 0);
-            if (!p.temEstoquePara(qtdNoCarrinho + quantidadeFinal - devolveNaTroca)) {
+            if (!p.temEstoquePara(Math.max(0, quantidadeTotal - devolveNaTroca))) {
                 Alerts.showAlert("Estoque Insuficiente", null,
                         String.format("Estoque disponível de '%s': %d (já no carrinho: %d).",
                                 p.getNomeProduto(), Math.max(0, p.getEstoque()), qtdNoCarrinho),
@@ -182,7 +184,7 @@ public class PDVController implements Initializable {
 
             if (itemExistente.isPresent()) {
                 OrderItem item = itemExistente.get();
-                item.setQtd(item.getQtd() + quantidadeFinal);
+                item.setQtd(quantidadeTotal);
                 listaItens.refresh(); // Atualiza o visual da lista
             } else {
                 OrderItem novoItem = new OrderItem(p, quantidadeFinal, p.getPrecoProduto());
@@ -202,6 +204,27 @@ public class PDVController implements Initializable {
             Alerts.showAlert("Aviso", null, "Produto não encontrado!", Alert.AlertType.WARNING);
             campoCodigoProduto.selectAll();
         }
+    }
+
+    /** Vazio conserva o padrão do leitor; texto inválido não pode incluir uma unidade por engano. */
+    private Integer quantidadeDoFormulario() {
+        String texto = campoQuantidade.getText();
+        if (texto == null || texto.isBlank()) return 1;
+        try {
+            int quantidade = Integer.parseInt(texto.trim());
+            if (quantidade > 0) return quantidade;
+        } catch (NumberFormatException e) {
+            // A mensagem abaixo também cobre decimais, texto e valores fora de int.
+        }
+        avisarQuantidadeInvalida("Digite uma quantidade inteira entre 1 e 2.147.483.647. "
+                + "Deixe o campo vazio para adicionar uma unidade.");
+        return null;
+    }
+
+    private void avisarQuantidadeInvalida(String mensagem) {
+        Alerts.showAlert("Quantidade inválida", "O produto não foi adicionado", mensagem, Alert.AlertType.WARNING);
+        campoQuantidade.requestFocus();
+        campoQuantidade.selectAll();
     }
 
     /**
@@ -236,6 +259,7 @@ public class PDVController implements Initializable {
      * então vale a quantidade do campo, a janela da balança e a conferência de estoque.
      */
     private void onBuscarProduto() {
+        if (quantidadeDoFormulario() == null) return;
         try {
             Optional<Product> escolhido = BuscaProdutoController.abrir(productService, labelTotal.getScene().getWindow());
             if (escolhido.isPresent()) {
@@ -286,13 +310,20 @@ public class PDVController implements Initializable {
      * passa o certo e finaliza; o que o cliente já pagou entra como crédito no pagamento.
      */
     public void iniciarTroca(VendaParaDesfazer venda, Runnable aoConcluir) {
+        Map<Integer, Integer> devolucoes = new HashMap<>();
+        for (OrderItem item : venda.getItens()) {
+            if (item.getEstoqueBaixado() == null) throw new IllegalArgumentException("Venda sem registro da baixa de estoque: é necessário conferir antes de trocar.");
+            try { devolucoes.merge(item.getProduto().getIdProduto(), item.getEstoqueBaixado(), Math::addExact); }
+            catch (ArithmeticException e) { throw new IllegalArgumentException("A quantidade devolvida ultrapassa o limite de estoque.", e); }
+        }
         this.trocaDe = venda;
         this.aoConcluirTroca = aoConcluir;
         estoqueDaTroca.clear();
+        estoqueDaTroca.putAll(devolucoes);
         itensVenda.clear();
         for (OrderItem i : venda.getItens()) {
             itensVenda.add(new OrderItem(i.getProduto(), i.getQtd(), i.getPrecoUnitario()));
-            estoqueDaTroca.merge(i.getProduto().getIdProduto(), i.getQtd(), Integer::sum);
+
         }
         atualizarTotalVenda();
         labelUltimoItem.setText("TROCA DA VENDA #" + venda.getIdPedido());

@@ -201,21 +201,7 @@ public class RelatoriosController implements Initializable {
         lblFiadoDetalhe.setText(percentual(r.getFiadoLancado(), r.getFaturamento()) + " do faturamento");
         lblRecebido.setText(Money.format(r.getRecebidoDeFiado()));
 
-        // Lucro: só das vendas com custo informado; avisa quanto das vendas isso cobre
-        java.math.BigDecimal cobertura = r.getCoberturaCusto();
-        if (cobertura == null || cobertura.signum() == 0) {
-            lblLucro.setText("—");
-            lblLucroDetalhe.setText(cobertura == null ? "sem vendas no período"
-                    : "informe o custo dos produtos (Estoque > Editar)");
-        } else {
-            lblLucro.setText(Money.format(r.getLucroBruto()));
-            String detalheLucro = "margem " + RegraLucro.formatarMargem(r.getMargem());
-            if (cobertura.compareTo(java.math.BigDecimal.valueOf(100)) < 0) {
-                detalheLucro += " · só " + cobertura.toPlainString() + "% das vendas têm custo";
-            }
-            lblLucroDetalhe.setText(detalheLucro);
-        }
-        Tema.estado(lblLucro, cobertura != null && cobertura.signum() > 0 && r.getLucroBruto().signum() < 0 ? "texto-perigo" : null);
+        mostrarLucro(r);
 
         // Um dia só: o gráfico "por dia" teria uma barra; mostra por hora
         Map<LocalDate, PontoVenda> porDia = service.porDia(periodo);
@@ -241,6 +227,31 @@ public class RelatoriosController implements Initializable {
         preencher(graficoFormas, formas, true);
         preencher(graficoHoras, horas, false);
         preencher(graficoSemana, RelatorioService.mediaPorDiaDaSemana(porDia, periodo), true);
+    }
+
+    void mostrarLucro(ResumoVendas r) {
+        // Lucro: só das vendas com custo informado; avisa quanto das vendas isso cobre
+        java.math.BigDecimal cobertura = r.getCoberturaCusto();
+        if (!r.temReceitaComCusto()) {
+            lblLucro.setText("—");
+            lblLucroDetalhe.setText(cobertura == null ? "sem vendas no período"
+                    : "informe o custo dos produtos (Estoque > Editar)");
+        } else if (r.getLucroBruto() == null) {
+            lblLucro.setText("—");
+            lblLucroDetalhe.setText("Não foi possível apurar o desconto de cada venda.");
+        } else {
+            lblLucro.setText(Money.format(r.getLucroBruto()));
+            String detalheLucro = "margem " + RegraLucro.formatarMargem(r.getMargem());
+            if (r.temCustoParcial()) {
+                String percentualCusto = cobertura.signum() == 0 ? "menos de 0,1"
+                        : cobertura.compareTo(java.math.BigDecimal.valueOf(100)) >= 0 ? "mais de 99,9"
+                        : cobertura.stripTrailingZeros().toPlainString().replace('.', ',');
+                detalheLucro += " · custo parcial: " + percentualCusto + "% das vendas têm custo";
+            }
+            lblLucroDetalhe.setText(detalheLucro);
+        }
+        Tema.estado(lblLucro, r.temReceitaComCusto() && r.getLucroBruto() != null && r.getLucroBruto().signum() < 0 ? "texto-perigo" : null);
+
     }
 
     /** Põe os pontos no gráfico; emValor = altura em R$, senão em número de vendas. Passar o mouse mostra os dois. */
@@ -296,7 +307,7 @@ public class RelatoriosController implements Initializable {
         long parados = produtosDoPeriodo.stream().filter(v -> !v.vendeu() && v.getProduto().isAtivo()).count();
         lblProdVenderam.setText(String.valueOf(venderam.size()));
         lblProdVenderamDetalhe.setText("de " + produtosDoPeriodo.size() + " cadastrados");
-        lblItens.setText(String.valueOf(venderam.stream().mapToInt(VendaProduto::getQuantidade).sum()));
+        lblItens.setText(String.valueOf(venderam.stream().mapToLong(VendaProduto::getQuantidade).sum()));
         lblParados.setText(String.valueOf(parados));
         Tema.estado(lblParados, parados > 0 ? "texto-alerta" : null);
 

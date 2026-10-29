@@ -55,8 +55,9 @@ public class VendaParaDesfazer {
     public boolean isCancelada() { return status == OrderStatus.CANCELADO; }
 
     /** Pode cancelar ou trocar: não está cancelada e é do caixa aberto. */
-    public boolean podeDesfazer() { return !isCancelada() && doCaixaAberto; }
+    public boolean podeDesfazer() { return !isCancelada() && doCaixaAberto && temBaixaConhecida(); }
 
+    public boolean temBaixaConhecida() { return !itens.isEmpty() && itens.stream().allMatch(i -> i.getEstoqueBaixado() != null); }
     /** O que voltaria para a mão do cliente ao cancelar (tudo menos o fiado). */
     public Map<PaymentMethod, BigDecimal> getDevolverAoCancelar() {
         Map<PaymentMethod, BigDecimal> m = new EnumMap<>(PaymentMethod.class);
