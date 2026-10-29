@@ -1,6 +1,9 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
+import com.casarural.sistemapdv.db.EntradaEstoqueNaoAplicadaException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
@@ -14,10 +17,15 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import java.net.URL;
+import java.math.BigDecimal;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 public class CadastroProdutosController implements Initializable {
 
@@ -40,6 +48,10 @@ public class CadastroProdutosController implements Initializable {
     @FXML private Button botaoCancelar;
 
     private boolean isExistingProduct = false;
+    private EntradaEstoque entradaPendente;
+    private boolean entradaIncerta;
+    private boolean salvamentoConfirmado;
+    private boolean fechamentoProtegido;
 
     public void setProductService(ProductService service) {
         this.service = service;
@@ -50,30 +62,12 @@ public class CadastroProdutosController implements Initializable {
     }
 
 
-    private Product getFormData() {
-
-        if (txtCodBarras.getText().trim().isEmpty() || txtNome.getText().trim().isEmpty()) {
-            throw new RuntimeException("Campos obrigatórios não preenchidos.");
-        }
-
-
-        if (entity == null) entity = new Product();
-
-        entity.setCodBarras(txtCodBarras.getText());
-        entity.setNomeProduto(txtNome.getText());
-
-
-        try {
-            entity.setPrecoProduto(Money.parse(txtPreco.getText()));
-            entity.setEstoque(ProdutoCampos.estoque(txtEstoque));
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("Preço ou Estoque inválidos.");
-        }
-        return entity;
-    }
-
     @FXML
     public void onBotaoCancelarAction() {
+        if (entradaIncerta) {
+            avisarEntradaIncerta();
+            return;
+        }
         if (Alerts.showConfirmation("Sair", "Deseja voltar ao menu?", "Dados não salvos serão perdidos.")) {
             closeStage();
         }
@@ -85,6 +79,11 @@ public class CadastroProdutosController implements Initializable {
     }
 
     private void onSearchProduct() {
+        if (entradaIncerta) {
+            avisarEntradaIncerta();
+            return;
+        }
+        entradaPendente = null;
         String code = txtCodBarras.getText();
         if (code.trim().isEmpty()) return;
 
@@ -139,48 +138,139 @@ public class CadastroProdutosController implements Initializable {
 
     @FXML
     public void onBotaoSalvarAction() {
-        try {
-            updateEntityFromForm();
-            service.saveOrUpdate(entity);
-            Alerts.showAlert("Sucesso", null, "Operação realizada!", AlertType.INFORMATION);
+        if (salvamentoConfirmado) {
             closeStage();
-        } catch (Exception e) {
-            Alerts.showAlert("Erro", null, e.getMessage(), AlertType.ERROR);
+            return;
         }
+        try {
+            if (isExistingProduct) {
+                salvarEntrada();
+            } else {
+                Product novo = novoProdutoDoFormulario();
+                service.saveOrUpdate(novo);
+                entity = novo;
+            }
+            salvamentoConfirmado = true;
+            entradaIncerta = false;
+        } catch (ResultadoTransacaoIncertoException e) {
+            entradaIncerta = true;
+            bloquearEntrada(true);
+            protegerFechamento();
+            avisarEntradaIncerta();
+            return;
+        } catch (EntradaEstoqueNaoAplicadaException e) {
+            entradaIncerta = false;
+            bloquearEntrada(false);
+            Alerts.showAlert("Entrada não aplicada", null, e.getMessage(), AlertType.ERROR);
+            return;
+        } catch (Exception e) {
+            if (entradaIncerta) {
+                avisarEntradaIncerta();
+                return;
+            }
+            Alerts.showAlert("Erro", null, e.getMessage(), AlertType.ERROR);
+            return;
+        }
+        // Uma falha da interface depois do sucesso não transforma a gravação em nova tentativa.
+        Alerts.showAlert("Sucesso", null, "Operação realizada!", AlertType.INFORMATION);
+        closeStage();
     }
 
-    private void updateEntityFromForm() {
+    private void salvarEntrada() {
         String codigo = txtCodBarras.getText().trim();
-        if (isExistingProduct && (entity == null
-                || !codigo.equals(entity.getCodBarras()))) {
+        if (entity == null || !codigo.equals(entity.getCodBarras())) {
             throw new IllegalArgumentException(
                     "O código foi alterado. Aperte Enter para pesquisar o produto antes de salvar.");
         }
-
-        if (entity == null) entity = new Product();
-
-        entity.setCodBarras(codigo);
-        entity.setNomeProduto(txtNome.getText());
-        entity.setPrecoProduto(Money.parse(txtPreco.getText()));
-
-        int qtdInformada = ProdutoCampos.estoque(txtEstoque);
-        // Custo: novo produto ou entrada (vale o último custo pago); vazio mantém o que tinha
-        java.math.BigDecimal custo = ProdutoCampos.lerValor(txtCusto);
-        if (custo != null || !isExistingProduct) entity.setPrecoCusto(custo);
-
-        if (isExistingProduct) {
-            entity.adicionarEstoque(qtdInformada);
-        } else {
-            entity.setEstoque(qtdInformada);
-            entity.setPermiteFiado(chkPermiteFiado.isSelected());
-            entity.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
-            entity.setControlaEstoque(chkControlaEstoque.isSelected());
+        int quantidade = quantidadeDoFormulario(true);
+        BigDecimal custo = custoDoFormulario();
+        // O valor apenas exibido não deve sobrescrever um custo alterado por outro terminal.
+        if (custo != null && entity.getPrecoCusto() != null && custo.compareTo(entity.getPrecoCusto()) == 0) {
+            custo = null;
         }
+        if (entradaIncerta) {
+            if (entradaPendente == null || !entradaPendente.mesmosDados(entity.getIdProduto(), quantidade, custo)) {
+                throw new IllegalArgumentException("Confirme a entrada pendente sem alterar seus dados.");
+            }
+            service.registrarEntrada(entradaPendente);
+            return;
+        }
+        if (entradaPendente == null || !entradaPendente.mesmosDados(entity.getIdProduto(), quantidade, custo)) {
+            entradaPendente = new EntradaEstoque(UUID.randomUUID(), entity.getIdProduto(), quantidade, custo);
+        }
+        service.registrarEntrada(entradaPendente);
+    }
+
+    private Product novoProdutoDoFormulario() {
+        Product novo = new Product();
+        novo.setCodBarras(txtCodBarras.getText().trim());
+        novo.setNomeProduto(txtNome.getText());
+        novo.setPrecoProduto(Money.parse(txtPreco.getText()));
+        novo.setEstoque(quantidadeDoFormulario(false));
+        novo.setPrecoCusto(custoDoFormulario());
+        novo.setPermiteFiado(chkPermiteFiado.isSelected());
+        novo.setTipoVenda(chkPesavel.isSelected() ? TipoVenda.PESAVEL : TipoVenda.UNIDADE);
+        novo.setControlaEstoque(chkControlaEstoque.isSelected());
+        return novo;
+    }
+
+    private int quantidadeDoFormulario(boolean entrada) {
+        try {
+            int quantidade = ProdutoCampos.estoque(txtEstoque);
+            if (quantidade < 0 || (entrada && quantidade == 0)) throw new NumberFormatException();
+            return quantidade;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(entrada
+                    ? "Digite uma quantidade de entrada inteira entre 1 e 2.147.483.647."
+                    : "Digite um estoque inicial inteiro entre 0 e 2.147.483.647.");
+        }
+    }
+
+    private BigDecimal custoDoFormulario() {
+        if (txtCusto.getText() == null || txtCusto.getText().isBlank()) return null;
+        try {
+            return EntradaEstoque.validarCusto(Money.parse(txtCusto.getText()));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Custo inválido. Digite um valor como 12,50 ou deixe vazio.");
+        }
+    }
+
+    private void bloquearEntrada(boolean bloquear) {
+        txtCodBarras.setDisable(bloquear);
+        txtEstoque.setDisable(bloquear);
+        txtCusto.setDisable(bloquear);
+    }
+
+    private void avisarEntradaIncerta() {
+        Alerts.showAlert("Confirmar entrada", "Ainda não foi possível confirmar esta entrada.",
+                "Ela pode já ter sido gravada. Clique em Salvar novamente para confirmar a mesma entrada, "
+                        + "sem duplicar a quantidade. Aguarde a confirmação antes de fechar esta tela.", AlertType.WARNING);
+    }
+
+    private void protegerFechamento() {
+        if (fechamentoProtegido || botaoCancelar.getScene() == null) return;
+        Stage stage = (Stage) botaoCancelar.getScene().getWindow();
+        if (stage == null) return;
+        // O ViewLoader fecha programaticamente pelo Esc, sem disparar WINDOW_CLOSE_REQUEST.
+        botaoCancelar.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (entradaIncerta && event.getCode() == KeyCode.ESCAPE) {
+                event.consume();
+                avisarEntradaIncerta();
+            }
+        });
+        stage.addEventFilter(WindowEvent.WINDOW_CLOSE_REQUEST, event -> {
+            if (entradaIncerta) {
+                event.consume();
+                avisarEntradaIncerta();
+            }
+        });
+        fechamentoProtegido = true;
     }
 
     private void enableFields() {
         entity = new Product();
         isExistingProduct = false;
+        entradaPendente = null;
         txtNome.setEditable(true);
         txtPreco.setEditable(true);
         chkPermiteFiado.setDisable(false);

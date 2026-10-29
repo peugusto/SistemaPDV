@@ -2,6 +2,7 @@ package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.Customer;
@@ -32,12 +33,81 @@ import org.slf4j.LoggerFactory;
 
 public class OrderDaoJdbc implements OrderDao {
     private static final Logger log = LoggerFactory.getLogger(OrderDaoJdbc.class);
-    private final Supplier<Connection> conexaoRecebimento;
+    private final Supplier<Connection> conexoes;
 
     public OrderDaoJdbc() { this(DB::getConnection); }
 
-    OrderDaoJdbc(Supplier<Connection> conexaoRecebimento) {
-        this.conexaoRecebimento = conexaoRecebimento;
+    OrderDaoJdbc(Supplier<Connection> conexoes) {
+        this.conexoes = conexoes;
+    }
+
+    @FunctionalInterface
+    private interface OperacaoTransacional<T> {
+        T executar(Connection conn) throws SQLException;
+    }
+
+    /** Preserva o resultado financeiro mesmo se a liberação da conexão falhar. */
+    private <T> T executarTransacao(String descricao, OperacaoTransacional<T> operacao) {
+        Connection conn = null;
+        boolean iniciada = false;
+        boolean encerrada = false;
+        boolean commitIniciado = false;
+        boolean confirmada = false;
+        Throwable falha = null;
+        try {
+            conn = conexoes.get();
+            conn.setAutoCommit(false);
+            iniciada = true;
+            T resultado = operacao.executar(conn);
+            commitIniciado = true;
+            conn.commit();
+            confirmada = true;
+            encerrada = true;
+            return resultado;
+        } catch (SQLException | RuntimeException e) {
+            falha = e;
+            if (iniciada) {
+                try {
+                    conn.rollback();
+                    encerrada = true;
+                } catch (SQLException | RuntimeException falhaRollback) {
+                    e.addSuppressed(falhaRollback);
+                }
+            }
+            // Sem resposta do commit ou confirmação do rollback, repetir pode duplicar efeitos.
+            if (commitIniciado || (iniciada && !encerrada)) {
+                throw new ResultadoTransacaoIncertoException(descricao, e);
+            }
+            if (e instanceof SQLException) throw new DbException(e.getMessage(), e);
+            throw (RuntimeException) e;
+        } finally {
+            if (conn != null) {
+                if (encerrada) {
+                    try {
+                        conn.setAutoCommit(true);
+                    } catch (SQLException | RuntimeException erroLimpeza) {
+                        registrarFalhaLimpeza(descricao, confirmada, falha, erroLimpeza);
+                    }
+                } else {
+                    // Não devolver ao pool uma transação pendente: religar autocommit poderia confirmá-la.
+                    try {
+                        conn.abort(Runnable::run);
+                    } catch (SQLException | RuntimeException erroDescarte) {
+                        registrarFalhaLimpeza(descricao, false, falha, erroDescarte);
+                    }
+                }
+                try {
+                    conn.close();
+                } catch (SQLException | RuntimeException erroFechamento) {
+                    registrarFalhaLimpeza(descricao, confirmada, falha, erroFechamento);
+                }
+            }
+        }
+    }
+
+    private void registrarFalhaLimpeza(String descricao, boolean confirmada, Throwable falha, Throwable erroLimpeza) {
+        if (falha != null) falha.addSuppressed(erroLimpeza);
+        else log.warn("{}: falha ao liberar conexão (commit confirmado: {})", descricao, confirmada, erroLimpeza);
     }
 
     public static final String MENSAGEM_CAIXA_FECHADO =
@@ -60,8 +130,7 @@ public class OrderDaoJdbc implements OrderDao {
     @Override
     public void insert(Order obj) {
         // Uma única conexão do início ao fim da transação: pedido + itens + estoque + pagamentos
-        try (Connection conn = DB.getConnection()) {
-            conn.setAutoCommit(false);
+        executarTransacao("salvar a venda", conn -> {
             try (PreparedStatement st = conn.prepareStatement(
                     "INSERT INTO pedido (id_cliente, valor_total, status, desconto) VALUES (?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
@@ -101,16 +170,9 @@ public class OrderDaoJdbc implements OrderDao {
                         }
                     }
                 }
-                conn.commit();
-            } catch (SQLException | RuntimeException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
             }
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
-        }
+            return null;
+        });
     }
 
     private void inserirItensEBaixarEstoque(Connection conn, List<OrderItem> itens, int idPedido) throws SQLException {
@@ -169,7 +231,7 @@ public class OrderDaoJdbc implements OrderDao {
             throw new IllegalArgumentException("Informe o cliente e um valor recebido maior que zero.");
         }
         RecebimentoFiado confirmado = null;
-        try (Connection conn = conexaoRecebimento.get()) {
+        try (Connection conn = conexoes.get()) {
             conn.setAutoCommit(false);
             boolean transacaoEncerrada = false;
             try {
@@ -671,74 +733,50 @@ public class OrderDaoJdbc implements OrderDao {
 
     @Override
     public Map<PaymentMethod, BigDecimal> cancel(int idPedido, String motivo) {
-        try (Connection conn = DB.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                Map<PaymentMethod, BigDecimal> devolver = cancelarNaTransacao(conn, idPedido, motivo, TIPO_CANCELAMENTO);
-                conn.commit();
-                return devolver;
-            } catch (SQLException | RuntimeException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
-        }
+        return executarTransacao("cancelar a venda #" + idPedido,
+                conn -> cancelarNaTransacao(conn, idPedido, motivo, TIPO_CANCELAMENTO));
     }
 
     @Override
     public BigDecimal reverseFiadoReceipt(int idCliente, LocalDateTime dataPagamento, PaymentMethod metodo, String motivo) {
-        try (Connection conn = DB.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                int idCaixa = idCaixaAberto(conn);
-                // As linhas do recebimento: mesma data/hora e forma, em pedidos do cliente
-                List<Integer> idsPagamento = new ArrayList<>();
-                List<Integer> idsPedido = new ArrayList<>();
-                BigDecimal total = Money.ZERO;
-                try (PreparedStatement st = conn.prepareStatement(
-                        "SELECT pg.id_pagamento, pg.id_pedido, pg.id_caixa, pg.valor_pago FROM pagamento pg " +
-                        "JOIN pedido p ON p.id_pedido = pg.id_pedido " +
-                        "WHERE p.id_cliente = ? AND pg.origem = 'RECEBIMENTO_FIADO' " +
-                        "AND pg.data_pagamento = ? AND pg.metodo_pagamento = ? FOR UPDATE")) {
-                    st.setInt(1, idCliente);
-                    st.setTimestamp(2, Timestamp.valueOf(dataPagamento));
-                    st.setString(3, metodo.name());
-                    try (ResultSet rs = st.executeQuery()) {
-                        while (rs.next()) {
-                            if (rs.getInt("id_caixa") != idCaixa) throw new SQLException(MENSAGEM_SO_CAIXA_ABERTO);
-                            idsPagamento.add(rs.getInt("id_pagamento"));
-                            idsPedido.add(rs.getInt("id_pedido"));
-                            total = total.add(Money.of(rs.getBigDecimal("valor_pago")));
-                        }
+        return executarTransacao("estornar o recebimento do cliente #" + idCliente, conn -> {
+            int idCaixa = idCaixaAberto(conn);
+            // As linhas do recebimento: mesma data/hora e forma, em pedidos do cliente
+            List<Integer> idsPagamento = new ArrayList<>();
+            List<Integer> idsPedido = new ArrayList<>();
+            BigDecimal total = Money.ZERO;
+            try (PreparedStatement st = conn.prepareStatement(
+                    "SELECT pg.id_pagamento, pg.id_pedido, pg.id_caixa, pg.valor_pago FROM pagamento pg " +
+                    "JOIN pedido p ON p.id_pedido = pg.id_pedido " +
+                    "WHERE p.id_cliente = ? AND pg.origem = 'RECEBIMENTO_FIADO' " +
+                    "AND pg.data_pagamento = ? AND pg.metodo_pagamento = ? FOR UPDATE")) {
+                st.setInt(1, idCliente);
+                st.setTimestamp(2, Timestamp.valueOf(dataPagamento));
+                st.setString(3, metodo.name());
+                try (ResultSet rs = st.executeQuery()) {
+                    while (rs.next()) {
+                        if (rs.getInt("id_caixa") != idCaixa) throw new SQLException(MENSAGEM_SO_CAIXA_ABERTO);
+                        idsPagamento.add(rs.getInt("id_pagamento"));
+                        idsPedido.add(rs.getInt("id_pedido"));
+                        total = total.add(Money.of(rs.getBigDecimal("valor_pago")));
                     }
                 }
-                if (idsPagamento.isEmpty()) throw new SQLException("Recebimento não encontrado (talvez já tenha sido estornado).");
-
-                for (int id : idsPagamento) {
-                    arquivarPagamentos(conn, "id_pagamento = ?", new Object[]{id}, TIPO_ESTORNO_RECEBIMENTO, motivo);
-                }
-                // Compras que esse recebimento tinha quitado voltam a dever
-                try (PreparedStatement st = conn.prepareStatement(
-                        "UPDATE pedido SET status = 'FIADO' WHERE id_pedido = ? AND status = 'PAGO'")) {
-                    for (int id : idsPedido) {
-                        st.setInt(1, id);
-                        st.executeUpdate();
-                    }
-                }
-                conn.commit();
-                return total;
-            } catch (SQLException | RuntimeException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
             }
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
-        }
+            if (idsPagamento.isEmpty()) throw new SQLException("Recebimento não encontrado (talvez já tenha sido estornado).");
+
+            for (int id : idsPagamento) {
+                arquivarPagamentos(conn, "id_pagamento = ?", new Object[]{id}, TIPO_ESTORNO_RECEBIMENTO, motivo);
+            }
+            // Compras que esse recebimento tinha quitado voltam a dever
+            try (PreparedStatement st = conn.prepareStatement(
+                    "UPDATE pedido SET status = 'FIADO' WHERE id_pedido = ? AND status = 'PAGO'")) {
+                for (int id : idsPedido) {
+                    st.setInt(1, id);
+                    st.executeUpdate();
+                }
+            }
+            return total;
+        });
     }
 
     @Override

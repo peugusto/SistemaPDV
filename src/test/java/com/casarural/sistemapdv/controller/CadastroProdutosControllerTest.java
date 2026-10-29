@@ -2,6 +2,9 @@ package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
+import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Money;
 import javafx.application.Platform;
@@ -26,6 +29,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -146,6 +151,13 @@ class CadastroProdutosControllerTest {
         int insercoes;
         int atualizacoes;
         int proximoId = 2;
+        int entradas;
+        boolean falharAntes;
+        boolean falharDepoisDoCommit;
+        boolean falharConexao;
+        Product ultimoCarregado;
+        final Map<UUID, EntradaEstoque> operacoes = new LinkedHashMap<>();
+        final List<EntradaEstoque> tentativas = new ArrayList<>();
 
         ProdutosEmMemoria(String codigo) {
             Product arroz = new Product(codigo, "Arroz", Money.parse("8"), 10);
@@ -163,10 +175,33 @@ class CadastroProdutosControllerTest {
             assertTrue(registros.containsKey(obj.getIdProduto()));
             registros.put(obj.getIdProduto(), copiar(obj));
         }
+        public void registrarEntrada(EntradaEstoque entrada) {
+            tentativas.add(entrada);
+            if (falharConexao) throw new DbException("Sem conexão.");
+            if (falharAntes) {
+                falharAntes = false;
+                throw new DbException("Falha simulada antes de gravar; rollback confirmado.");
+            }
+            EntradaEstoque anterior = operacoes.get(entrada.getIdOperacao());
+            if (anterior != null) {
+                assertTrue(anterior.mesmosDados(entrada.getIdProduto(), entrada.getQuantidade(), entrada.getCustoInformado()));
+                return;
+            }
+            Product atual = copiar(registros.get(entrada.getIdProduto()));
+            atual.setEstoque(Math.addExact(atual.getEstoque(), entrada.getQuantidade()));
+            if (entrada.getCustoInformado() != null) atual.setPrecoCusto(entrada.getCustoInformado());
+            registros.put(atual.getIdProduto(), atual);
+            operacoes.put(entrada.getIdOperacao(), entrada);
+            entradas++;
+            if (falharDepoisDoCommit) {
+                falharDepoisDoCommit = false;
+                throw new ResultadoTransacaoIncertoException("entrada de estoque", new SQLException("Resposta perdida."));
+            }
+        }
         public Optional<Product> findByCodBarras(String codigo) {
             return registros.values().stream()
                     .filter(p -> p.getCodBarras().equalsIgnoreCase(codigo)).findFirst()
-                    .map(CadastroProdutosControllerTest::copiar);
+                    .map(p -> { ultimoCarregado = copiar(p); return ultimoCarregado; });
         }
         public Optional<Product> findById(Integer id) {
             return Optional.ofNullable(registros.get(id)).map(CadastroProdutosControllerTest::copiar);
@@ -249,7 +284,8 @@ class CadastroProdutosControllerTest {
             tela.controller.onBotaoSalvarAction();
 
             assertEquals(0, dao.insercoes);
-            assertEquals(1, dao.atualizacoes);
+            assertEquals(0, dao.atualizacoes);
+            assertEquals(1, dao.entradas);
             assertEquals("ABC123", dao.registros.get(1).getCodBarras());
             assertEquals(12, dao.registros.get(1).getEstoque());
         });
@@ -266,7 +302,8 @@ class CadastroProdutosControllerTest {
             tela.controller.onBotaoSalvarAction();
 
             assertEquals(0, dao.insercoes);
-            assertEquals(1, dao.atualizacoes);
+            assertEquals(0, dao.atualizacoes);
+            assertEquals(1, dao.entradas);
             assertEquals("900001", dao.registros.get(1).getCodBarras());
             assertEquals(12, dao.registros.get(1).getEstoque());
         });
@@ -301,6 +338,149 @@ class CadastroProdutosControllerTest {
             assertEquals(0, dao.atualizacoes);
             originalPreservado(dao);
             assertTrue(dao.findByCodBarras("900002").isPresent());
+        });
+    }
+
+    private static void fecharAviso() {
+        DialogPane pane = aviso();
+        ((Button) pane.lookupButton(pane.getButtonTypes().get(0))).fire();
+    }
+
+    @Test
+    void retryAposFalhaAntesDeGravarNaoMutaObjetoNemDuplicaEntrada() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            tela.campo("txtEstoque").setText("5");
+            dao.falharAntes = true;
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(10, dao.registros.get(1).getEstoque());
+            assertEquals(10, dao.ultimoCarregado.getEstoque());
+            assertFalse(tela.campo("txtEstoque").isDisabled());
+            fecharAviso();
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(15, dao.registros.get(1).getEstoque());
+            assertEquals(10, dao.ultimoCarregado.getEstoque());
+            assertEquals(1, dao.entradas);
+            assertEquals(dao.tentativas.get(0).getIdOperacao(), dao.tentativas.get(1).getIdOperacao());
+        });
+    }
+
+    @Test
+    void resultadoIncertoMantemChaveMesmoSeNovaConexaoFalharERetryNaoDuplica() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            tela.campo("txtEstoque").setText("5");
+            dao.falharDepoisDoCommit = true;
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(15, dao.registros.get(1).getEstoque());
+            assertTrue(tela.campo("txtEstoque").isDisabled());
+            assertTrue(tela.campo("txtCodBarras").isDisabled());
+            assertTrue(tela.campo("txtCusto").isDisabled());
+            fecharAviso();
+            dao.falharConexao = true;
+            tela.controller.onBotaoSalvarAction();
+            assertTrue(tela.campo("txtEstoque").isDisabled());
+            fecharAviso();
+            dao.falharConexao = false;
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(15, dao.registros.get(1).getEstoque());
+            assertEquals(1, dao.entradas);
+            assertEquals(1, dao.tentativas.stream().map(EntradaEstoque::getIdOperacao).distinct().count());
+        });
+    }
+
+    @Test
+    void corrigirQuantidadeAposFalhaConfirmadaCriaOutraChaveSemAlterarCarregado() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            tela.campo("txtEstoque").setText("5");
+            dao.falharAntes = true;
+            tela.controller.onBotaoSalvarAction();
+            fecharAviso();
+            tela.campo("txtEstoque").setText("3");
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(13, dao.registros.get(1).getEstoque());
+            assertNotEquals(dao.tentativas.get(0).getIdOperacao(), dao.tentativas.get(1).getIdOperacao());
+            assertEquals(10, dao.ultimoCarregado.getEstoque());
+        });
+    }
+
+    @Test
+    void naoReenviaPayloadEditadoEnquantoTentativaEstaIncerta() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            tela.campo("txtEstoque").setText("5");
+            dao.falharDepoisDoCommit = true;
+            tela.controller.onBotaoSalvarAction();
+            fecharAviso();
+            // Campos estão desabilitados; simula também uma alteração por código/evento externo.
+            tela.campo("txtEstoque").setText("6");
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(1, dao.tentativas.size());
+            assertEquals(15, dao.registros.get(1).getEstoque());
+            fecharAviso();
+            tela.campo("txtEstoque").setText("5");
+            tela.controller.onBotaoSalvarAction();
+            assertEquals(2, dao.tentativas.size());
+            assertEquals(1, dao.entradas);
+            assertEquals(15, dao.registros.get(1).getEstoque());
+        });
+    }
+
+    @Test
+    void entradaUsaSaldoAtualEPreservaNomePrecoECustoQueOutroTerminalAlterou() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            dao.registros.get(1).setPrecoCusto(Money.parse("4"));
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            Product atual = dao.registros.get(1);
+            atual.setEstoque(9);
+            atual.setNomeProduto("Arroz novo");
+            atual.setPrecoProduto(Money.parse("9"));
+            atual.setPrecoCusto(Money.parse("6"));
+            tela.campo("txtEstoque").setText("5");
+            tela.controller.onBotaoSalvarAction();
+            Product salvo = dao.registros.get(1);
+            assertEquals(14, salvo.getEstoque());
+            assertEquals("Arroz novo", salvo.getNomeProduto());
+            assertEquals(Money.parse("9"), salvo.getPrecoProduto());
+            assertEquals(Money.parse("6"), salvo.getPrecoCusto());
+            assertNull(dao.tentativas.get(0).getCustoInformado());
+            assertEquals(0, dao.atualizacoes);
+        });
+    }
+
+    @Test
+    void quantidadeOuCustoInvalidoNaoChamamDaoNemTravamCampos() throws Exception {
+        noJavafx(() -> {
+            ProdutosEmMemoria dao = new ProdutosEmMemoria("900001");
+            Tela tela = new Tela(dao);
+            tela.pesquisar("900001");
+            for (String quantidade : List.of("0", "2147483648")) {
+                tela.campo("txtEstoque").setText(quantidade);
+                tela.controller.onBotaoSalvarAction();
+                assertTrue(dao.tentativas.isEmpty());
+                assertFalse(tela.campo("txtEstoque").isDisabled());
+                fecharAviso();
+            }
+            tela.campo("txtEstoque").setText("5");
+            for (String custo : List.of(".", "100000000")) {
+                tela.campo("txtCusto").setText(custo);
+                tela.controller.onBotaoSalvarAction();
+                assertTrue(dao.tentativas.isEmpty());
+                assertFalse(tela.campo("txtEstoque").isDisabled());
+                fecharAviso();
+            }
+            assertEquals(10, dao.ultimoCarregado.getEstoque());
         });
     }
 }

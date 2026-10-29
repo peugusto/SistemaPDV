@@ -2,8 +2,11 @@ package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
+import com.casarural.sistemapdv.db.EntradaEstoqueNaoAplicadaException;
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 import com.casarural.sistemapdv.model.entities.enums.TipoVenda;
 
 import java.sql.Connection;
@@ -14,8 +17,114 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProductDaoJdbc implements ProductDao {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductDaoJdbc.class);
+    private final Supplier<Connection> conexoes;
+
+    public ProductDaoJdbc() { this(DB::getConnection); }
+
+    /** Permite verificar transações com conexões isoladas, sem usar a configuração da loja. */
+    public ProductDaoJdbc(Supplier<Connection> conexoes) {
+        this.conexoes = Objects.requireNonNull(conexoes);
+    }
+
+    @Override
+    public void registrarEntrada(EntradaEstoque entrada) {
+        Objects.requireNonNull(entrada, "Entrada de estoque não informada.");
+        boolean confirmado = false;
+        try (Connection conn = conexoes.get()) {
+            conn.setAutoCommit(false);
+            boolean commitIniciado = false;
+            boolean nova = false;
+            try {
+                nova = inserirOperacao(conn, entrada);
+                if (nova) {
+                    try (PreparedStatement st = conn.prepareStatement(
+                            "UPDATE produto SET estoque = estoque + ?, "
+                                    + "preco_custo = COALESCE(?, preco_custo) "
+                                    + "WHERE id_produto = ? AND ativo AND controla_estoque "
+                                    + "AND estoque >= 0 AND estoque <= ?")) {
+                        st.setInt(1, entrada.getQuantidade());
+                        st.setBigDecimal(2, entrada.getCustoInformado());
+                        st.setInt(3, entrada.getIdProduto());
+                        st.setInt(4, Integer.MAX_VALUE - entrada.getQuantidade());
+                        if (st.executeUpdate() != 1) {
+                            throw new DbException("Não foi possível dar entrada: confira se o produto está ativo, "
+                                    + "controla estoque e se a quantidade cabe no saldo permitido. Pesquise novamente.");
+                        }
+                    }
+                }
+                commitIniciado = true;
+                conn.commit();
+                confirmado = true;
+            } catch (SQLException | RuntimeException e) {
+                boolean rollbackConfirmado = false;
+                try {
+                    conn.rollback();
+                    rollbackConfirmado = true;
+                } catch (SQLException | RuntimeException rollback) {
+                    e.addSuppressed(rollback);
+                    // Uma conexão cuja transação não pôde ser desfeita não volta saudável ao pool.
+                    try {
+                        conn.abort(Runnable::run);
+                    } catch (SQLException | RuntimeException abort) {
+                        e.addSuppressed(abort);
+                    }
+                }
+                if (commitIniciado || !rollbackConfirmado) {
+                    throw new ResultadoTransacaoIncertoException("entrada de estoque", e);
+                }
+                if (nova) {
+                    throw new EntradaEstoqueNaoAplicadaException(
+                            e instanceof DbException ? e.getMessage() : "A entrada não foi aplicada. Tente novamente.", e);
+                }
+                if (e instanceof RuntimeException) throw (RuntimeException) e;
+                throw new DbException("Não foi possível registrar a entrada de estoque.", e);
+            }
+        } catch (SQLException | RuntimeException e) {
+            // Falha ao devolver a conexão não desfaz um commit que já foi confirmado.
+            if (confirmado) {
+                log.warn("Entrada de estoque {} confirmada, mas houve falha ao liberar a conexão.", entrada.getIdOperacao(), e);
+            } else if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            } else {
+                throw new DbException("Não foi possível iniciar a entrada de estoque.", e);
+            }
+        }
+    }
+
+    private boolean inserirOperacao(Connection conn, EntradaEstoque entrada) throws SQLException {
+        try (PreparedStatement st = conn.prepareStatement(
+                "INSERT INTO entrada_estoque (id_operacao, id_produto, quantidade, custo_informado) VALUES (?, ?, ?, ?)")) {
+            st.setString(1, entrada.getIdOperacao().toString());
+            st.setInt(2, entrada.getIdProduto());
+            st.setInt(3, entrada.getQuantidade());
+            st.setBigDecimal(4, entrada.getCustoInformado());
+            st.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            if (e.getErrorCode() != 1062) throw e;
+        }
+        // A chave única também serializa tentativas simultâneas da mesma operação.
+        try (PreparedStatement st = conn.prepareStatement(
+                "SELECT id_produto, quantidade, custo_informado FROM entrada_estoque WHERE id_operacao = ? FOR UPDATE")) {
+            st.setString(1, entrada.getIdOperacao().toString());
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next() || !entrada.mesmosDados(rs.getInt("id_produto"), rs.getInt("quantidade"),
+                        rs.getBigDecimal("custo_informado"))) {
+                    throw new DbException("A identificação desta entrada já foi usada com outros dados. "
+                            + "A entrada não foi alterada; confira a operação antes de tentar novamente.");
+                }
+            }
+        }
+        return false;
+    }
 
     @Override
     public void insert(Product obj) {

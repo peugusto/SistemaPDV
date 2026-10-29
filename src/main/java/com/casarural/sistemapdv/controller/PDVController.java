@@ -331,6 +331,12 @@ public class PDVController implements Initializable {
                 }
         );
 
+        // Resultado incerto não é cancelamento: reabrir este carrinho criaria outra venda.
+        if (pagamento[0] != null && pagamento[0].isVendaPendenteConferencia()) {
+            fecharJanela();
+            return;
+        }
+
         // Se o pagamento foi cancelado, mantém o carrinho para o operador continuar a venda
         if (pagamento[0] != null && pagamento[0].isVendaConcluida() && trocaDe != null) {
             // Troca feita: volta para o histórico

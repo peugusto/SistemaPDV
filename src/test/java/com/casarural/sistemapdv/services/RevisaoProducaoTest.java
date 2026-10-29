@@ -6,6 +6,7 @@ import com.casarural.sistemapdv.model.dao.ConfiguracaoDao;
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 import com.casarural.sistemapdv.model.entities.RegraListaCompras;
 import com.casarural.sistemapdv.model.entities.VendaProduto;
 import com.casarural.sistemapdv.util.InstanciaUnica;
@@ -44,6 +45,7 @@ class RevisaoProducaoTest {
         public Optional<Product> findById(Integer id) { return Optional.ofNullable(porId.get(id)); }
         public List<Product> findAll() { return new ArrayList<>(porId.values()); }
         public void update(Product obj) { porId.put(obj.getIdProduto(), obj); }
+        public void registrarEntrada(EntradaEstoque entrada) { throw new AssertionError("Entrada não esperada neste teste."); }
         public void deleteById(Integer id) { porId.remove(id); excluiu = true; }
         public Product instantiate(ResultSet rs) { return null; }
     }

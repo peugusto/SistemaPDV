@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Payment;
 import com.casarural.sistemapdv.model.entities.SaleFilter;
@@ -455,6 +456,13 @@ public class OrderListController implements Initializable {
                     devolvido.isEmpty() ? "Os produtos voltaram para o estoque."
                             : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolvido) + ".",
                     Alert.AlertType.INFORMATION);
+            buscar();
+        } catch (ResultadoTransacaoIncertoException e) {
+            log.error("Resultado do cancelamento da venda #{} precisa de conferência", v.getIdPedido(), e);
+            vendaDetalhe = null;
+            mostrarAcoes();
+            Alerts.showAlertAndWait("Conferir cancelamento", "Confira a venda #" + v.getIdPedido(),
+                    e.getMessage(), Alert.AlertType.WARNING);
             buscar();
         } catch (RuntimeException e) {
             Alerts.showAlert("Cancelar venda", "Não foi possível cancelar", e.getMessage(), Alert.AlertType.WARNING);

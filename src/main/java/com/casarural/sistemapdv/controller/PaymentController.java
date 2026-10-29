@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
@@ -62,6 +63,7 @@ public class PaymentController implements Initializable {
     private BigDecimal saldoRestante = Money.ZERO;
     private Customer clienteFiado;
     private boolean vendaConcluida = false;
+    private boolean vendaPendenteConferencia = false;
     private BigDecimal trocoDinheiro = Money.ZERO;
     private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
     /** Produtos sem fiado que o operador escolheu tirar da venda. */
@@ -76,6 +78,11 @@ public class PaymentController implements Initializable {
 
     public boolean isVendaConcluida() {
         return vendaConcluida;
+    }
+
+    /** Impede que o PDV transforme uma tentativa de resultado desconhecido em nova venda. */
+    public boolean isVendaPendenteConferencia() {
+        return vendaPendenteConferencia;
     }
 
     public void setDadosVenda(Order order, OrderService orderService, CustomerService customerService) {
@@ -198,6 +205,7 @@ public class PaymentController implements Initializable {
     // ===================== Desconto (sempre com PIN) =====================
 
     private void onDesconto() {
+        if (vendaConcluida || vendaPendenteConferencia) return;
         if (order.temPagamentoNovo()) {
             Alerts.showAlert("Desconto", null,
                     "O desconto é dado antes de lançar os pagamentos. Clique em Voltar (Esc) e finalize a venda de novo.",
@@ -308,7 +316,7 @@ public class PaymentController implements Initializable {
     }
 
     private void realizarBaixaAutomatica() {
-        if (vendaConcluida) return;
+        if (vendaConcluida || vendaPendenteConferencia) return;
         if (Money.isPositive(saldoRestante)) {
             if (txtValorRecebido.getText() == null || txtValorRecebido.getText().isBlank()) {
                 processarPagamento(saldoRestante);
@@ -321,7 +329,7 @@ public class PaymentController implements Initializable {
     }
 
     private void processarPagamento(BigDecimal valor) {
-        if (vendaConcluida) return;
+        if (vendaConcluida || vendaPendenteConferencia) return;
         if (!Money.isPositive(saldoRestante)) {
             salvarVenda();
             return;
@@ -488,7 +496,7 @@ public class PaymentController implements Initializable {
     }
 
     private void salvarVenda() {
-        if (vendaConcluida) return;
+        if (vendaConcluida || vendaPendenteConferencia) return;
         BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
         if (totalFiado.compareTo(order.getTotalPermitidoNoFiado()) > 0) {
             String lista = order.getItensSemFiado().stream()
@@ -512,6 +520,17 @@ public class PaymentController implements Initializable {
             }
 
             orderService.insert(order);
+        } catch (ResultadoTransacaoIncertoException e) {
+            vendaPendenteConferencia = true;
+            btnConfirmar.setDisable(true);
+            txtValorRecebido.setDisable(true);
+            btnDesconto.setDisable(true);
+            log.error("Resultado da gravação da venda #{} precisa ser conferido", order.getIdPedido(), e);
+            Alerts.showAlertAndWait("Confira a venda", "O resultado da venda precisa ser conferido",
+                    (order.getIdPedido() > 0 ? "Referência da tentativa: venda #" + order.getIdPedido() + ".\n\n" : "")
+                            + e.getMessage(), Alert.AlertType.WARNING);
+            fecharJanela();
+            return;
         } catch (Exception e) {
             Alerts.showAlert("Erro", "Erro ao salvar", e.getMessage(), Alert.AlertType.ERROR);
             reiniciarPagamentos();

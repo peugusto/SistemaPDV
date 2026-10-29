@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
@@ -401,16 +402,33 @@ public class FiadoListController implements Initializable {
                 "Motivo (ex.: valor digitado errado)", "Estornar");
         if (motivo.isEmpty()) return;
 
+        BigDecimal valor;
         try {
-            BigDecimal valor = orderService.estornarRecebimento(customer.getIdCliente(), rec.getDataPagamento(), rec.getMetodo(), motivo.get());
-            log.warn("Recebimento de fiado estornado: {} {} de {}. Motivo: {}", Money.format(valor), rec.getMetodo(),
-                    customer.getNomeCliente(), motivo.get());
-            Alerts.showAlertAndWait("Recebimento estornado", null,
-                    "Devolva ao cliente " + Money.format(valor) + " " + RegraTroca.comoDevolver(rec.getMetodo()) + ".",
-                    Alert.AlertType.INFORMATION);
-            carregarDados();
+            valor = orderService.estornarRecebimento(customer.getIdCliente(), rec.getDataPagamento(), rec.getMetodo(), motivo.get());
+        } catch (ResultadoTransacaoIncertoException e) {
+            log.error("Resultado do estorno de recebimento de {} precisa de conferência", customer.getNomeCliente(), e);
+            tableRecebimentos.getSelectionModel().clearSelection();
+            Alerts.showAlertAndWait("Conferir estorno", "Confira o recebimento antes de devolver valores",
+                    e.getMessage(), Alert.AlertType.WARNING);
+            return;
         } catch (RuntimeException e) {
             Alerts.showAlert("Estornar recebimento", "Não foi possível estornar", e.getMessage(), Alert.AlertType.WARNING);
+            return;
+        }
+
+        log.warn("Recebimento de fiado estornado: {} {} de {}. Motivo: {}", Money.format(valor), rec.getMetodo(),
+                customer.getNomeCliente(), motivo.get());
+        Alerts.showAlertAndWait("Recebimento estornado", null,
+                "Devolva ao cliente " + Money.format(valor) + " " + RegraTroca.comoDevolver(rec.getMetodo()) + ".",
+                Alert.AlertType.INFORMATION);
+        try {
+            carregarDados();
+        } catch (RuntimeException e) {
+            log.error("Estorno confirmado, mas a conta de {} não pôde ser atualizada", customer.getNomeCliente(), e);
+            tableRecebimentos.getSelectionModel().clearSelection();
+            Alerts.showAlert("Estorno concluído", "O recebimento foi estornado normalmente",
+                    "Não foi possível atualizar a conta na tela. Reabra a conta para conferir. Não repita o estorno.",
+                    Alert.AlertType.WARNING);
         }
     }
 }

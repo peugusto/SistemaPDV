@@ -3,6 +3,7 @@ package com.casarural.sistemapdv.services;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.ProductDao;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -53,6 +54,12 @@ public class ProductService {
         } else {
             dao.insert(obj);
         }
+    }
+
+    /** Conserve a mesma entrada até receber confirmação, inclusive após falha de comunicação. */
+    public void registrarEntrada(EntradaEstoque entrada) {
+        if (entrada == null) throw new IllegalArgumentException("Entrada de estoque não informada.");
+        dao.registrarEntrada(entrada);
     }
 
     /**
