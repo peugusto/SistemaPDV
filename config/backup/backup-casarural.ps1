@@ -57,6 +57,38 @@ function Escrever([string]$texto) {
     Write-Output $linha
 }
 
+# ProcessStartInfo evita que stderr vire NativeCommandError no Windows PowerShell 5.1.
+function ArgumentoWindows([string]$valor) {
+    $valor = [regex]::Replace($valor, '(\\*)"', '${1}${1}\"')
+    $valor = [regex]::Replace($valor, '(\\+)$', '${1}${1}')
+    return '"' + $valor + '"'
+}
+function ExecutarNativo([string]$executavel, [string[]]$argumentos) {
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = $executavel
+    $info.Arguments = (($argumentos | ForEach-Object { ArgumentoWindows $_ }) -join ' ')
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $processo = New-Object System.Diagnostics.Process
+    $processo.StartInfo = $info
+    try {
+        $null = $processo.Start()
+        # Drenar os dois canais em paralelo evita encher um pipe enquanto espera pelo outro.
+        $saida = $processo.StandardOutput.ReadToEndAsync()
+        $erros = $processo.StandardError.ReadToEndAsync()
+        $processo.WaitForExit()
+        $codigo = $processo.ExitCode
+        foreach ($texto in @($saida.GetAwaiter().GetResult(), $erros.GetAwaiter().GetResult())) {
+            foreach ($linha in ($texto -split '\r?\n')) {
+                if ($linha -ne '') { Escrever "mysqldump: $linha" }
+            }
+        }
+        if ($codigo -ne 0) { throw "mysqldump terminou com erro (codigo $codigo)" }
+    }
+    finally { $processo.Dispose() }
+}
 try {
     $dump = Join-Path $MysqlBin "mysqldump.exe"
     if (-not (Test-Path $dump))        { throw "mysqldump nao encontrado em $MysqlBin" }
@@ -69,12 +101,11 @@ try {
     # 1. Copia. --single-transaction: le tudo de uma vez sem travar o caixa (tabelas InnoDB).
     #    --result-file: o proprio mysqldump grava o arquivo (o ">" do PowerShell estragaria a codificacao).
     #    --defaults-extra-file precisa ser o PRIMEIRO argumento.
-    & $dump "--defaults-extra-file=$Credenciais" `
-        --single-transaction --no-tablespaces --routines --triggers `
-        --default-character-set=utf8mb4 `
-        "--result-file=$sql" $Banco 2>&1 | ForEach-Object { Escrever "mysqldump: $_" }
-    if ($LASTEXITCODE -ne 0) { throw "mysqldump terminou com erro (codigo $LASTEXITCODE)" }
-
+    ExecutarNativo $dump @(
+        "--defaults-extra-file=$Credenciais",
+        '--single-transaction', '--no-tablespaces', '--routines', '--triggers',
+        '--default-character-set=utf8mb4', "--result-file=$sql", $Banco
+    )
     # 2. Confere: a ultima linha de uma copia completa e "-- Dump completed ..."
     $fim = Get-Content -Path $sql -Tail 1
     if ($fim -notlike "-- Dump completed*") { throw "Copia incompleta (o arquivo nao termina com 'Dump completed')" }

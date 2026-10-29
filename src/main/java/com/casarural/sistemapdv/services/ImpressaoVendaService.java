@@ -1,5 +1,10 @@
 package com.casarural.sistemapdv.services;
 
+import com.casarural.sistemapdv.model.dao.DaoFactory;
+import com.casarural.sistemapdv.model.dao.RelatorioImpressaoDao;
+import com.casarural.sistemapdv.services.impressao.ComprovanteDivida;
+import com.casarural.sistemapdv.services.impressao.ComprovanteFechamento;
+import java.util.function.Supplier;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
@@ -28,12 +33,17 @@ public class ImpressaoVendaService {
             new LinkedBlockingQueue<>(), tarefa -> new Thread(tarefa, "impressao-comprovantes"));
     private final Destino destino;
     private final Executor executor;
+    private final RelatorioImpressaoDao relatorios;
 
     public ImpressaoVendaService() {
         this(new DestinoConfigurado(), FILA);
     }
 
     public ImpressaoVendaService(Destino destino, Executor executor) {
+        this(destino, executor, DaoFactory.createRelatorioImpressaoDAO());
+    }
+    public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios) {
+        this.relatorios = relatorios;
         this.destino = destino;
         this.executor = executor;
     }
@@ -48,10 +58,24 @@ public class ImpressaoVendaService {
         return enviar(ComprovanteFiado.gerar(recebimento));
     }
 
+    public CompletableFuture<Void> emitirListaCompras(java.util.List<com.casarural.sistemapdv.model.entities.RegraListaCompras.Item> itens, java.time.LocalDateTime atualizadaEm) {
+        return enviar(com.casarural.sistemapdv.services.impressao.ComprovanteListaCompras.gerar(itens, atualizadaEm));
+    }
+
+    /** A leitura atualizada ocorre na fila, fora da thread da tela. */
+    public CompletableFuture<Void> emitirFechamento(int idCaixa) {
+        return enviar(() -> ComprovanteFechamento.gerar(relatorios.fechamentoCaixa(idCaixa)));
+    }
+    public CompletableFuture<Void> emitirDivida(int idCliente) {
+        return enviar(() -> ComprovanteDivida.gerar(relatorios.extratoFiado(idCliente)));
+    }
     private CompletableFuture<Void> enviar(Comprovante comprovante) {
+        return enviar(() -> comprovante);
+    }
+    private CompletableFuture<Void> enviar(Supplier<Comprovante> obter) {
         return CompletableFuture.runAsync(() -> {
             try {
-                destino.enviar(comprovante);
+                destino.enviar(obter.get());
             } catch (Exception e) {
                 throw new CompletionException(e);
             }

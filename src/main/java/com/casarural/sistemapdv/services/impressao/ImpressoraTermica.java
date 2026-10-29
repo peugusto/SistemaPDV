@@ -151,6 +151,9 @@ public final class ImpressoraTermica {
                         && !linhas[fim].matches("\\d{2,} .+") && !linhas[fim].startsWith("---")) fim++;
                 fim = fim < linhas.length && linhas[fim].matches(" {3}\\d+ x .+") ? fim + 1 : i + 1;
             }
+            if (linhas[i].startsWith("[ ] ")) {
+                while (fim < linhas.length && !linhas[fim].startsWith("[ ] ") && !linhas[fim].startsWith("---")) fim++;
+            }
             int tamanho = fim - i;
             if (!atual.isEmpty() && tamanho <= capacidade && atual.size() + tamanho > capacidade) {
                 paginas.add(atual);

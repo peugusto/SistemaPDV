@@ -32,11 +32,22 @@ class OrderDaoJdbcTransacaoTest {
     private static final LocalDateTime DATA = LocalDateTime.of(2026, 10, 29, 12, 0);
     private static final BigDecimal DEZ = Money.of(new BigDecimal("10.00"));
 
+    @org.junit.jupiter.api.Test
+    void vendaEEstornoNaoUsamCaixaDeOutroDia() {
+        for (Fluxo fluxo : List.of(Fluxo.VENDA, Fluxo.ESTORNO)) {
+            Banco banco = new Banco(); banco.abertura = DATA.minusDays(1);
+            DbException erro = assertThrows(DbException.class, () -> fluxo.executar(banco));
+            assertTrue(erro.getMessage().contains("outro dia"));
+            assertEquals(0, banco.commits); assertTrue(banco.pendentes.isEmpty());
+            assertTrue(banco.confirmados.isEmpty()); assertEquals(1, banco.rollbacks);
+        }
+    }
+
     private enum Fluxo {
         VENDA, CANCELAMENTO, ESTORNO;
 
         Object executar(Banco banco) {
-            OrderDaoJdbc dao = new OrderDaoJdbc(banco::conexao);
+            OrderDaoJdbc dao = new OrderDaoJdbc(banco::conexao, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault()));
             if (this == CANCELAMENTO) return dao.cancel(401, "Teste isolado");
             if (this == ESTORNO) return dao.reverseFiadoReceipt(7, DATA, PaymentMethod.DINHEIRO, "Teste isolado");
             Product produto = new Product("TESTE", "TESTE", DEZ, 20);
@@ -184,6 +195,7 @@ class OrderDaoJdbcTransacaoTest {
     }
 
     private static final class Banco {
+        LocalDateTime abertura = DATA.minusHours(1);
         final List<String> pendentes = new ArrayList<>();
         final List<String> confirmados = new ArrayList<>();
         final SQLException erroEscrita = new SQLException("ESCRITA FALHOU");
@@ -248,7 +260,7 @@ class OrderDaoJdbcTransacaoTest {
                 if (nome.equals("executeBatch")) { escrever(sql); return new int[]{1}; }
                 if (nome.equals("executeQuery")) {
                     if (falhaConsulta) throw new SQLException("CONSULTA FALHOU");
-                    if (sql.startsWith("SELECT id_caixa")) return linhas(List.of(Map.of("1", 10)));
+                    if (sql.startsWith("SELECT id_caixa")) return linhas(List.of(Map.of("1", 10, "aberto_em", Timestamp.valueOf(abertura))));
                     if (sql.startsWith("SELECT aberto_em")) return linhas(List.of(Map.of("1", Timestamp.valueOf(DATA.minusHours(1)))));
                     if (sql.startsWith("SELECT status")) return linhas(List.of(Map.of(
                             "status", "PAGO", "data_pedido", Timestamp.valueOf(DATA), "valor_total", DEZ)));

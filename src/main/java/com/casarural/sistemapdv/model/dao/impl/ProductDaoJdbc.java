@@ -107,13 +107,14 @@ public class ProductDaoJdbc implements ProductDao {
                 if (nova) {
                     try (PreparedStatement st = conn.prepareStatement(
                             "UPDATE produto SET estoque = estoque + ?, "
-                                    + "preco_custo = COALESCE(?, preco_custo) "
-                                    + "WHERE id_produto = ? AND ativo AND controla_estoque "
+                                    + "preco_custo = COALESCE(?, preco_custo), quantidade_repor = GREATEST(0, quantidade_repor - ?) "
+                                    + "WHERE id_produto = ? AND ativo AND controla_estoque AND tipo_venda <> 'PESAVEL' "
                                     + "AND estoque >= 0 AND estoque <= ?")) {
                         st.setInt(1, entrada.getQuantidade());
                         st.setBigDecimal(2, entrada.getCustoInformado());
-                        st.setInt(3, entrada.getIdProduto());
-                        st.setInt(4, Integer.MAX_VALUE - entrada.getQuantidade());
+                        st.setInt(3, entrada.getQuantidade());
+                        st.setInt(4, entrada.getIdProduto());
+                        st.setInt(5, Integer.MAX_VALUE - entrada.getQuantidade());
                         if (st.executeUpdate() != 1) {
                             throw new DbException("Não foi possível dar entrada: confira se o produto está ativo, "
                                     + "controla estoque e se a quantidade cabe no saldo permitido. Pesquise novamente.");

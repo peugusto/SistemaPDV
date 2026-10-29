@@ -34,11 +34,16 @@ import org.slf4j.LoggerFactory;
 public class OrderDaoJdbc implements OrderDao {
     private static final Logger log = LoggerFactory.getLogger(OrderDaoJdbc.class);
     private final Supplier<Connection> conexoes;
+    private final java.time.Clock relogio;
 
     public OrderDaoJdbc() { this(DB::getConnection); }
 
     OrderDaoJdbc(Supplier<Connection> conexoes) {
-        this.conexoes = conexoes;
+        this(conexoes, java.time.Clock.systemDefaultZone());
+    }
+    OrderDaoJdbc(Supplier<Connection> conexoes, java.time.Clock relogio) {
+        this.conexoes = java.util.Objects.requireNonNull(conexoes);
+        this.relogio = java.util.Objects.requireNonNull(relogio);
     }
 
     @FunctionalInterface
@@ -118,9 +123,13 @@ public class OrderDaoJdbc implements OrderDao {
      * Sem caixa aberto, lança SQLException: a transação inteira é desfeita.
      */
     private int idCaixaAberto(Connection conn) throws SQLException {
-        try (PreparedStatement st = conn.prepareStatement("SELECT id_caixa FROM caixa WHERE fechado_em IS NULL");
+        try (PreparedStatement st = conn.prepareStatement("SELECT id_caixa, aberto_em FROM caixa WHERE fechado_em IS NULL FOR UPDATE");
              ResultSet rs = st.executeQuery()) {
             if (rs.next()) {
+                Timestamp abertura = rs.getTimestamp("aberto_em");
+                if (abertura == null || !abertura.toLocalDateTime().toLocalDate().equals(java.time.LocalDate.now(relogio))) {
+                    throw new SQLException("O caixa aberto é de outro dia. Feche esse caixa e abra o caixa de hoje antes de vender ou receber fiado.");
+                }
                 return rs.getInt(1);
             }
         }
@@ -132,7 +141,7 @@ public class OrderDaoJdbc implements OrderDao {
         // Uma única conexão do início ao fim da transação: pedido + itens + estoque + pagamentos
         executarTransacao("salvar a venda", conn -> {
             try (PreparedStatement st = conn.prepareStatement(
-                    "INSERT INTO pedido (id_cliente, valor_total, status, desconto) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO pedido (id_cliente, valor_total, status, desconto, id_caixa) VALUES (?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
 
                 int idCaixa = idCaixaAberto(conn);   // antes de gravar qualquer coisa
@@ -150,6 +159,7 @@ public class OrderDaoJdbc implements OrderDao {
                 st.setBigDecimal(2, obj.getValorTotal());
                 st.setString(3, obj.getStatus().toString());
                 st.setBigDecimal(4, obj.getDesconto());
+                st.setInt(5, idCaixa);
 
                 int rowsAffected = st.executeUpdate();
                 if (rowsAffected > 0) {
@@ -179,7 +189,7 @@ public class OrderDaoJdbc implements OrderDao {
         String sqlItem = "INSERT INTO itempedido (id_pedido, id_produto, quantidade, preco_unitario, custo_unitario, estoque_baixado) SELECT ?, ?, ?, ?, ?, IF(controla_estoque AND tipo_venda <> 'PESAVEL', ?, 0) FROM produto WHERE id_produto = ?";
         // Produto sem controle de estoque (V11): a linha é encontrada mas o estoque fica igual.
         // A decisão usa o que está no banco, não o produto carregado na tela.
-        String sqlEstoque = "UPDATE produto SET estoque = IF(controla_estoque AND tipo_venda <> 'PESAVEL', estoque - ?, estoque) "
+        String sqlEstoque = "UPDATE produto SET estoque = IF(controla_estoque AND tipo_venda <> 'PESAVEL', estoque - ?, estoque), quantidade_repor = IF(controla_estoque AND tipo_venda <> 'PESAVEL', quantidade_repor + ?, quantidade_repor) "
                 + "WHERE id_produto = ? AND (NOT controla_estoque OR tipo_venda = 'PESAVEL' OR estoque >= ?)";
         try (PreparedStatement stItem = conn.prepareStatement(sqlItem);
              PreparedStatement stEstoque = conn.prepareStatement(sqlEstoque)) {
@@ -195,8 +205,9 @@ public class OrderDaoJdbc implements OrderDao {
                 stItem.addBatch();
 
                 stEstoque.setInt(1, item.getQtd());
-                stEstoque.setInt(2, item.getProduto().getIdProduto());
-                stEstoque.setInt(3, item.getQtd());
+                stEstoque.setInt(2, item.getQtd());
+                stEstoque.setInt(3, item.getProduto().getIdProduto());
+                stEstoque.setInt(4, item.getQtd());
                 if (stEstoque.executeUpdate() == 0) {
                     // SQLException para cair no rollback do insert
                     throw new SQLException("Estoque insuficiente para o produto '" + item.getProduto().getNomeProduto() + "'.");
@@ -729,11 +740,12 @@ public class OrderDaoJdbc implements OrderDao {
             }
         }
         try (PreparedStatement st = conn.prepareStatement(
-                "UPDATE produto SET estoque = estoque + ? WHERE id_produto = ? AND estoque >= 0 AND estoque <= ?")) {
+                "UPDATE produto SET estoque = estoque + ?, quantidade_repor = GREATEST(0, quantidade_repor - ?) WHERE id_produto = ? AND estoque >= 0 AND estoque <= ?")) {
             for (Map.Entry<Integer, Integer> entrada : reposicoes.entrySet()) {
                 st.setInt(1, entrada.getValue());
-                st.setInt(2, entrada.getKey());
-                st.setInt(3, Integer.MAX_VALUE - entrada.getValue());
+                st.setInt(2, entrada.getValue());
+                st.setInt(3, entrada.getKey());
+                st.setInt(4, Integer.MAX_VALUE - entrada.getValue());
                 if (st.executeUpdate() != 1) throw new SQLException("Não foi possível repor o estoque dentro do limite permitido. Nenhuma alteração foi confirmada.");
             }
         }

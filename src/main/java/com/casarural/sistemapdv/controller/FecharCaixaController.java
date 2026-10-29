@@ -7,6 +7,9 @@ import com.casarural.sistemapdv.model.entities.CashSummary;
 import com.casarural.sistemapdv.model.entities.enums.CashMovementType;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.CashRegisterService;
+import com.casarural.sistemapdv.services.ImpressaoVendaService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Constraints;
 import com.casarural.sistemapdv.util.Money;
@@ -50,6 +53,10 @@ public class FecharCaixaController implements Initializable {
     private CashRegister caixa;
     private CashSummary resumo;
     private boolean concluido = false;
+    private boolean fechando;
+    @FXML private Button btnFechar;
+    private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
+    private static final Logger log = LoggerFactory.getLogger(FecharCaixaController.class);
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -125,23 +132,45 @@ public class FecharCaixaController implements Initializable {
 
     @FXML
     public void onFecharCaixa() {
-        BigDecimal contado = valorContado();
-        String pergunta = contado == null
-                ? "Fechar o caixa sem contar a gaveta?\n\nDeve ter na gaveta: " + Money.format(resumo.getDinheiroEsperado())
-                : "Fechar o caixa?\n\nDeve ter: " + Money.format(resumo.getDinheiroEsperado())
-                  + "\nContado: " + Money.format(contado) + "\n" + labelDiferenca.getText();
-        if (!Alerts.showConfirmation("Fechar caixa", "Depois de fechado, para vender será preciso abrir um novo caixa.", pergunta)) {
-            return;
-        }
+        if (concluido || fechando) return;
+        fechando = true;
+        btnFechar.setDisable(true);
         try {
-            service.close(caixa, contado, campoObservacao.getText());
+            BigDecimal contado = valorContado();
+            String pergunta = contado == null
+                    ? "Fechar o caixa sem contar a gaveta?\n\nDeve ter na gaveta: " + Money.format(resumo.getDinheiroEsperado())
+                    : "Fechar o caixa?\n\nDeve ter: " + Money.format(resumo.getDinheiroEsperado())
+                      + "\nContado: " + Money.format(contado) + "\n" + labelDiferenca.getText();
+            if (!Alerts.showConfirmation("Fechar caixa", "Depois de fechado, para vender será preciso abrir um novo caixa.", pergunta)) return;
+            try {
+                service.close(caixa, contado, campoObservacao.getText());
+            } catch (DbException e) {
+                Alerts.showAlert("Fechar caixa", null, e.getMessage(), Alert.AlertType.WARNING);
+                return;
+            }
+            // Fechamento confirmado: falha posterior não pede para fechar novamente.
             concluido = true;
+            try {
+                impressaoVendaService.emitirFechamento(caixa.getIdCaixa()).whenComplete((v, erro) -> {
+                    if (erro != null) avisarFalhaImpressao(erro);
+                });
+            } catch (Exception e) { avisarFalhaImpressao(e); }
             ((Stage) campoContado.getScene().getWindow()).close();
-            Alerts.showAlert("Caixa fechado", null, "Caixa fechado. O resumo fica disponível em Histórico de caixas.", Alert.AlertType.INFORMATION);
-        } catch (DbException e) {
-            Alerts.showAlert("Fechar caixa", null, e.getMessage(), Alert.AlertType.WARNING);
+            Alerts.showAlert("Caixa fechado", null,
+                    "Caixa fechado. A impressão do relatório foi solicitada. Você também pode imprimir pelo Histórico de caixas.",
+                    Alert.AlertType.INFORMATION);
+        } finally {
+            fechando = false;
+            btnFechar.setDisable(concluido);
         }
     }
+    private void avisarFalhaImpressao(Throwable erro) {
+        log.error("Caixa #{} fechado, mas o relatório não pôde ser impresso", caixa.getIdCaixa(), erro);
+        javafx.application.Platform.runLater(() -> Alerts.showAlert("Relatório não impresso", "O caixa foi fechado normalmente",
+                "Não foi possível imprimir o relatório. Confira a impressora e o papel e use Imprimir fechamento no Histórico de caixas. Não feche o caixa novamente.",
+                Alert.AlertType.WARNING));
+    }
+
 
     @FXML
     public void onCancelar() {

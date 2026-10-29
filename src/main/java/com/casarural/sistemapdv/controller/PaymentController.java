@@ -162,8 +162,18 @@ public class PaymentController implements Initializable {
             }
             labelTroca.setText(texto);
         }
+        atualizarTroco();
     }
 
+    /** Prévia sempre calculada sobre a forma e o saldo atuais, inclusive após desconto/créditos. */
+    private void atualizarTroco() {
+        BigDecimal previa = Money.ZERO;
+        if (btnDinheiro.isSelected()) {
+            try { previa = Money.max(Money.ZERO, Money.parse(txtValorRecebido.getText()).subtract(saldoRestante)); }
+            catch (NumberFormatException ignorado) { /* Campo vazio ou incompleto não representa dinheiro recebido. */ }
+        }
+        labelTroco.setText(Money.format(previa));
+    }
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         configurarVisualBotoesPagamento();
@@ -173,19 +183,8 @@ public class PaymentController implements Initializable {
             comboCliente.setDisable(!isSelected);
         });
 
-        txtValorRecebido.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (btnDinheiro.isSelected()) {
-                try {
-                    BigDecimal recebido = Money.parse(newVal);
-                    labelTroco.setText(Money.format(Money.max(Money.ZERO, recebido.subtract(saldoRestante))));
-                } catch (NumberFormatException e) {
-                    labelTroco.setText("R$ 0,00");
-                }
-            } else {
-                labelTroco.setText("R$ 0,00");
-            }
-        });
-
+        txtValorRecebido.textProperty().addListener((obs, antes, agora) -> atualizarTroco());
+        grupoPagamento.selectedToggleProperty().addListener((obs, antes, agora) -> atualizarTroco());
         txtValorRecebido.setOnAction(event -> adicionarPagamentoManual());
         btnConfirmar.setOnAction(event -> realizarBaixaAutomatica());
         btnCancelar.setOnAction(event -> fecharJanela());
@@ -404,6 +403,8 @@ public class PaymentController implements Initializable {
                 }
                 // Itens tirados da venda: o que sobrou vai inteiro para o fiado
                 valorFiado = saldoRestante;
+                fiadoNestaVenda = totalPorMetodo(PaymentMethod.FIADO);
+                disponivel = clienteSelecionado.getLimiteCredito().subtract(devendo).subtract(fiadoNestaVenda);
             }
 
             if (valorFiado.compareTo(disponivel) > 0) {
@@ -424,7 +425,7 @@ public class PaymentController implements Initializable {
         if (metodo == PaymentMethod.DINHEIRO) {
             trocoDinheiro = Money.max(Money.ZERO, valor.subtract(valorEfetivo));
         }
-        order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo));
+        if (Money.isPositive(valorEfetivo)) order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo));
 
         saldoRestante = saldoRestante.subtract(valorEfetivo);
         txtValorRecebido.clear();
@@ -452,10 +453,17 @@ public class PaymentController implements Initializable {
             return false;
         }
 
-        BigDecimal totalSemFiado = semFiado.stream().map(OrderItem::getSubtotal).reduce(Money.ZERO, BigDecimal::add);
-        BigDecimal restoParaFiado = order.getValorTotal().subtract(totalSemFiado)
-                .subtract(order.getTotalPagoNaHora()).subtract(totalPorMetodo(PaymentMethod.FIADO));
-
+        BigDecimal novoTotal = order.getTotalPermitidoNoFiado();
+        RegraTroca.Resultado previaTroca = trocaDe == null ? null : RegraTroca.calcular(trocaDe.getPagoPorForma(), novoTotal);
+        BigDecimal creditoPrevisto = previaTroca == null ? Money.ZERO : previaTroca.getTotalCredito();
+        BigDecimal novosPagamentos = order.getPagamentos().stream().filter(p -> !p.isCredito())
+                .map(Order.PaymentSlice::getValor).reduce(Money.ZERO, BigDecimal::add);
+        BigDecimal fiadoPrevisto = order.getPagamentos().stream().filter(p -> !p.isCredito() && p.getMetodo() == PaymentMethod.FIADO)
+                .map(Order.PaymentSlice::getValor).reduce(Money.ZERO, BigDecimal::add);
+        if (previaTroca != null) fiadoPrevisto = fiadoPrevisto.add(previaTroca.getCreditos().stream()
+                .filter(p -> p.getMetodo() == PaymentMethod.FIADO).map(Order.PaymentSlice::getValor).reduce(Money.ZERO, BigDecimal::add));
+        limiteDisponivel = limiteDisponivel.add(totalPorMetodo(PaymentMethod.FIADO)).subtract(fiadoPrevisto);
+        BigDecimal restoParaFiado = novoTotal.subtract(creditoPrevisto).subtract(novosPagamentos);
         if (restoParaFiado.signum() < 0) {
             Alerts.showAlertAndWait("Fiado não permitido", "Estes produtos não podem ser vendidos no fiado:",
                     lista + "\n\nOs pagamentos já lançados passam do valor dos outros produtos. "
@@ -473,7 +481,7 @@ public class PaymentController implements Initializable {
 
         int escolha = Alerts.showChoice("Fiado não permitido",
                 "Estes produtos não podem ser vendidos no fiado:",
-                lista + "\n\n"
+                lista + (Money.isPositive(order.getDesconto()) ? "\n\nAo retirar produtos, o desconto será removido. Confira o novo total: " + Money.format(novoTotal) + "." : "") + "\n\n"
                         + "Para o cliente levar esses produtos, clique em Voltar e cobre "
                         + Money.format(order.getFaltaPagarNaHoraParaItensSemFiado()) + " em dinheiro, PIX ou cartão antes do fiado.\n\n"
                         + "Ou tire esses produtos da venda e lance o restante (" + Money.format(restoParaFiado)
@@ -516,6 +524,8 @@ public class PaymentController implements Initializable {
                 order.setCostumer(clienteFiado);
                 order.setStatus(OrderStatus.FIADO);
             } else {
+                order.setCostumer(trocaDe == null || trocaDe.getIdCliente() == null ? null : comboCliente.getItems().stream()
+                        .filter(c -> c.getIdCliente() == trocaDe.getIdCliente()).findFirst().orElse(null));
                 order.setStatus(OrderStatus.PAGO);
             }
 
@@ -585,6 +595,7 @@ public class PaymentController implements Initializable {
     private void reiniciarPagamentos() {
         trocoDinheiro = Money.ZERO;
         order.getPagamentos().clear();
+        order.setCostumer(null);
         Customer clienteDaTroca = clienteFiado != null && trocaDe != null
                 && trocaDe.getIdCliente() != null && trocaDe.getIdCliente() == clienteFiado.getIdCliente() ? clienteFiado : null;
         clienteFiado = clienteDaTroca;

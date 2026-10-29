@@ -33,7 +33,7 @@
         </HBox>
 
         <!-- Abas -->
-        <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+        <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" minHeight="0.0">
             <VBox.margin><Insets top="16.0" right="24.0" left="24.0" /></VBox.margin>
             <tabs>
                 <Tab text="Compras em aberto">
@@ -41,7 +41,7 @@
                         <VBox spacing="10.0">
                             <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
                             <children>
-                                <TableView fx:id="tableAbertos" VBox.vgrow="ALWAYS" prefHeight="260.0">
+                                <TableView fx:id="tableAbertos" VBox.vgrow="ALWAYS" prefHeight="260.0" minHeight="80.0">
                                     <placeholder><Label text="Nenhuma compra em aberto." /></placeholder>
                                     <columns>
                                         <TableColumn fx:id="colAbertoData" prefWidth="140" text="Data da compra" />
@@ -55,7 +55,7 @@
                                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                                 </TableView>
                                 <Label fx:id="labelItensAberto" styleClass="texto-suave" text="Selecione uma compra para ver os produtos." />
-                                <TableView fx:id="tableItensAberto" prefHeight="170.0">
+                                <TableView fx:id="tableItensAberto" prefHeight="170.0" minHeight="80.0">
                                     <placeholder><Label text="" /></placeholder>
                                     <columns>
                                         <TableColumn fx:id="colItemAbertoProduto" prefWidth="300" text="Produto" />
@@ -104,7 +104,7 @@
                         <VBox spacing="10.0">
                             <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
                             <children>
-                                <TableView fx:id="tableQuitados" VBox.vgrow="ALWAYS" prefHeight="260.0">
+                                <TableView fx:id="tableQuitados" VBox.vgrow="ALWAYS" prefHeight="260.0" minHeight="80.0">
                                     <placeholder><Label text="Nenhuma compra quitada." /></placeholder>
                                     <columns>
                                         <TableColumn fx:id="colQuitData" prefWidth="160" text="Data da compra" />
@@ -114,7 +114,7 @@
                                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                                 </TableView>
                                 <Label fx:id="labelItensQuitado" styleClass="texto-suave" text="Selecione uma compra para ver os produtos." />
-                                <TableView fx:id="tableItensQuitado" prefHeight="170.0">
+                                <TableView fx:id="tableItensQuitado" prefHeight="170.0" minHeight="80.0">
                                     <placeholder><Label text="" /></placeholder>
                                     <columns>
                                         <TableColumn fx:id="colItemQuitProduto" prefWidth="300" text="Produto" />
@@ -131,23 +131,29 @@
             </tabs>
         </TabPane>
 
-        <!-- Receber pagamento -->
-        <HBox styleClass="barra-inferior" alignment="CENTER_LEFT" spacing="12.0">
+        <!-- Recebimento e impressão são ações independentes. Duas linhas evitam cortes na janela. -->
+        <VBox styleClass="barra-inferior" spacing="10.0">
             <VBox.margin><Insets top="16.0" /></VBox.margin>
             <children>
-                <Label styleClass="rotulo-secao" text="RECEBER PAGAMENTO" />
-                <fx:define><ToggleGroup fx:id="grupoForma" /></fx:define>
-                <ToggleButton fx:id="btnFormaDinheiro" styleClass="pilula" text="Dinheiro" toggleGroup="$grupoForma" selected="true" minHeight="40.0" minWidth="100.0" />
-                <ToggleButton fx:id="btnFormaPix" styleClass="pilula" text="PIX" toggleGroup="$grupoForma" minHeight="40.0" minWidth="80.0" />
-                <ToggleButton fx:id="btnFormaCartao" styleClass="pilula" text="Cartão" toggleGroup="$grupoForma" minHeight="40.0" minWidth="90.0" />
-                <Pane HBox.hgrow="ALWAYS" />
-                <VBox alignment="CENTER_RIGHT" spacing="2.0">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <children>
+                        <Label styleClass="rotulo-secao" text="RECEBER PAGAMENTO" />
+                        <fx:define><ToggleGroup fx:id="grupoForma" /></fx:define>
+                        <ToggleButton fx:id="btnFormaDinheiro" styleClass="pilula" text="Dinheiro" toggleGroup="$grupoForma" selected="true" minHeight="40.0" minWidth="100.0" />
+                        <ToggleButton fx:id="btnFormaPix" styleClass="pilula" text="PIX" toggleGroup="$grupoForma" minHeight="40.0" minWidth="80.0" />
+                        <ToggleButton fx:id="btnFormaCartao" styleClass="pilula" text="Cartão" toggleGroup="$grupoForma" minHeight="40.0" minWidth="90.0" />
+                    </children>
+                </HBox>
+                <HBox alignment="CENTER_RIGHT" spacing="12.0">
                     <children>
                         <TextField fx:id="campoValorPagamento" promptText="Valor (vazio = tudo)" prefWidth="200" prefHeight="42" />
+                        <Button fx:id="btnPagar" styleClass="botao-primario" onAction="#onPagarAction" minHeight="42.0" minWidth="150.0" text="Receber" />
+                        <Button fx:id="btnImprimirDivida" onAction="#onImprimirDividaAction" minHeight="42.0" minWidth="150.0" text="Imprimir dívida">
+                            <tooltip><Tooltip text="Imprimir as compras em aberto e o saldo devedor." /></tooltip>
+                        </Button>
                     </children>
-                </VBox>
-                <Button fx:id="btnPagar" styleClass="botao-primario" onAction="#onPagarAction" minHeight="42.0" minWidth="150.0" text="Receber" />
+                </HBox>
             </children>
-        </HBox>
+        </VBox>
     </children>
 </VBox>

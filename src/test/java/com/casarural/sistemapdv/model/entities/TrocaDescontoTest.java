@@ -62,7 +62,7 @@ class TrocaDescontoTest {
         o.aplicarDesconto(r("3"));
         assertEquals(r("20"), o.getSubtotalItens());
         assertEquals(r("17"), o.getValorTotal());
-        // tirar item mantém o desconto, limitado ao que sobrou
+        // Alterar os itens remove o desconto da composição anterior.
         o.removerItens(new ArrayList<>(itens));
         assertEquals(r("0"), o.getValorTotal());
         assertEquals(r("0"), o.getDesconto());

@@ -181,10 +181,9 @@ public class Order {
         return Money.max(Money.ZERO, semFiado.subtract(getTotalPagoNaHora()));
     }
 
-    /** Tira itens da venda e recalcula o total (o desconto continua, limitado ao que sobrou). */
+    /** Tira itens da venda e remove o desconto: o carrinho alterado exige nova autorização. */
     public void removerItens(List<OrderItem> itens) {
-        itemPedido.removeAll(itens);
-        aplicarDesconto(desconto);
+        if (itemPedido.removeAll(itens)) aplicarDesconto(Money.ZERO);
     }
 
     // ---------- Desconto ----------

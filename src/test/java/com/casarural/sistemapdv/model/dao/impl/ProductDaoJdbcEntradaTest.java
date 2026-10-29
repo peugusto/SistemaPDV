@@ -305,9 +305,10 @@ class ProductDaoJdbcEntradaTest {
                         throw new SQLException("Falha antes do aumento de estoque", "HY000");
                     }
                     int quantidade = (Integer) p.get(1);
-                    int limite = (Integer) p.get(4);
+                    int limite = (Integer) p.get(5);
+                    assertEquals(quantidade, p.get(3));
                     assertEquals(Integer.MAX_VALUE - quantidade, limite);
-                    if (!banco.existe || (Integer) p.get(3) != PRODUTO || !banco.ativo || !banco.controlaEstoque
+                    if (!banco.existe || (Integer) p.get(4) != PRODUTO || !banco.ativo || !banco.controlaEstoque
                             || estoque < 0 || estoque > limite) return 0;
                     estoque += quantidade;
                     if (p.get(2) != null) custo = (BigDecimal) p.get(2);

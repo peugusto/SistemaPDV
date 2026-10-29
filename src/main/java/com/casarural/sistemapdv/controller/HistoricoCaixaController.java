@@ -4,6 +4,11 @@ import com.casarural.sistemapdv.model.entities.CashRegister;
 import com.casarural.sistemapdv.model.entities.CashSummary;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.CashRegisterService;
+import com.casarural.sistemapdv.services.ImpressaoVendaService;
+import com.casarural.sistemapdv.util.Alerts;
+import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
+import org.slf4j.LoggerFactory;
 import com.casarural.sistemapdv.util.Money;
 import com.casarural.sistemapdv.util.MoneyCells;
 import com.casarural.sistemapdv.util.Tema;
@@ -38,6 +43,9 @@ public class HistoricoCaixaController implements Initializable {
     @FXML private Label labelResumo;
 
     private CashRegisterService service;
+    @FXML private Button btnImprimir;
+    private boolean imprimindo;
+    private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -70,13 +78,37 @@ public class HistoricoCaixaController implements Initializable {
                 }
             }
         });
-        tabela.getSelectionModel().selectedItemProperty().addListener((obs, antigo, caixa) -> mostrarResumo(caixa));
+        tabela.getSelectionModel().selectedItemProperty().addListener((obs, antigo, caixa) -> {
+            btnImprimir.setDisable(caixa == null || imprimindo);
+            mostrarResumo(caixa);
+        });
     }
 
     public void configurar(CashRegisterService service) {
         this.service = service;
         tabela.setItems(FXCollections.observableArrayList(service.findClosed(90)));
     }
+
+    @FXML
+    public void onImprimirAction() {
+        CashRegister caixa = tabela.getSelectionModel().getSelectedItem();
+        if (caixa == null || imprimindo) return;
+        imprimindo = true; btnImprimir.setDisable(true); btnImprimir.setText("Imprimindo...");
+        int idCaixa = caixa.getIdCaixa();
+        try {
+            impressaoVendaService.emitirFechamento(idCaixa).whenComplete((v, erro) -> finalizarImpressao(idCaixa, erro));
+        } catch (Exception erro) { finalizarImpressao(idCaixa, erro); }
+    }
+    private void finalizarImpressao(int idCaixa, Throwable erro) {
+        if (erro != null) LoggerFactory.getLogger(HistoricoCaixaController.class).error("Falha ao imprimir caixa #{}", idCaixa, erro);
+        javafx.application.Platform.runLater(() -> {
+            imprimindo = false; btnImprimir.setText("Imprimir fechamento");
+            btnImprimir.setDisable(tabela.getSelectionModel().getSelectedItem() == null);
+            if (erro != null) Alerts.showAlert("Relatório não impresso", "O caixa continua fechado",
+                    "Não foi possível imprimir o fechamento. Confira a conexão com o banco, a impressora e o papel e tente novamente.", Alert.AlertType.WARNING);
+        });
+    }
+
 
     private static String resultado(CashRegister c) {
         BigDecimal dif = c.getDiferenca();

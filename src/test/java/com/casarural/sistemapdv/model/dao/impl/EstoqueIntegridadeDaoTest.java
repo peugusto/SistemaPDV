@@ -40,7 +40,7 @@ class EstoqueIntegridadeDaoTest {
                 if(n.equals("getGeneratedKeys"))return rows(List.of(Map.of("1",1)));
                 if(n.equals("executeQuery")){
                     consultas++;
-                    if(sql.startsWith("SELECT id_caixa"))return rows(List.of(Map.of("1",1)));
+                    if(sql.startsWith("SELECT id_caixa"))return rows(List.of(Map.of("1",1,"aberto_em",Timestamp.valueOf(DATA.minusHours(1)))));
                     if(sql.startsWith("SELECT aberto_em"))return rows(List.of(Map.of("1",Timestamp.valueOf(DATA.minusHours(1)))));
                     if(sql.startsWith("SELECT status"))return rows(List.of(Map.of("status",cancelado?"CANCELADO":"PAGO","data_pedido",Timestamp.valueOf(DATA),"valor_total",dinheiro("2.00"))));
                     if(sql.startsWith("SELECT id_produto, COALESCE"))return rows(List.of(Map.of("id_produto",1,"repor",BigDecimal.valueOf(baixa==null?0:baixa),"legados",baixa==null?1:0)));
@@ -64,7 +64,7 @@ class EstoqueIntegridadeDaoTest {
                     }
                     if(sql.startsWith("UPDATE produto SET estoque = estoque +")){
                         assertFalse(sql.contains("controla_estoque"));
-                        int qtd=(Integer)params.get(1);if(produto.getEstoque()>(Integer)params.get(3))return 0;
+                        int qtd=(Integer)params.get(1);if(produto.getEstoque()>(Integer)params.get(4))return 0;
                         produto.setEstoque(Math.addExact(produto.getEstoque(),qtd));reposicoes++;return 1;
                     }
                     if(sql.startsWith("UPDATE pedido SET status"))cancelado=true;
@@ -90,11 +90,11 @@ class EstoqueIntegridadeDaoTest {
     }
     @Test void edicaoConcorrenteDeMetadadosTambemExigeReabrir(){Banco b=new Banco();Product edit=b.copia();b.produto.setPrecoCusto(dinheiro("3.00"));assertThrows(DbException.class,()->new ProductDaoJdbc(b::conectar).update(edit));assertEquals(dinheiro("3.00"),b.produto.getPrecoCusto());}
     @Test void edicaoAtualPodeAjustarEstoqueEAtualizaReferencia(){Banco b=new Banco();Product edit=b.copia();edit.setEstoque(7);new ProductDaoJdbc(b::conectar).update(edit);assertEquals(7,b.produto.getEstoque());assertEquals(7,edit.getEstadoOriginal()[3]);}
-    @Test void desligarControleDepoisDaVendaAindaRepoeBaixa(){Banco b=new Banco();OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar);dao.insert(b.venda());assertEquals(9,b.produto.getEstoque());assertEquals(1,b.baixa);b.produto.setControlaEstoque(false);dao.cancel(1,"teste");assertEquals(10,b.produto.getEstoque());assertTrue(b.cancelado);}
-    @Test void ligarControleDepoisDaVendaNaoCriaEstoque(){Banco b=new Banco();b.produto.setControlaEstoque(false);OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar);dao.insert(b.venda());assertEquals(0,b.baixa);b.produto.setControlaEstoque(true);dao.cancel(1,"teste");assertEquals(10,b.produto.getEstoque());assertEquals(0,b.reposicoes);}
+    @Test void desligarControleDepoisDaVendaAindaRepoeBaixa(){Banco b=new Banco();OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault()));dao.insert(b.venda());assertEquals(9,b.produto.getEstoque());assertEquals(1,b.baixa);b.produto.setControlaEstoque(false);dao.cancel(1,"teste");assertEquals(10,b.produto.getEstoque());assertTrue(b.cancelado);}
+    @Test void ligarControleDepoisDaVendaNaoCriaEstoque(){Banco b=new Banco();b.produto.setControlaEstoque(false);OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault()));dao.insert(b.venda());assertEquals(0,b.baixa);b.produto.setControlaEstoque(true);dao.cancel(1,"teste");assertEquals(10,b.produto.getEstoque());assertEquals(0,b.reposicoes);}
     @Test void legadoEOverflowNaoConfirmamCancelamento(){
-        Banco legado=new Banco();assertThrows(DbException.class,()->new OrderDaoJdbc(legado::conectar).cancel(1,"teste"));assertFalse(legado.cancelado);assertEquals(10,legado.produto.getEstoque());
-        Banco cheio=new Banco();cheio.baixa=1;cheio.produto.setEstoque(Integer.MAX_VALUE);assertThrows(DbException.class,()->new OrderDaoJdbc(cheio::conectar).cancel(1,"teste"));assertEquals(Integer.MAX_VALUE,cheio.produto.getEstoque());assertFalse(cheio.cancelado);
+        Banco legado=new Banco();assertThrows(DbException.class,()->new OrderDaoJdbc(legado::conectar, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault())).cancel(1,"teste"));assertFalse(legado.cancelado);assertEquals(10,legado.produto.getEstoque());
+        Banco cheio=new Banco();cheio.baixa=1;cheio.produto.setEstoque(Integer.MAX_VALUE);assertThrows(DbException.class,()->new OrderDaoJdbc(cheio::conectar, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault())).cancel(1,"teste"));assertEquals(Integer.MAX_VALUE,cheio.produto.getEstoque());assertFalse(cheio.cancelado);
     }
-    @Test void cancelamentoConfirmadoNaoRepoeDuasVezes(){Banco b=new Banco();b.baixa=2;b.produto.setEstoque(8);OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar);dao.cancel(1,"teste");assertThrows(DbException.class,()->dao.cancel(1,"teste"));assertEquals(10,b.produto.getEstoque());assertEquals(1,b.reposicoes);}
+    @Test void cancelamentoConfirmadoNaoRepoeDuasVezes(){Banco b=new Banco();b.baixa=2;b.produto.setEstoque(8);OrderDaoJdbc dao=new OrderDaoJdbc(b::conectar, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault()));dao.cancel(1,"teste");assertThrows(DbException.class,()->dao.cancel(1,"teste"));assertEquals(10,b.produto.getEstoque());assertEquals(1,b.reposicoes);}
 }

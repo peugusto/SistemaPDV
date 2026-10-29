@@ -7,14 +7,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Lista de compras da semana. Regra: comprar o que vendeu nos últimos 7 dias menos o que ainda tem
- * no estoque, para o estoque durar mais uma semana. Só produtos que controlam estoque (pão, açaí e
- * pesáveis ficam de fora).
- */
+/** Lista acumulada de reposição e apresentação. O cálculo semanal legado é mantido como referência da migração inicial. */
 public final class RegraListaCompras {
 
     public static final int DIAS = 7;
+    public static final Comparator<Item> ORDEM = Comparator.comparing(Item::acabou).reversed()
+            .thenComparing(i -> i.getProduto().getNomeProduto(), String.CASE_INSENSITIVE_ORDER);
 
     private RegraListaCompras() {}
 
@@ -23,6 +21,7 @@ public final class RegraListaCompras {
         private final Product produto;
         private final int vendido;
         private final int estoque;
+        private final int pendente;
         /** Observável: a coluna de custo da tela acompanha quando a pessoa muda a quantidade. */
         private final javafx.beans.property.IntegerProperty comprar = new javafx.beans.property.SimpleIntegerProperty();
 
@@ -30,12 +29,15 @@ public final class RegraListaCompras {
             this.produto = produto;
             this.vendido = vendido;
             this.estoque = estoque;
+            this.pendente = comprar;
             this.comprar.set(comprar);
         }
 
         public Product getProduto() { return produto; }
         /** Quanto vendeu nos últimos 7 dias. */
         public int getVendido() { return vendido; }
+        /** Saídas que ainda não foram repostas; não expiram com o tempo. */
+        public int getPendente() { return pendente; }
         /** Quanto tem agora (negativo vira 0). */
         public int getEstoque() { return estoque; }
         /** Quanto comprar (sugerido; a pessoa pode mudar na tela). */
@@ -52,6 +54,11 @@ public final class RegraListaCompras {
         public boolean acabou() { return estoque == 0; }
     }
 
+    /** Quantidade acumulada persistida, independente da previsão semanal antiga. */
+    public static Item acumulado(Product produto, int quantidade) {
+        if (quantidade < 0) throw new IllegalArgumentException("A quantidade pendente não pode ser negativa.");
+        return new Item(produto, 0, Math.max(0, produto.getEstoque()), quantidade);
+    }
     /** Quanto comprar: o que vendeu na semana menos o que tem (nunca negativo). */
     public static int quantoComprar(int vendidoNaSemana, int estoqueAtual) {
         return (int)Math.max(0L, (long)vendidoNaSemana - Math.max(0, estoqueAtual));
@@ -76,10 +83,10 @@ public final class RegraListaCompras {
         return lista;
     }
 
-    /** Texto para copiar (WhatsApp, bloco de notas) e, no futuro, imprimir. Só itens com quantidade. */
+    /** Texto para copiar (WhatsApp, bloco de notas). Só itens com quantidade. */
     public static String texto(List<Item> itens, LocalDate hoje) {
         List<Item> comprar = itens.stream().filter(i -> i.getComprar() > 0)
-                .sorted(Comparator.comparing(i -> i.getProduto().getNomeProduto(), String.CASE_INSENSITIVE_ORDER))
+                .sorted(ORDEM)
                 .collect(Collectors.toList());
         StringBuilder sb = new StringBuilder("LISTA DE COMPRAS - Casa Rural - ")
                 .append(hoje.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append('\n');

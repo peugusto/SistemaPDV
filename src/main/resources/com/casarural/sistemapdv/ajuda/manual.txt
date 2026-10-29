@@ -155,14 +155,16 @@ O cartão verde mostra a sugestão para a próxima compra: hoje às 7h, hoje às
 
 # Lista de compras
 Relatórios > Lista de compras (F9). Não pede PIN.
-A lista mostra o que repor para a semana: quanto vendeu de cada produto nos últimos 7 dias menos o que ainda tem no estoque.
-1. Abra a lista no dia de fazer as compras.
-2. Os produtos que já acabaram aparecem primeiro, em vermelho.
-3. Mude a quantidade em "Comprar" se quiser (0 tira da lista).
-4. Clique em "Copiar lista" e cole no WhatsApp ou no bloco de notas do celular.
-5. Quando a mercadoria chegar, dê entrada em "Produtos" (F2), como sempre.
-! Pão, açaí e pesáveis não entram na lista (não controlam estoque). O pão tem a tela "Pão do dia".
-! Produto que não vendeu nada na semana não entra, mesmo zerado.
+A lista acumula as unidades vendidas de produtos que controlam estoque, até registrar a reposição. Ela não expira depois de sete dias.
+1. Abra a lista. As pendências são consultadas automaticamente; produtos que acabaram aparecem primeiro.
+2. A lista carrega ao abrir a tela. Use Atualizar para consultar novamente; não há consultas periódicas.
+3. Ajuste "Comprar" se quiser; 0 exclui o produto da cópia e da impressão. O ajuste vale para esta preparação de compra.
+4. Clique em "Imprimir lista" ou "Copiar lista". Imprimir não zera as pendências nem registra entrada de estoque.
+5. Quando a mercadoria chegar, registre a entrada em "Produtos" (F2). A quantidade recebida abate a lista; entrada parcial mantém o restante.
+6. "Atualizar" recarrega as pendências e recalcula os ajustes feitos na tela.
+! Cancelar ou trocar uma venda reverte as unidades efetivamente devolvidas ao estoque. Receber fiado não soma outra saída.
+! Pão, açaí, pesáveis e produtos sem controle de estoque ficam de fora. Produtos desativados não aparecem.
+! Na primeira atualização para esta regra, a sugestão semanal anterior é preservada como saldo inicial. Depois disso, cada saída soma exatamente as unidades vendidas.
 
 # Custo e lucro
 O custo de cada produto é o que vocês pagaram por ele. Com o custo, os relatórios mostram quanto a loja lucrou.
@@ -345,7 +347,7 @@ Só pagamentos do caixa aberto agora podem ser estornados.
 Clique em "Voltar (Esc)", aperte F1 de novo e dê o desconto antes de lançar qualquer pagamento.
 
 ## A lista de compras está vazia ou pedindo pouco
-A lista usa as vendas dos últimos 7 dias. Se a semana foi fraca, ou se o estoque no sistema está maior que o da prateleira, ela pede pouco. Confira o estoque em Estoque (F3) e corrija em Editar. Produtos sem controle de estoque (pão, açaí, pesáveis) nunca aparecem.
+A lista mostra saídas ainda não repostas, não um estoque mínimo. Venda de produto com controle de estoque aumenta a pendência; entrada de mercadoria e cancelamento abatem. Clique em Atualizar e confira se o produto está ativo e controla estoque. Ajustes de quantidade feitos apenas na lista valem para copiar/imprimir; ajustar o saldo em Estoque > Editar não equivale a registrar uma entrada.
 
 ## O lucro aparece "—" ou com aviso de cobertura
 O lucro só conta vendas de produtos com custo informado. Informe o custo dos produtos que mais vendem (Estoque > Editar) e o número fica completo nas vendas seguintes.

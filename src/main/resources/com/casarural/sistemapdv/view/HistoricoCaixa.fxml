@@ -29,6 +29,9 @@
                     </columns>
                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                 </TableView>
+                <HBox alignment="CENTER_RIGHT"><children>
+                    <Button fx:id="btnImprimir" text="Imprimir fechamento" onAction="#onImprimirAction" disable="true" minHeight="40.0" />
+                </children></HBox>
                 <Separator />
                 <Label fx:id="labelResumo" styleClass="monoespacado" wrapText="true" text="Selecione um caixa para ver o resumo."
                        maxWidth="Infinity" minHeight="-Infinity" />

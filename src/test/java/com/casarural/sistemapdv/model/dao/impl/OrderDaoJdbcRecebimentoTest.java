@@ -43,6 +43,8 @@ class OrderDaoJdbcRecebimentoTest {
     }
 
     private static class Banco {
+        java.time.Clock relogio = java.time.Clock.fixed(java.time.LocalDateTime.of(2026,10,29,12,0).atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault());
+        LocalDateTime abertura = LocalDateTime.of(2026,10,29,8,0);
         boolean confirmou, caixaAberto = true, falhaLimpeza, semChave, falhaRollback;
         int conexoes, insercoes, rollbacks, falharNaInsercao, resetsAutoCommit;
         final List<Map<String,Object>> pendentes = new ArrayList<>(), gravados = new ArrayList<>();
@@ -73,7 +75,7 @@ class OrderDaoJdbcRecebimentoTest {
                         default: throw new AssertionError("Connection inesperada: " + m.getName());
                     }
                 });
-            });
+            }, relogio);
         }
         PreparedStatement statement(String sql) {
             Map<Integer,Object> parametros = new HashMap<>();
@@ -89,7 +91,7 @@ class OrderDaoJdbcRecebimentoTest {
                         assertTrue(sql.endsWith("FOR UPDATE"));
                         return result(List.of(row("id_cliente", 9, "nome_cliente", "Maria da Silva", "telefone", "11987654321")));
                     }
-                    if (sql.contains("FROM caixa")) return result(caixaAberto ? List.of(row("1", 22)) : List.of());
+                    if (sql.contains("FROM caixa")) return result(caixaAberto ? List.of(row("1", 22, "aberto_em", Timestamp.valueOf(abertura))) : List.of());
                     if (sql.contains("FROM pedido WHERE")) {
                         assertTrue(sql.contains("ORDER BY data_pedido, id_pedido FOR UPDATE"));
                         return result(compras);
@@ -221,4 +223,35 @@ class OrderDaoJdbcRecebimentoTest {
         assertThrows(IllegalArgumentException.class, () -> dao.registerPartialPayment(null, r("10"), PaymentMethod.PIX));
         assertEquals(0, banco.conexoes);
     }
+    @Test
+    void caixaDeOutroDiaRecusaRecebimentoAntesDeQualquerEscrita() {
+        Banco banco = new Banco(); banco.abertura = banco.abertura.minusDays(1);
+        DbException erro = assertThrows(DbException.class,
+                () -> banco.dao().registerPartialPayment(9, r("10"), PaymentMethod.PIX));
+        assertTrue(erro.getMessage().contains("outro dia"));
+        assertEquals(0, banco.insercoes); assertFalse(banco.confirmou);
+        assertEquals(1, banco.rollbacks); assertTrue(banco.gravados.isEmpty());
+        assertTrue(banco.consultas.stream().filter(q -> q.contains("FROM caixa")).allMatch(q -> q.endsWith("FOR UPDATE")));
+    }
+
+    @Test
+    void mesmaInstanciaRevalidaDiaDepoisDaMeiaNoite() {
+        Banco banco = new Banco();
+        java.time.ZoneId zona = java.time.ZoneId.of("America/Sao_Paulo");
+        java.util.concurrent.atomic.AtomicReference<java.time.Instant> agora = new java.util.concurrent.atomic.AtomicReference<>(
+                LocalDateTime.of(2026,10,29,23,59).atZone(zona).toInstant());
+        banco.relogio = new java.time.Clock() {
+            public java.time.ZoneId getZone() { return zona; }
+            public java.time.Clock withZone(java.time.ZoneId outra) { return java.time.Clock.fixed(instant(), outra); }
+            public java.time.Instant instant() { return agora.get(); }
+        };
+        OrderDaoJdbc dao = banco.dao();
+        dao.registerPartialPayment(9, r("10"), PaymentMethod.PIX);
+        int insercoes = banco.insercoes;
+        agora.set(agora.get().plusSeconds(120));
+        DbException erro = assertThrows(DbException.class, () -> dao.registerPartialPayment(9, r("10"), PaymentMethod.PIX));
+        assertTrue(erro.getMessage().contains("outro dia")); assertEquals(insercoes, banco.insercoes);
+        assertEquals(1, banco.rollbacks);
+    }
+
 }

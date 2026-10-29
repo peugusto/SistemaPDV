@@ -14,6 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.Properties;
@@ -37,6 +39,7 @@ public class DB {
     private static synchronized HikariDataSource getDataSource() {
         if (dataSource == null) {
             Properties props = loadProperties();
+            validarConfiguracao(props, false);
 
             HikariConfig config = new HikariConfig();
             config.setPoolName("SistemaPDV");
@@ -92,16 +95,10 @@ public class DB {
      */
     public static void migrate() {
         Properties props = loadProperties();
+        validarConfiguracao(props, true);
         String user = props.getProperty("migracao.user");
         String password = props.getProperty("migracao.password");
-        if (user == null || user.isBlank()) {
-            log.error("migracao.user não configurado no db.properties");
-            throw new DbException(MENSAGEM_ATUALIZACAO_FALHOU);
-        }
-        if (password == null || password.isBlank()) {
-            log.error("migracao.password não configurado no db.properties (linha ausente ou comentada com #)");
-            throw new DbException(MENSAGEM_ATUALIZACAO_FALHOU);
-        }
+
 
         // Só a conexão de migração pode criar o banco, se ele ainda não existir
         String url = props.getProperty("dburl");
@@ -124,6 +121,29 @@ public class DB {
         }
     }
 
+    /** Validação sem abrir conexão; diagnósticos não incluem URL, senhas ou seus valores. */
+    static void validarConfiguracao(Properties props, boolean migracao) {
+        String url = props.getProperty("dburl");
+        if (url == null || url.isBlank()) throw erroConfiguracao("dburl");
+        url = url.trim();
+        try {
+            if (!url.startsWith("jdbc:mysql:")) throw erroConfiguracao("dburl");
+            Driver driver = DriverManager.getDriver(url);
+            if (!driver.acceptsURL(url))
+                throw erroConfiguracao("dburl");
+            // O driver interpreta a URL e suas opções sem abrir conexão.
+            driver.getPropertyInfo(url, new Properties());
+        } catch (SQLException | RuntimeException e) { throw erroConfiguracao("dburl"); }
+        props.setProperty("dburl", url);
+        String usuario = migracao ? "migracao.user" : "user";
+        String senha = migracao ? "migracao.password" : "password";
+        if (props.getProperty(usuario) == null || props.getProperty(usuario).isBlank()) throw erroConfiguracao(usuario);
+        if (!props.containsKey(senha) || (migracao && props.getProperty(senha).isBlank())) throw erroConfiguracao(senha);
+    }
+    private static DbException erroConfiguracao(String campo) {
+        return new DbException("A configuração do banco está incompleta ou inválida (campo " + campo
+                + "). Entre em contato com o responsável pelo sistema para corrigir o arquivo de configuração.");
+    }
     /** SQLState "08..." = falha de comunicação (MySQL parado, rede). */
     private static boolean isConnectionFailure(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {

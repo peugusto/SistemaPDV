@@ -80,13 +80,16 @@ public class Main extends Application {
                         espera.close();
                     }
                 });
-            } catch (DbException e) {
+            } catch (Exception e) {
+                log.error("Falha ao preparar o sistema", e);
+                String mensagem = e instanceof DbException ? e.getMessage() : MENSAGEM_ERRO_INESPERADO;
                 Platform.runLater(() -> {
-                    // showAndWait: o aviso precisa ficar na tela até o usuário ler, antes de o sistema fechar
-                    Alerts.showAlertAndWait("Banco de Dados", "O sistema não pode ser aberto", e.getMessage(), Alert.AlertType.ERROR);
-                    log.error("Sistema fechado na abertura: banco não pôde ser preparado");
-                    espera.close();
-                    Platform.exit();
+                    try {
+                        Alerts.showAlertAndWait("Banco de Dados", "O sistema não pode ser aberto", mensagem, Alert.AlertType.ERROR);
+                    } finally {
+                        espera.close();
+                        Platform.exit();
+                    }
                 });
             }
         }, "abertura");

@@ -100,6 +100,8 @@ public class FiadoListController implements Initializable {
     @FXML private ToggleButton btnFormaCartao;
     @FXML private TextField campoValorPagamento;
     @FXML private Button btnPagar;
+    @FXML private Button btnImprimirDivida;
+    private boolean imprimindoDivida;
 
     private Customer customer;
     private OrderService orderService;
@@ -335,6 +337,31 @@ public class FiadoListController implements Initializable {
             btnPagar.setDisable(!Money.isPositive(dividaAtual));
         }
     }
+
+    /** Imprimir o extrato nunca recebe nem compensa um pagamento. */
+    @FXML
+    public void onImprimirDividaAction() {
+        if (customer == null || recebendo || imprimindoDivida) return;
+        imprimindoDivida = true;
+        btnImprimirDivida.setDisable(true);
+        btnImprimirDivida.setText("Imprimindo...");
+        int idCliente = customer.getIdCliente();
+        try {
+            impressaoVendaService.emitirDivida(idCliente).whenComplete((v, erro) -> finalizarImpressaoDivida(idCliente, erro));
+        } catch (Exception erro) { finalizarImpressaoDivida(idCliente, erro); }
+    }
+    private void finalizarImpressaoDivida(int idCliente, Throwable erro) {
+        if (erro != null) log.error("Não foi possível imprimir a conta de fiado do cliente #{}", idCliente, erro);
+        javafx.application.Platform.runLater(() -> {
+            imprimindoDivida = false;
+            btnImprimirDivida.setDisable(false);
+            btnImprimirDivida.setText("Imprimir dívida");
+            if (erro != null) Alerts.showAlert("Extrato não impresso", null,
+                    "Não foi possível imprimir a conta de fiado. Confira a conexão com o banco, a impressora e o papel e tente novamente. Nenhum pagamento foi registrado.",
+                    Alert.AlertType.WARNING);
+        });
+    }
+
 
     private void emitirComprovante(RecebimentoFiado recebimento) {
         try {

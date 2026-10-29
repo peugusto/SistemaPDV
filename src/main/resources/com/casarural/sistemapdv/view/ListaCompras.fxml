@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<!-- Lista de compras da semana: o que vendeu nos últimos 7 dias menos o que tem no estoque -->
+<!-- Lista de compras: saídas acumuladas até registrar reposição -->
 <BorderPane styleClass="tela" prefWidth="1000" prefHeight="720" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.casarural.sistemapdv.controller.ListaComprasController">
 
@@ -41,14 +41,14 @@
 
             <VBox styleClass="cartao" spacing="8" VBox.vgrow="ALWAYS">
                 <Label styleClass="texto-dica" wrapText="true"
-                       text="Quanto comprar = o que vendeu nos últimos 7 dias menos o que tem no estoque. Mude a quantidade se quiser; 0 tira da lista. Pão, açaí e pesáveis ficam de fora."/>
+                       text="Cada saída aumenta a lista; a entrada de mercadoria abate a pendência. Ajuste a quantidade para copiar ou imprimir; 0 não imprime. Pão, açaí e pesáveis ficam de fora."/>
                 <TableView fx:id="tabela" VBox.vgrow="ALWAYS">
                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
-                    <placeholder><Label styleClass="texto-suave" text="Nada para repor: o estoque cobre as vendas da semana."/></placeholder>
+                    <placeholder><Label styleClass="texto-suave" text="Nenhuma saída pendente de reposição."/></placeholder>
                     <columns>
                         <TableColumn fx:id="colComprar" text="COMPRAR" prefWidth="110" sortable="false"/>
                         <TableColumn fx:id="colProduto" text="PRODUTO" prefWidth="300"/>
-                        <TableColumn fx:id="colVendeu" text="VENDEU (7 DIAS)" prefWidth="130"/>
+                        <TableColumn fx:id="colPendente" text="PENDENTE" prefWidth="130"/>
                         <TableColumn fx:id="colTem" text="TEM NO ESTOQUE" prefWidth="130"/>
                         <TableColumn fx:id="colCustoItem" text="CUSTO" prefWidth="110"/>
                         <TableColumn fx:id="colSituacao" text="SITUAÇÃO" prefWidth="120"/>
@@ -62,8 +62,9 @@
         <HBox styleClass="barra-inferior" spacing="10" alignment="CENTER_RIGHT">
             <Label fx:id="lblCopiado" styleClass="texto-suave" wrapText="true"/>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Atualizar" onAction="#onAtualizar"/>
-            <Button styleClass="botao-primario" text="Copiar lista" onAction="#onCopiar"/>
+            <Button fx:id="btnAtualizar" text="Atualizar" onAction="#onAtualizar"/>
+            <Button fx:id="btnCopiar" text="Copiar lista" onAction="#onCopiar" disable="true"/>
+            <Button fx:id="btnImprimir" styleClass="botao-primario" text="Imprimir lista" onAction="#onImprimir" disable="true"/>
         </HBox>
     </bottom>
 </BorderPane>
