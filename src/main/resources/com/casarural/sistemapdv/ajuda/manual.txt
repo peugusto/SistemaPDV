@@ -138,7 +138,7 @@ Barra de baixo > "Colocar dinheiro". Use quando colocar troco na gaveta.
 1. Clique em "Fechar caixa (F6)".
 2. O sistema mostra quanto deve ter na gaveta.
 3. Conte o dinheiro e digite (opcional, mas recomendado). O sistema mostra se sobrou ou faltou.
-4. Confirme. O resumo fica em "Histórico de caixas".
+4. Confirme. O resumo fica em "Histórico de caixas", que pede o PIN da loja antes de consultar os dados.
 
 # Pão do dia
 Relatórios > Pão do dia (F7). Não pede PIN.
@@ -214,9 +214,11 @@ Recebeu um pagamento de fiado errado (valor ou forma)?
 ! Só dá para estornar pagamentos do caixa que está aberto agora. Depois, lance o pagamento certo.
 
 # PIN da loja
-O PIN da loja protege: relatórios de vendas, cancelar venda, trocar produtos, estornar recebimento e dar desconto.
+O PIN da loja protege: relatórios de vendas, histórico de caixas, cancelar venda, trocar produtos, estornar recebimento e dar desconto.
 - Ele é criado na primeira vez que alguma dessas coisas for usada (4 a 6 números, digitado duas vezes).
 - Para trocar: Relatórios > Vendas e produtos > "Trocar PIN".
+- Após três erros, aguarde 30 segundos. Novos grupos de três erros aumentam a espera até 15 minutos; acertar o PIN limpa a contagem.
+- Fechar a janela, mudar de ação ou reiniciar o sistema não limpa os erros nem a espera.
 - Esqueceu? Veja "Problemas e soluções".
 
 # Histórico de vendas
@@ -321,11 +323,11 @@ Alguém desativou o produto. Para vender de novo: Estoque > Editar > marque "Pro
 Clientes com compras não podem ser excluídos, para não perder o histórico. Deixe o cliente Bloqueado.
 
 ## Esqueci o PIN da loja
-Chame o responsável. Ele apaga o PIN no banco (comando: DELETE FROM configuracao WHERE chave = 'relatorios.pin';) e você cria um novo ao abrir os relatórios.
+Chame o responsável. Ele redefine o PIN e o limite de tentativas no banco (comando: DELETE FROM configuracao WHERE chave IN ('relatorios.pin', 'relatorios.pin.tentativas');) e você cria um novo ao abrir os relatórios.
 
 ## PIN errado
-> PIN errado 3 vezes
-Feche, confira o PIN e abra de novo pelo menu Relatórios.
+> Muitas tentativas de PIN incorreto
+Confira o PIN e aguarde o tempo mostrado na mensagem para tentar novamente. Reabrir a janela não remove essa espera.
 
 ## A sugestão do pão não aparece
 Ainda não há dias suficientes registrados. Continue registrando quantos pães chegam às 7h e às 15h.

@@ -6,6 +6,7 @@ import com.casarural.sistemapdv.model.entities.CashRegister;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.services.CashRegisterService;
+import com.casarural.sistemapdv.services.AcessoRelatoriosService;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
@@ -64,6 +65,7 @@ public class MainController implements Initializable {
     @FXML private Button btnColocar;
 
     private final CashRegisterService caixaService = new CashRegisterService();
+    private final AcessoRelatoriosService acesso = new AcessoRelatoriosService(DaoFactory.createConfiguracaoDAO());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -221,8 +223,14 @@ public class MainController implements Initializable {
 
     @FXML
     public void onHistoricoCaixaAction() {
-        ViewLoader.showView(false, "/com/casarural/sistemapdv/view/HistoricoCaixa.fxml", "Histórico de caixas",
-                (HistoricoCaixaController controller) -> controller.configurar(caixaService));
+        try {
+            if (!PinDialogo.liberar(acesso, botaoPDV.getScene().getWindow(),
+                    "Histórico de caixas", "ver o histórico de caixas")) return;
+            ViewLoader.showView(false, "/com/casarural/sistemapdv/view/HistoricoCaixa.fxml", "Histórico de caixas",
+                    (HistoricoCaixaController controller) -> controller.configurar(caixaService));
+        } catch (DbException e) {
+            Alerts.showAlert("Histórico de caixas", "Não foi possível abrir o histórico", e.getMessage(), Alert.AlertType.WARNING);
+        }
     }
 
     /** Abre a tela de valor (abrir, retirar ou colocar). Retorna true se o usuário confirmou. */

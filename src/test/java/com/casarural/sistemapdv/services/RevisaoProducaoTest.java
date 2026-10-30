@@ -59,6 +59,11 @@ class RevisaoProducaoTest {
         final Map<String, String> v = new HashMap<>();
         public Optional<String> get(String c) { return Optional.ofNullable(v.get(c)); }
         public void set(String c, String valor) { v.put(c, valor); }
+        public synchronized String atualizar(String c, String inicial, java.util.function.UnaryOperator<String> alteracao) {
+            String novo = alteracao.apply(v.getOrDefault(c, inicial));
+            v.put(c, novo);
+            return novo;
+        }
     }
 
     // ---------- Item 11: espaços nas pontas ----------

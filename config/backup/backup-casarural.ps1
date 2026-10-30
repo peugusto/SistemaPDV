@@ -135,6 +135,10 @@ try {
                 ForEach-Object { Remove-Item $_.FullName; Escrever "Apagada copia antiga: $($_.Name)" }
         }
     }
+    # So limpa o alarme antigo depois de concluir todas as etapas desta tentativa.
+    $falhaAnterior = Join-Path $PastaLocal "ULTIMO_BACKUP_FALHOU.txt"
+    if (Test-Path -LiteralPath $falhaAnterior) { Remove-Item -LiteralPath $falhaAnterior }
+    Escrever "BACKUP CONCLUIDO COM SUCESSO"
     exit 0
 }
 catch {

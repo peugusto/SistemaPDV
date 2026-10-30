@@ -19,6 +19,11 @@ class PreferenciasTelaTest {
         final Map<String, String> valores = new HashMap<>();
         public Optional<String> get(String chave) { return Optional.ofNullable(valores.get(chave)); }
         public void set(String chave, String valor) { valores.put(chave, valor); }
+        public synchronized String atualizar(String chave, String inicial, java.util.function.UnaryOperator<String> alteracao) {
+            String novo = alteracao.apply(valores.getOrDefault(chave, inicial));
+            valores.put(chave, novo);
+            return novo;
+        }
     }
 
     @AfterEach

@@ -13,11 +13,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-/** Pede (ou cria, na primeira vez) o PIN da loja: relatórios, cancelamentos, estornos e descontos. */
+/** Pede (ou cria, na primeira vez) o PIN da loja para as ações protegidas. */
 public final class PinDialogo {
 
     private static final Logger log = LoggerFactory.getLogger(PinDialogo.class);
-    private static final int TENTATIVAS = 3;
 
     private PinDialogo() {}
 
@@ -34,24 +33,31 @@ public final class PinDialogo {
     public static boolean liberar(AcessoRelatoriosService acesso, Window dono, String titulo, String acao) {
         if (!acesso.temPin()) return criarPin(acesso, dono);
 
-        for (int tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
-            String aviso = tentativa == 1 ? null : "PIN errado. Tentativa " + tentativa + " de " + TENTATIVAS + ".";
+        String aviso = null;
+        while (true) {
+            if (avisarBloqueio(acesso, titulo)) return false;
             Optional<String> pin = pedir(dono, titulo, "Digite o PIN para " + acao, aviso);
             if (pin.isEmpty()) return false;
             if (acesso.confere(pin.get())) {
                 log.info("PIN conferido para {}", acao);
                 return true;
             }
+            aviso = "PIN incorreto. Tente novamente.";
+            log.warn("PIN incorreto ao tentar {}", acao);
         }
-        log.warn("PIN errado {} vezes ao tentar {}", TENTATIVAS, acao);
-        Alerts.showAlertAndWait(titulo, "PIN errado " + TENTATIVAS + " vezes",
-                "Nada foi feito.", Alert.AlertType.WARNING);
-        return false;
+    }
+
+    private static boolean avisarBloqueio(AcessoRelatoriosService acesso, String titulo) {
+        long segundos = acesso.segundosParaNovaTentativa();
+        if (segundos == 0) return false;
+        Alerts.showAlertAndWait(titulo, "Muitas tentativas de PIN incorreto",
+                "Aguarde " + segundos + " segundo(s) para tentar novamente. Nada foi feito.", Alert.AlertType.WARNING);
+        return true;
     }
 
     /** Primeira vez: cria o PIN digitando duas vezes. */
     public static boolean criarPin(AcessoRelatoriosService acesso, Window dono) {
-        String aviso = "O PIN da loja protege os relatórios (faturamento), os cancelamentos, os estornos "
+        String aviso = "O PIN da loja protege os relatórios (faturamento), o histórico de caixas, os cancelamentos, os estornos "
                 + "e os descontos. Crie um PIN de 4 a 6 números e guarde: ele será pedido toda vez.";
         while (true) {
             Optional<String> pin = pedir(dono, "Criar PIN", "Crie o PIN da loja", aviso);
