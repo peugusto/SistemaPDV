@@ -160,6 +160,7 @@ public class RelatoriosController implements Initializable {
 
     @FXML
     public void onTrocarPin() {
+        if (!PinDialogo.liberar(acesso,lblPeriodo.getScene().getWindow(),"Trocar PIN","trocar o PIN da loja")) return;
         if (PinDialogo.criarPin(acesso, lblPeriodo.getScene().getWindow())) {
             Alerts.showAlert("PIN", null, "PIN dos relatórios trocado.", Alert.AlertType.INFORMATION);
         }

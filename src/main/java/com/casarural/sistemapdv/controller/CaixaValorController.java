@@ -36,6 +36,7 @@ public class CaixaValorController implements Initializable {
     private CashRegisterService service;
     private CashRegister caixa;
     private boolean concluido = false;
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -114,6 +115,10 @@ public class CaixaValorController implements Initializable {
                     service.open(valor);
                     break;
                 case SANGRIA:
+                    if (!Money.isPositive(valor)) throw new DbException("Informe um valor maior que zero.");
+                    if (campoMotivo.getText()==null || campoMotivo.getText().isBlank()) throw new DbException("Informe o motivo da retirada.");
+                    if (!protecao.autorizar(btnConfirmar.getScene().getWindow(),
+                            "retirar "+Money.format(valor)+" do caixa. Motivo: "+campoMotivo.getText().trim())) return;
                     service.addSangria(caixa, valor, campoMotivo.getText());
                     break;
                 case REFORCO:

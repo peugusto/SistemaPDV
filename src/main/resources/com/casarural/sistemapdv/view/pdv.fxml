@@ -54,6 +54,7 @@
                 </HBox>
                 <ListView fx:id="listaItens" VBox.vgrow="ALWAYS"/>
                 <Separator/>
+                <Label fx:id="labelDescontoTroca" styleClass="texto-suave" wrapText="true" maxWidth="420" visible="false" managed="false"/>
                 <HBox alignment="CENTER_RIGHT" spacing="12">
                     <Label styleClass="rotulo-secao" text="TOTAL"/>
                     <Label fx:id="labelTotal" styleClass="valor-destaque" text="R$ 0,00"/>

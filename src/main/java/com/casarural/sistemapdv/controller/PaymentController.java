@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
+import com.casarural.sistemapdv.db.TrocaDesatualizadaException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
@@ -64,6 +65,8 @@ public class PaymentController implements Initializable {
     private Customer clienteFiado;
     private boolean vendaConcluida = false;
     private boolean vendaPendenteConferencia = false;
+    private boolean trocaDesatualizada;
+    public boolean isTrocaDesatualizada() { return trocaDesatualizada; }
     private BigDecimal trocoDinheiro = Money.ZERO;
     private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
     /** Produtos sem fiado que o operador escolheu tirar da venda. */
@@ -101,6 +104,8 @@ public class PaymentController implements Initializable {
      */
     public void setTroca(VendaParaDesfazer venda) {
         this.trocaDe = venda;
+        order.setIdPedidoTrocado(venda.getIdPedido());
+        order.setVersaoPedidoTrocado(venda.getVersao());
         aplicarCreditos();
         if (Money.isPositive(venda.getPagoPorForma().getOrDefault(PaymentMethod.FIADO, Money.ZERO)) && venda.getIdCliente() != null) {
             comboCliente.getItems().stream()
@@ -204,7 +209,7 @@ public class PaymentController implements Initializable {
     // ===================== Desconto (sempre com PIN) =====================
 
     private void onDesconto() {
-        if (vendaConcluida || vendaPendenteConferencia) return;
+        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
         if (order.temPagamentoNovo()) {
             Alerts.showAlert("Desconto", null,
                     "O desconto é dado antes de lançar os pagamentos. Clique em Voltar (Esc) e finalize a venda de novo.",
@@ -315,7 +320,7 @@ public class PaymentController implements Initializable {
     }
 
     private void realizarBaixaAutomatica() {
-        if (vendaConcluida || vendaPendenteConferencia) return;
+        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
         if (Money.isPositive(saldoRestante)) {
             if (txtValorRecebido.getText() == null || txtValorRecebido.getText().isBlank()) {
                 processarPagamento(saldoRestante);
@@ -328,7 +333,7 @@ public class PaymentController implements Initializable {
     }
 
     private void processarPagamento(BigDecimal valor) {
-        if (vendaConcluida || vendaPendenteConferencia) return;
+        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
         if (!Money.isPositive(saldoRestante)) {
             salvarVenda();
             return;
@@ -504,7 +509,7 @@ public class PaymentController implements Initializable {
     }
 
     private void salvarVenda() {
-        if (vendaConcluida || vendaPendenteConferencia) return;
+        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
         BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
         if (totalFiado.compareTo(order.getTotalPermitidoNoFiado()) > 0) {
             String lista = order.getItensSemFiado().stream()
@@ -530,6 +535,14 @@ public class PaymentController implements Initializable {
             }
 
             orderService.insert(order);
+        } catch (TrocaDesatualizadaException e) {
+            trocaDesatualizada = true;
+            btnConfirmar.setDisable(true);
+            txtValorRecebido.setDisable(true);
+            btnDesconto.setDisable(true);
+            Alerts.showAlertAndWait("Troca desatualizada", "A venda original mudou", e.getMessage(), Alert.AlertType.WARNING);
+            fecharJanela();
+            return;
         } catch (ResultadoTransacaoIncertoException e) {
             vendaPendenteConferencia = true;
             btnConfirmar.setDisable(true);

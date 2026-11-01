@@ -3,6 +3,8 @@ package com.casarural.sistemapdv.model.dao.impl;
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
+import com.casarural.sistemapdv.db.TrocaDesatualizadaException;
+import com.casarural.sistemapdv.util.VersaoTroca;
 import com.casarural.sistemapdv.model.dao.OrderDao;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.Customer;
@@ -146,6 +148,7 @@ public class OrderDaoJdbc implements OrderDao {
                     Statement.RETURN_GENERATED_KEYS)) {
 
                 int idCaixa = idCaixaAberto(conn);   // antes de gravar qualquer coisa
+                if (obj.isTroca()) validarReferenciaTroca(conn, obj);
                 validarFiadoAtual(conn, obj);
 
                 // Troca: desfaz a venda antiga primeiro (o estoque dela volta e pode ser vendido de novo)
@@ -187,7 +190,7 @@ public class OrderDaoJdbc implements OrderDao {
         });
     }
 
-    /** Caixa -> cliente -> pedidos/pagamentos -> produtos; nenhuma cópia da tela autoriza crédito. */
+    /** Após o lock do caixa (e da referência na troca), valida as regras atuais antes das escritas. */
     private void validarFiadoAtual(Connection conn, Order venda) throws SQLException {
         BigDecimal fiado = venda.getTotalPagamentos(PaymentMethod.FIADO);
         if (!Money.isPositive(fiado)) {
@@ -904,43 +907,107 @@ public class OrderDaoJdbc implements OrderDao {
         });
     }
 
-    @Override
-    public Optional<VendaParaDesfazer> findParaDesfazer(int idPedido) {
-        try (Connection conn = DB.getConnection()) {
-            VendaParaDesfazer v = new VendaParaDesfazer();
-            try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT p.*, (SELECT aberto_em FROM caixa WHERE fechado_em IS NULL) AS abertura " +
-                    "FROM pedido p WHERE p.id_pedido = ?")) {
-                st.setInt(1, idPedido);
-                try (ResultSet rs = st.executeQuery()) {
-                    if (!rs.next()) return Optional.empty();
-                    v.setIdPedido(idPedido);
-                    int cliente = rs.getInt("id_cliente");
-                    v.setIdCliente(rs.wasNull() ? null : cliente);
-                    v.setStatus(OrderStatus.valueOf(rs.getString("status")));
-                    v.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
-                    v.setValorTotal(rs.getBigDecimal("valor_total"));
-                    v.setDesconto(rs.getBigDecimal("desconto"));
-                    Timestamp abertura = rs.getTimestamp("abertura");
-                    v.setDoCaixaAberto(abertura != null && !v.getDataPedido().isBefore(abertura.toLocalDateTime()));
-                }
+    /** A referência da tela é conferida antes de cancelar, inserir ou alterar estoque. */
+    private void validarReferenciaTroca(Connection conn, Order nova) throws SQLException {
+        String esperada = nova.getVersaoPedidoTrocado();
+        if (esperada == null || esperada.isBlank()) throw new TrocaDesatualizadaException(nova.getIdPedidoTrocado());
+        VendaParaDesfazer atual = cabecalhoTroca(conn, nova.getIdPedidoTrocado(), true)
+                .orElseThrow(() -> new TrocaDesatualizadaException(nova.getIdPedidoTrocado()));
+        if (atual.isCancelada()) throw new TrocaDesatualizadaException(nova.getIdPedidoTrocado());
+        carregarCreditoEVersao(conn, atual, true);
+        if (!esperada.equals(atual.getVersao())) throw new TrocaDesatualizadaException(nova.getIdPedidoTrocado());
+    }
+
+    private Optional<VendaParaDesfazer> cabecalhoTroca(Connection conn, int idPedido, boolean bloquear) throws SQLException {
+        try (PreparedStatement st = conn.prepareStatement(
+                "SELECT status, data_pedido, valor_total, desconto, id_cliente FROM pedido WHERE id_pedido = ?" + (bloquear ? " FOR UPDATE" : ""))) {
+            st.setInt(1, idPedido);
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
+                VendaParaDesfazer v = new VendaParaDesfazer();
+                v.setIdPedido(idPedido);
+                v.setIdCliente(inteiroOpcional(rs, "id_cliente"));
+                v.setStatus(OrderStatus.valueOf(rs.getString("status")));
+                v.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
+                v.setValorTotal(rs.getBigDecimal("valor_total"));
+                v.setDesconto(rs.getBigDecimal("desconto"));
+                return Optional.of(v);
             }
-            ProductDaoJdbc produtos = new ProductDaoJdbc();
-            try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT i.quantidade, i.preco_unitario, i.estoque_baixado, pr.* FROM itempedido i " +
-                    "JOIN produto pr ON pr.id_produto = i.id_produto WHERE i.id_pedido = ? ORDER BY i.id_item")) {
-                st.setInt(1, idPedido);
-                try (ResultSet rs = st.executeQuery()) {
-                    while (rs.next()) {
-                        OrderItem item = new OrderItem(produtos.instantiate(rs), rs.getInt("quantidade"), rs.getBigDecimal("preco_unitario"));
-                        Number baixa = (Number) rs.getObject("estoque_baixado");
-                        item.setEstoqueBaixado(baixa == null ? null : baixa.intValue());
-                        v.getItens().add(item);
+        }
+    }
+
+    private static Integer inteiroOpcional(ResultSet rs, String coluna) throws SQLException {
+        Number valor = (Number) rs.getObject(coluna);
+        return valor == null ? null : valor.intValue();
+    }
+
+    private void carregarCreditoEVersao(Connection conn, VendaParaDesfazer v, boolean bloquear) throws SQLException {
+        VersaoTroca versao = new VersaoTroca(v);
+        BigDecimal pago = Money.ZERO;
+        try (PreparedStatement st = conn.prepareStatement(
+                "SELECT id_pagamento, metodo_pagamento, valor_pago, origem, data_pagamento, id_caixa, id_recebimento "
+                        + "FROM pagamento WHERE id_pedido = ? ORDER BY id_pagamento" + (bloquear ? " FOR UPDATE" : ""))) {
+            st.setInt(1, v.getIdPedido());
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    String metodo = rs.getString("metodo_pagamento");
+                    BigDecimal valor = Money.of(rs.getBigDecimal("valor_pago"));
+                    Timestamp data = rs.getTimestamp("data_pagamento");
+                    versao.pagamento(rs.getInt("id_pagamento"), metodo, valor, rs.getString("origem"),
+                            data == null ? null : data.toLocalDateTime(),
+                            inteiroOpcional(rs, "id_caixa"), inteiroOpcional(rs, "id_recebimento"));
+                    PaymentMethod forma = PaymentMethod.ler(metodo);
+                    if (forma != PaymentMethod.FIADO) {
+                        pago = pago.add(valor);
+                        v.getPagoPorForma().merge(forma == null ? PaymentMethod.DINHEIRO : forma, valor, BigDecimal::add);
                     }
                 }
             }
-            if (!v.isCancelada()) v.getPagoPorForma().putAll(pagoPorForma(conn, idPedido, v.getValorTotal()));
-            return Optional.of(v);
+        }
+        BigDecimal fiado = Money.max(Money.ZERO, v.getValorTotal().subtract(pago));
+        if (Money.isPositive(fiado)) v.getPagoPorForma().put(PaymentMethod.FIADO, fiado);
+        v.setVersao(versao.concluir());
+    }
+
+    @Override
+    public Optional<VendaParaDesfazer> findParaDesfazer(int idPedido) {
+        try (Connection conn = conexoes.get()) {
+            // Cabeçalho, itens e pagamentos pertencem ao mesmo retrato, mesmo com outro terminal ativo.
+            conn.setReadOnly(true);
+            conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            conn.setAutoCommit(false);
+            try {
+                Optional<VendaParaDesfazer> encontrada = cabecalhoTroca(conn, idPedido, false);
+                if (encontrada.isEmpty()) {
+                    conn.commit();
+                    return Optional.empty();
+                }
+                VendaParaDesfazer v = encontrada.get();
+                try (PreparedStatement st = conn.prepareStatement("SELECT aberto_em FROM caixa WHERE fechado_em IS NULL");
+                     ResultSet rs = st.executeQuery()) {
+                    if (rs.next()) v.setDoCaixaAberto(!v.getDataPedido().isBefore(rs.getTimestamp(1).toLocalDateTime()));
+                }
+                ProductDaoJdbc produtos = new ProductDaoJdbc();
+                try (PreparedStatement st = conn.prepareStatement(
+                        "SELECT i.quantidade, i.preco_unitario, i.estoque_baixado, pr.* FROM itempedido i "
+                                + "JOIN produto pr ON pr.id_produto = i.id_produto WHERE i.id_pedido = ? ORDER BY i.id_item")) {
+                    st.setInt(1, idPedido);
+                    try (ResultSet rs = st.executeQuery()) {
+                        while (rs.next()) {
+                            OrderItem item = new OrderItem(produtos.instantiate(rs), rs.getInt("quantidade"), rs.getBigDecimal("preco_unitario"));
+                            item.setEstoqueBaixado(inteiroOpcional(rs, "estoque_baixado"));
+                            v.getItens().add(item);
+                        }
+                    }
+                }
+                if (!v.isCancelada()) carregarCreditoEVersao(conn, v, false);
+                conn.commit();
+                return Optional.of(v);
+            } catch (SQLException | RuntimeException e) {
+                try { conn.rollback(); }
+                catch (SQLException | RuntimeException erro) { e.addSuppressed(erro); }
+                throw e;
+            }
         } catch (SQLException e) {
             throw new DbException(e.getMessage(), e);
         }

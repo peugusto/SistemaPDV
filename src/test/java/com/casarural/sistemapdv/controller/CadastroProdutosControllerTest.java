@@ -45,6 +45,16 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 /** Usa o FXML/controller reais e produtos em memoria, sem conexao ao banco. */
 @org.junit.jupiter.api.extension.ExtendWith(JavafxTestSupport.class)
 class CadastroProdutosControllerTest {
+    private static void autorizarAlteracoes(Object controller) throws Exception {
+        Class<?> tipo=controller.getClass();
+        while(tipo!=null) {
+            try {
+                java.lang.reflect.Field campo=tipo.getDeclaredField("protecao");campo.setAccessible(true);
+                campo.set(controller,new ProtecaoPin(){public boolean autorizar(Window dono,String acao){return true;}});return;
+            } catch(NoSuchFieldException e){tipo=tipo.getSuperclass();}
+        }
+        throw new AssertionError("Proteção não encontrada");
+    }
     @FunctionalInterface
     private interface AcaoFx { void executar() throws Exception; }
 
@@ -97,6 +107,7 @@ class CadastroProdutosControllerTest {
             Stage janela = new Stage();
             janela.setScene(new Scene(root));
             controller = loader.getController();
+            autorizarAlteracoes(controller);
             controller.setProductService(new ProductService(dao));
             controller.setProduct(new Product());
         }
@@ -247,6 +258,7 @@ class CadastroProdutosControllerTest {
             Stage janela = new Stage();
             janela.setScene(new Scene(root));
             controller = loader.getController();
+            autorizarAlteracoes(controller);
             lista = new ListaEditada();
             controller.setProduct(original);
             controller.setServices(new ProductService(dao), lista);
@@ -719,6 +731,7 @@ class CadastroProdutosControllerTest {
             FXMLLoader loader = new FXMLLoader(ProductListController.class.getResource(
                     "/com/casarural/sistemapdv/view/product_list.fxml"));
             loader.setControllerFactory(tipo -> lista);
+            autorizarAlteracoes(lista);
             Parent root = loader.load();
             Stage janela = new Stage();
             janela.setScene(new Scene(root));

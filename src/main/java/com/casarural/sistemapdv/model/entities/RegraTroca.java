@@ -29,6 +29,21 @@ public final class RegraTroca {
 
     private RegraTroca() {}
 
+    /** Conserva a condição comercial somente para a mesma composição e os mesmos preços. */
+    public static BigDecimal descontoOriginal(VendaParaDesfazer original, List<OrderItem> itens) {
+        if (original == null || !Money.isPositive(original.getDesconto())) return Money.ZERO;
+        return composicao(original.getItens()).equals(composicao(itens)) ? original.getDesconto() : Money.ZERO;
+    }
+
+    private static Map<String, BigDecimal> composicao(List<OrderItem> itens) {
+        Map<String, BigDecimal> resultado = new java.util.TreeMap<>();
+        for (OrderItem i : itens) {
+            String chave = i.getProduto().getIdProduto() + ":" + Money.of(i.getPrecoUnitario()).toPlainString();
+            resultado.merge(chave, BigDecimal.valueOf(i.getQtd()), BigDecimal::add);
+        }
+        return resultado;
+    }
+
     public static final class Resultado {
         private final List<PaymentSlice> creditos;
         private final Map<PaymentMethod, BigDecimal> devolver;

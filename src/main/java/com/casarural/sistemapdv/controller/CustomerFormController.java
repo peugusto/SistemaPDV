@@ -24,6 +24,7 @@ public class CustomerFormController implements Initializable {
     private Customer entity;
     private CustomerService service;
     private CustomerListController listController;
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     @FXML private TextField txtNome;
     @FXML private TextField txtLimite;
@@ -91,13 +92,23 @@ public class CustomerFormController implements Initializable {
 
         try {
 
-            entity.setNomeCliente(txtNome.getText());
-            entity.setTelefone(Telefone.normalizar(txtTelefone.getText()));
-            entity.setLimiteCredito(Money.parse(txtLimite.getText()));
-            entity.setSituacaoFiado(comboBoxStatus.getValue());
-
-
-            service.saveOrUpdate(entity);
+            Customer alterado = new Customer();
+            alterado.setIdCliente(entity.getIdCliente());
+            alterado.setNomeCliente(txtNome.getText());
+            if (alterado.getNomeCliente()==null || alterado.getNomeCliente().isBlank()) throw new IllegalArgumentException("Digite o nome do cliente.");
+            alterado.setTelefone(Telefone.normalizar(txtTelefone.getText()));
+            alterado.setLimiteCredito(Money.parse(txtLimite.getText()));
+            if (alterado.getLimiteCredito().signum()<0) throw new IllegalArgumentException("O limite de crédito não pode ser negativo.");
+            if (comboBoxStatus.getValue()==null) throw new IllegalArgumentException("Selecione a situação do fiado.");
+            alterado.setSituacaoFiado(comboBoxStatus.getValue());
+            alterado.setTotalDevendo(entity.getTotalDevendo());
+            alterado.setValorEmAtraso(entity.getValorEmAtraso());
+            alterado.copiarEstadoOriginal(entity);
+            java.util.List<String> acoes = com.casarural.sistemapdv.services.AcoesProtegidas.cliente(entity,alterado);
+            if (!acoes.isEmpty() && !protecao.autorizar(btnSave.getScene().getWindow(),
+                    String.join(", ",acoes)+" de "+alterado.getNomeCliente())) return;
+            service.saveOrUpdate(alterado);
+            entity = alterado;
 
 
             listController.updateTableView();
@@ -111,7 +122,7 @@ public class CustomerFormController implements Initializable {
             Alerts.showAlert("Erro de Validação", null, "Por favor, digite um valor numérico válido para o limite.", Alert.AlertType.ERROR);
         } catch (IllegalArgumentException e) {
             // telefone incompleto (Telefone.normalizar)
-            Alerts.showAlert("Celular", null, e.getMessage(), Alert.AlertType.WARNING);
+            Alerts.showAlert("Confira os dados", null, e.getMessage(), Alert.AlertType.WARNING);
         } catch (DbException e) {
 
             Alerts.showAlert("Erro de Negócio", "Não foi possível salvar", e.getMessage(), Alert.AlertType.ERROR);

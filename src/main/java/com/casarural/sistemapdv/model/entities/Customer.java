@@ -16,6 +16,16 @@ public class Customer {
     private BigDecimal limiteCredito = Money.ZERO;
     private CustomerStatus situacaoFiado;
     private BigDecimal totalDevendo = Money.ZERO;
+    private Object[] estadoOriginal;
+    public void registrarEstadoOriginal() { estadoOriginal = new Object[]{limiteCredito, situacaoFiado}; }
+    public void copiarEstadoOriginal(Customer origem) {
+        estadoOriginal = origem.estadoOriginal == null
+                ? new Object[]{origem.limiteCredito,origem.situacaoFiado} : origem.estadoOriginal.clone();
+    }
+    public Object[] getEstadoOriginal() {
+        if (estadoOriginal == null) throw new IllegalStateException("Reabra a edição do cliente antes de salvar.");
+        return estadoOriginal.clone();
+    }
     /** Só os números (DDD + número), ou null. Ver util.Telefone. Coluna cliente.telefone (V10). */
     private String telefone;
 

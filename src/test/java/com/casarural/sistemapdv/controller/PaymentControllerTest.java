@@ -78,6 +78,27 @@ class PaymentControllerTest {
             throw new AssertionError("O aviso esperado não abriu");
         });
     }
+    @Test void trocaDesatualizadaFechaSemImprimirNemPermitirNovaTentativa() throws Exception { JavafxTestSupport.executar(() -> {
+        Gravacoes g=new Gravacoes() {
+            @Override public void insert(Order o) { chamadas++;throw new com.casarural.sistemapdv.db.TrocaDesatualizadaException(100); }
+        };
+        Tela t=new Tela(venda(item("PRODUTO","100",true)),g);int[] impressoes={0};
+        set(t.c,"impressaoVendaService",new com.casarural.sistemapdv.support.ImpressaoTeste(cupom->impressoes[0]++,Runnable::run));
+        VendaParaDesfazer v=new VendaParaDesfazer();v.setIdPedido(100);v.setVersao("antiga");v.getPagoPorForma().put(PaymentMethod.PIX,r("100"));t.c.setTroca(v);
+        List<String> mensagens=new ArrayList<>();responder(ButtonBar.ButtonData.OK_DONE,mensagens);chamar(t.c,"salvarVenda");
+        assertTrue(t.c.isTrocaDesatualizada());assertFalse(t.c.isVendaConcluida());assertEquals(0,impressoes[0]);
+        assertTrue(mensagens.get(0).contains("Reabra a troca pelo histórico"));
+        chamar(t.c,"salvarVenda");assertEquals(1,g.chamadas);
+        assertTrue(((Button)t.loader.getNamespace().get("btnConfirmar")).isDisabled());
+    }); }
+    @Test void trocaComDescontoOriginalUsaCreditoSemCobrarDiferenca() throws Exception { JavafxTestSupport.executar(() -> {
+        Order o=venda(item("PRODUTO","100",true));o.aplicarDesconto(r("10"));Gravacoes g=new Gravacoes();Tela t=new Tela(o,g);
+        VendaParaDesfazer v=new VendaParaDesfazer();v.setIdPedido(100);v.setVersao("atual");v.getPagoPorForma().put(PaymentMethod.PIX,r("90"));t.c.setTroca(v);
+        assertEquals(Money.ZERO,o.getSaldo());assertEquals(r("90"),o.getTotalPagamentos(PaymentMethod.PIX));
+        responder(ButtonBar.ButtonData.OK_DONE,new ArrayList<>());chamar(t.c,"salvarVenda");
+        assertEquals(1,g.chamadas);assertTrue(t.c.isVendaConcluida());assertEquals(r("10"),o.getDesconto());
+        assertEquals("atual",o.getVersaoPedidoTrocado());assertTrue(o.getPagamentos().stream().allMatch(Order.PaymentSlice::isCredito));
+    }); }
     @Test void retirarProibidosLimpaDescontoECobraRestante() throws Exception { JavafxTestSupport.executar(() -> {
         Order o=mista(); Gravacoes g=new Gravacoes(); Tela t=new Tela(o,g); t.metodo("btnFiado");
         List<String> mensagens=new ArrayList<>(); responder(ButtonBar.ButtonData.OTHER,mensagens); t.pagar("80");

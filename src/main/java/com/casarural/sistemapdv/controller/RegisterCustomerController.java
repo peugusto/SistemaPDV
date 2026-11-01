@@ -20,6 +20,7 @@ public class RegisterCustomerController implements Initializable {
 
     private CustomerService service;
     private Customer entity;
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     @FXML private TextField txtNome;
     @FXML private TextField txtPhoneNumber;
@@ -42,7 +43,10 @@ public class RegisterCustomerController implements Initializable {
         }
         try {
             Customer obj = getFormData();
+            if (obj.getLimiteCredito().signum()>0 && !protecao.autorizar(btnSave.getScene().getWindow(),
+                    "conceder limite inicial de "+Money.format(obj.getLimiteCredito())+" a "+obj.getNomeCliente())) return;
             service.insert(obj);
+            entity = obj;
             Alerts.showAlert("Sucesso", null, "Cliente cadastrado com sucesso!", AlertType.INFORMATION);
             closeStage();
         } catch (RuntimeException e) {
@@ -57,17 +61,14 @@ public class RegisterCustomerController implements Initializable {
             throw new RuntimeException("O nome do cliente é obrigatório.");
         }
 
-        if (entity == null) {
-            entity = new Customer();
-        }
-
-        entity.setNomeCliente(txtNome.getText());
-        entity.setTelefone(Telefone.normalizar(txtPhoneNumber.getText()));   // mensagem clara se incompleto
+        Customer novo = new Customer();
+        novo.setNomeCliente(txtNome.getText());
+        novo.setTelefone(Telefone.normalizar(txtPhoneNumber.getText()));
 
         String limiteStr = txtLimite.getText();
-        entity.setLimiteCredito(limiteStr.trim().isEmpty() ? Money.ZERO : Money.parse(limiteStr));
-
-        return entity;
+        novo.setLimiteCredito(limiteStr.trim().isEmpty() ? Money.ZERO : Money.parse(limiteStr));
+        if(novo.getLimiteCredito().signum()<0)throw new IllegalArgumentException("O limite de crédito não pode ser negativo.");
+        return novo;
     }
 
     @FXML

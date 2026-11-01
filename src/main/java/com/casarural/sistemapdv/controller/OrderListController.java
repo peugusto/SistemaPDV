@@ -503,12 +503,14 @@ public class OrderListController implements Initializable {
         if (!PinDialogo.liberar(acesso, janela, "Trocar produtos", "trocar produtos da venda #" + v.getIdPedido())) return;
 
         boolean[] trocou = new boolean[1];
+        PDVController[] telaTroca = new PDVController[1];
         ViewLoader.showView(true, "/com/casarural/sistemapdv/view/pdv.fxml", "Troca da venda #" + v.getIdPedido(),
                 (PDVController controller) -> {
+                    telaTroca[0]=controller;
                     controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
                     controller.iniciarTroca(v, () -> trocou[0] = true);
                 });
-        if (trocou[0]) buscar();
+        if (trocou[0] || (telaTroca[0]!=null && telaTroca[0].isTrocaDesatualizada())) buscar();
         else mostrarDetalhe(tabelaVendas.getSelectionModel().getSelectedItem());
     }
 }

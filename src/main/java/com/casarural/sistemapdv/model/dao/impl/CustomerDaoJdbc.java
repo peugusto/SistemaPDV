@@ -14,10 +14,13 @@ import java.util.List;
 import java.util.Optional;
 
 public class CustomerDaoJdbc implements CustomerDao {
+    private final java.util.function.Supplier<Connection> conexoes;
+    public CustomerDaoJdbc() { this(DB::getConnection); }
+    public CustomerDaoJdbc(java.util.function.Supplier<Connection> conexoes) { this.conexoes=java.util.Objects.requireNonNull(conexoes); }
 
     @Override
     public void insert(Customer obj) {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement(
                      "INSERT INTO cliente (nome_cliente, limite_credito, situacao_fiado, telefone) VALUES (?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS)) {
@@ -45,7 +48,7 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public Optional<Customer> findById(Integer id) {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement("SELECT * FROM cliente WHERE id_cliente = ?")) {
             st.setInt(1, id);
             try (ResultSet rs = st.executeQuery()) {
@@ -61,7 +64,7 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public List<Customer> findAll() {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement(
                      "SELECT c.*, " +
                              "COALESCE((SELECT SUM(p.valor_total) FROM pedido p WHERE p.id_cliente = c.id_cliente AND p.status = 'FIADO'), 0) " +
@@ -94,17 +97,22 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public void update(Customer obj) {
-        try (Connection conn = DB.getConnection();
+        Object[] original=obj.getEstadoOriginal();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement(
-                     "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ?, telefone = ? WHERE id_cliente = ?")) {
+                     "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ?, telefone = ? WHERE id_cliente = ? "
+                             + "AND limite_credito <=> ? AND situacao_fiado <=> ?")) {
 
             st.setString(1, obj.getNomeCliente());
             st.setBigDecimal(2, obj.getLimiteCredito());
             st.setString(3, obj.getSituacaoFiado().toString());
             st.setString(4, obj.getTelefone());
             st.setInt(5, obj.getIdCliente());
-
-            st.executeUpdate();
+            st.setObject(6,original[0]);
+            st.setString(7,original[1] == null ? null : original[1].toString());
+            if (st.executeUpdate() != 1) throw new DbException(
+                    "O limite ou o bloqueio deste cliente mudou. Reabra a edição para conferir os dados antes de salvar.");
+            obj.registrarEstadoOriginal();
         } catch (SQLException e) {
             throw new DbException(e.getMessage(), e);
         }
@@ -112,7 +120,7 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public int countOrders(Integer idCliente) {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement("SELECT COUNT(*) FROM pedido WHERE id_cliente = ?")) {
             st.setInt(1, idCliente);
             try (ResultSet rs = st.executeQuery()) {
@@ -126,7 +134,7 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public void deleteById(Integer id) {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement("DELETE FROM cliente WHERE id_cliente = ?")) {
             st.setInt(1, id);
             st.executeUpdate();
@@ -142,6 +150,7 @@ public class CustomerDaoJdbc implements CustomerDao {
         obj.setLimiteCredito(rs.getBigDecimal("limite_credito"));
         obj.setSituacaoFiado(CustomerStatus.valueOf(rs.getString("situacao_fiado")));
         obj.setTelefone(rs.getString("telefone"));
+        obj.registrarEstadoOriginal();
         return obj;
     }
 }

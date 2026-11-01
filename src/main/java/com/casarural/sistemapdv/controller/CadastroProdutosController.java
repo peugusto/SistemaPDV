@@ -52,6 +52,7 @@ public class CadastroProdutosController implements Initializable {
     private boolean entradaIncerta;
     private boolean salvamentoConfirmado;
     private boolean fechamentoProtegido;
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     public void setProductService(ProductService service) {
         this.service = service;
@@ -144,9 +145,10 @@ public class CadastroProdutosController implements Initializable {
         }
         try {
             if (isExistingProduct) {
-                salvarEntrada();
+                if (!salvarEntrada()) return;
             } else {
                 Product novo = novoProdutoDoFormulario();
+                if (!protecao.autorizar(botaoSalvar.getScene().getWindow(),"cadastrar o produto "+novo.getNomeProduto())) return;
                 service.saveOrUpdate(novo);
                 entity = novo;
             }
@@ -176,7 +178,7 @@ public class CadastroProdutosController implements Initializable {
         closeStage();
     }
 
-    private void salvarEntrada() {
+    private boolean salvarEntrada() {
         String codigo = txtCodBarras.getText().trim();
         if (entity == null || !codigo.equals(entity.getCodBarras())) {
             throw new IllegalArgumentException(
@@ -193,18 +195,23 @@ public class CadastroProdutosController implements Initializable {
                 throw new IllegalArgumentException("Confirme a entrada pendente sem alterar seus dados.");
             }
             service.registrarEntrada(entradaPendente);
-            return;
+            return true;
         }
         if (entradaPendente == null || !entradaPendente.mesmosDados(entity.getIdProduto(), quantidade, custo)) {
+            if (custo != null && !protecao.autorizar(botaoSalvar.getScene().getWindow(),
+                    "alterar o custo de "+entity.getNomeProduto()+" para "+Money.format(custo)+" nesta entrada")) return false;
             entradaPendente = new EntradaEstoque(UUID.randomUUID(), entity.getIdProduto(), quantidade, custo);
         }
         service.registrarEntrada(entradaPendente);
+        return true;
     }
 
     private Product novoProdutoDoFormulario() {
         Product novo = new Product();
         novo.setCodBarras(txtCodBarras.getText().trim());
         novo.setNomeProduto(txtNome.getText());
+        if (novo.getCodBarras().isBlank() || novo.getNomeProduto()==null || novo.getNomeProduto().isBlank())
+            throw new IllegalArgumentException("Informe o código e o nome do produto.");
         novo.setPrecoProduto(Money.parse(txtPreco.getText()));
         novo.setEstoque(quantidadeDoFormulario(false));
         novo.setPrecoCusto(custoDoFormulario());

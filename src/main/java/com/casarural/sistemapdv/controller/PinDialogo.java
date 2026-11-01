@@ -57,8 +57,8 @@ public final class PinDialogo {
 
     /** Primeira vez: cria o PIN digitando duas vezes. */
     public static boolean criarPin(AcessoRelatoriosService acesso, Window dono) {
-        String aviso = "O PIN da loja protege os relatórios (faturamento), o histórico de caixas, os cancelamentos, os estornos "
-                + "e os descontos. Crie um PIN de 4 a 6 números e guarde: ele será pedido toda vez.";
+        String aviso = "O PIN da loja autoriza relatórios, descontos, cancelamentos, estornos, sangrias "
+                + "e alterações protegidas de produtos e crédito. Crie um PIN de 4 a 6 números e guarde com o responsável.";
         while (true) {
             Optional<String> pin = pedir(dono, "Criar PIN", "Crie o PIN da loja", aviso);
             if (pin.isEmpty()) return false;

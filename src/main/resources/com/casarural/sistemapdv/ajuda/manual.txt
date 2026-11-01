@@ -151,6 +151,7 @@ Tela principal > "Estoque" (F3). Mostra todos os produtos, preço e estoque. Est
 # Caixa: retirar, colocar e fechar
 ## Retirar dinheiro (sangria)
 Barra de baixo > "Retirar dinheiro". Use quando tirar dinheiro da gaveta (pagar fornecedor, guardar no cofre). Escreva o motivo.
+Confirme o valor e o motivo com o responsável: a retirada exige o PIN da loja antes de registrar.
 ## Colocar dinheiro (reforço)
 Barra de baixo > "Colocar dinheiro". Use quando colocar troco na gaveta.
 ## Fechar o caixa no fim do dia
@@ -222,6 +223,8 @@ O cliente levou um produto e voltou para trocar por outro.
 4. Aperte F1. O que o cliente já tinha pago entra como crédito da troca.
 5. Se a compra nova for mais cara, ele paga só a diferença. Se for mais barata, a tela diz quanto devolver.
 6. Confirme. A venda antiga fica como "Trocada" e o estoque se acerta sozinho.
+! Mesmos produtos, quantidades e preços: o desconto original é mantido. Se mudar o carrinho, o desconto original é removido; para dar outro desconto, use F4 no pagamento e autorize com o PIN.
+! Se aparecer "Troca desatualizada", a venda original mudou depois de abrir a troca (por exemplo, recebeu um pagamento de fiado). A tentativa não grava nada. Reabra a troca pelo histórico para usar os créditos atualizados.
 ! Desistiu no meio? Aperte Esc na venda: nada muda.
 
 # Estornar recebimento de fiado
@@ -233,9 +236,15 @@ Recebeu um pagamento de fiado errado (valor ou forma)?
 ! Só dá para estornar pagamentos do caixa que está aberto agora. Depois, lance o pagamento certo.
 
 # PIN da loja
-O PIN da loja protege: relatórios de vendas, histórico de caixas, cancelar venda, trocar produtos, estornar recebimento e dar desconto.
+O PIN da loja protege: relatórios de vendas, histórico de caixas, cancelar venda, trocar produtos, estornar recebimento, dar desconto e retirar dinheiro do caixa.
+- Produtos: exige PIN para cadastrar, trocar código de barras, alterar preço ou custo, ajustar estoque diretamente, alterar permissão de fiado, tipo de venda ou controle de estoque, desativar, reativar ou excluir.
+- Entrada de mercadoria sem mudança de custo continua livre. Informar um custo diferente exige PIN; confirmar novamente uma entrada incerta usa a mesma operação já autorizada.
+- Clientes: alterar o limite de crédito ou desbloquear manualmente exige PIN. Cadastrar cliente com limite inicial maior que zero também exige PIN.
+- Corrigir nomes e contatos, cadastrar cliente sem limite, vender, receber fiado, imprimir e preparar a lista de compras continuam livres. O bloqueio automático por atraso continua sendo liberado apenas pelo pagamento das compras vencidas.
+- Abertura, fechamento e reforço do caixa continuam com a rotina normal. Sangria exige motivo e PIN.
+- O responsável digita o PIN na hora da ação; isso não cria usuário, perfil ou sessão de administrador.
 - Ele é criado na primeira vez que alguma dessas coisas for usada (4 a 6 números, digitado duas vezes).
-- Para trocar: Relatórios > Vendas e produtos > "Trocar PIN".
+- Para trocar: Relatórios > Vendas e produtos > "Trocar PIN"; confirme primeiro o PIN atual.
 - Após três erros, aguarde 30 segundos. Novos grupos de três erros aumentam a espera até 15 minutos; acertar o PIN limpa a contagem.
 - Fechar a janela, mudar de ação ou reiniciar o sistema não limpa os erros nem a espera.
 - Esqueceu? Veja "Problemas e soluções".

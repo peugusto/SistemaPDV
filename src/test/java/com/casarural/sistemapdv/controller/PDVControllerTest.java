@@ -85,6 +85,27 @@ class PDVControllerTest {
         }
     }
 
+    @Test
+    void trocaIdenticaMantemDescontoNoCarrinhoENoPedidoMasAlteracaoRemove() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            Produtos produtos=new Produtos(); produtos.produto.setPrecoProduto(Money.parse("50"));
+            Tela tela=new Tela(produtos); VendaParaDesfazer original=new VendaParaDesfazer();
+            original.setIdPedido(80);original.setVersao("referencia");original.setDesconto(Money.parse("10"));
+            OrderItem item=new OrderItem(produtos.produto,2,Money.parse("50"));item.setEstoqueBaixado(2);original.getItens().add(item);
+            tela.controller.iniciarTroca(original,()->{});
+            assertEquals("R$ 90,00",tela.rotulo("labelTotal").getText());
+            assertEquals(Money.parse("90"),tela.controller.prepararPedido().getValorTotal());
+            assertEquals(Money.parse("10"),tela.controller.prepararPedido().getDesconto());
+            assertEquals("referencia",tela.controller.prepararPedido().getVersaoPedidoTrocado());
+            assertTrue(tela.rotulo("labelDescontoTroca").getText().contains("mantido"));
+            tela.adicionar("1");
+            assertEquals("R$ 150,00",tela.rotulo("labelTotal").getText());
+            assertEquals(Money.ZERO,tela.controller.prepararPedido().getDesconto());
+            assertTrue(tela.rotulo("labelDescontoTroca").getText().contains("exige PIN"));
+            assertEquals(2,original.getItens().get(0).getQtd());
+        });
+    }
+
     private static DialogPane aviso() {
         for (Window janela : Window.getWindows()) {
             if (janela.getScene() != null && janela.getScene().getRoot() instanceof DialogPane) {

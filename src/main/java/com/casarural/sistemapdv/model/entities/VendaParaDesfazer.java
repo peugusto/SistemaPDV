@@ -20,6 +20,9 @@ public class VendaParaDesfazer {
     private LocalDateTime dataPedido;
     private BigDecimal valorTotal = Money.ZERO;
     private BigDecimal desconto = Money.ZERO;
+    private String versao;
+    public String getVersao() { return versao; }
+    public void setVersao(String versao) { this.versao=versao; }
     /** Itens com o produto completo (para voltarem ao cupom na troca). */
     private final List<OrderItem> itens = new ArrayList<>();
     /** Quanto foi pago em cada forma (inclusive recebimentos depois); FIADO = o que ainda ficou na conta. */

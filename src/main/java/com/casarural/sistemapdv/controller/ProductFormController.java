@@ -30,6 +30,7 @@ public class ProductFormController implements Initializable {
     private ProductService service;
     private ProductListController listController;
     private boolean salvamentoConfirmado;
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     @FXML private TextField txtCodBarras;
     @FXML private TextField txtNome;
@@ -98,6 +99,9 @@ public class ProductFormController implements Initializable {
 
         try {
             Product alterado = produtoDoFormulario();
+            java.util.List<String> acoes = com.casarural.sistemapdv.services.AcoesProtegidas.produto(entity,alterado);
+            if (!acoes.isEmpty() && !protecao.autorizar(btnSave.getScene().getWindow(),
+                    String.join(", ",acoes)+" de "+alterado.getNomeProduto())) return;
             service.saveOrUpdate(alterado);
             entity = alterado;
             salvamentoConfirmado = true;
@@ -131,6 +135,7 @@ public class ProductFormController implements Initializable {
             throw new IllegalArgumentException("Preço inválido. Digite um valor como 12,50.", e);
         }
         int estoque = ProdutoCampos.estoque(txtEstoque);
+        if (estoque<0) throw new IllegalArgumentException("O estoque não pode ser negativo.");
         BigDecimal custo = ProdutoCampos.lerValorParaSalvar(txtCusto);
         // O objeto recebido pertence à lista. Uma falha ou Cancelar deve deixá-lo intacto.
         Product alterado = new Product(txtCodBarras.getText(), txtNome.getText(), preco, estoque);

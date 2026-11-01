@@ -1,6 +1,8 @@
 package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.TrocaDesatualizadaException;
+import com.casarural.sistemapdv.util.VersaoTroca;
 import com.casarural.sistemapdv.model.entities.*;
 import com.casarural.sistemapdv.model.entities.enums.*;
 import org.junit.jupiter.api.Test;
@@ -70,7 +72,8 @@ class OrderDaoJdbcFiadoTest {
                     return rows(permissoes.containsKey(id) ? List.of(Map.of("nome_produto", "Produto " + id, "permite_fiado", permissoes.get(id))) : List.of());
                 }
                 if (sql.startsWith("SELECT aberto_em")) return rows(List.of(Map.of("1", Timestamp.valueOf(AGORA.minusHours(4)))));
-                if (sql.startsWith("SELECT status")) return rows(List.of(Map.of("status", "FIADO", "data_pedido", Timestamp.valueOf(AGORA.minusHours(1)), "valor_total", r("80"))));
+                if (sql.startsWith("SELECT status")) return rows(List.of(Map.of("status", "FIADO", "data_pedido", Timestamp.valueOf(AGORA.minusHours(1)), "valor_total", r("80"), "desconto", r("0"), "id_cliente", 9)));
+                if (sql.startsWith("SELECT id_pagamento, metodo_pagamento")) return rows(List.of());
                 if (sql.startsWith("SELECT metodo_pagamento") || sql.startsWith("SELECT id_produto, COALESCE")) return rows(List.of());
                 throw new AssertionError(sql);
             });
@@ -128,11 +131,25 @@ class OrderDaoJdbcFiadoTest {
     }
     @Test void trocaSubstituiDividaOriginalSemContarDuasVezes() {
         Banco b = new Banco(); b.compras.add(new Compra(10, "80", "0", 0)); b.compras.add(new Compra(11, "20", "0", 1));
-        Order o = venda("80"); o.setIdPedidoTrocado(10); b.dao().insert(o); assertEquals(1, b.commits);
+        Order o = venda("80"); referenciarTroca(o); b.dao().insert(o); assertEquals(1, b.commits);
     }
     @Test void trocaRecusadaNaoCancelaOriginal() {
         Banco b = new Banco(); b.compras.add(new Compra(10, "80", "0", 0)); b.compras.add(new Compra(11, "20", "0", 1));
-        Order o = venda("90"); o.setIdPedidoTrocado(10); b.recusa(o, "Limite de crédito");
+        Order o = venda("90"); referenciarTroca(o); b.recusa(o, "Limite de crédito");
+    }
+    static void referenciarTroca(Order o) {
+        VendaParaDesfazer v = new VendaParaDesfazer(); v.setIdPedido(10); v.setIdCliente(9);
+        v.setStatus(OrderStatus.FIADO); v.setDataPedido(AGORA.minusHours(1));
+        v.setValorTotal(r("80")); v.setDesconto(r("0"));
+        o.setIdPedidoTrocado(10); o.setVersaoPedidoTrocado(new VersaoTroca(v).concluir());
+    }
+    @Test void trocaSemReferenciaOuDesatualizadaRecusaAntesDeQualquerEscrita() {
+        for (String versao : Arrays.asList(null, "", "versao antiga")) {
+            Banco b = new Banco(); Order o = venda("80"); o.setIdPedidoTrocado(10); o.setVersaoPedidoTrocado(versao);
+            assertThrows(TrocaDesatualizadaException.class, () -> b.dao().insert(o));
+            assertTrue(b.escritas.isEmpty()); assertEquals(0,b.commits); assertEquals(1,b.rollbacks);
+            assertFalse(b.consultas.stream().anyMatch(s -> s.contains("FROM cliente")), "Referência inválida deve parar antes da validação do fiado");
+        }
     }
     @Test void clienteAusenteOuFiadoSemClienteNaoGravam() {
         Banco b = new Banco(); b.existe = false; b.recusa(venda("1"), "cliente não foi encontrado");

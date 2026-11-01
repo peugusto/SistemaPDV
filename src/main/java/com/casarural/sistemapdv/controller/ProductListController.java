@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 public class ProductListController implements Initializable {
+    private ProtecaoPin protecao = new ProtecaoPin();
 
     private static final Logger log = LoggerFactory.getLogger(ProductListController.class);
 
@@ -228,6 +229,7 @@ public class ProductListController implements Initializable {
                                 + "Para voltar a vender, é só marcar \"Produto ativo\" em Editar.",
                         Alert.AlertType.WARNING, "Voltar", "Desativar produto");
                 if (escolha == 0) {
+                    if (!protecao.autorizar(productTable.getScene().getWindow(),"desativar o produto "+obj.getNomeProduto())) return;
                     service.desativar(obj);
                     log.info("Produto {} ({}) desativado", obj.getIdProduto(), obj.getNomeProduto());
                     try {
@@ -244,6 +246,7 @@ public class ProductListController implements Initializable {
             }
             if (Alerts.showConfirmation("Excluir produto", "Excluir " + obj.getNomeProduto() + "?",
                     "Ele nunca foi vendido. Excluir apaga o cadastro de vez.")) {
+                if (!protecao.autorizar(productTable.getScene().getWindow(),"excluir definitivamente o produto "+obj.getNomeProduto())) return;
                 service.delete(obj.getIdProduto());
                 log.info("Produto {} ({}) excluído", obj.getIdProduto(), obj.getNomeProduto());
                 updateTableView();

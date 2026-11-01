@@ -23,6 +23,9 @@ public class Order {
     private BigDecimal desconto = Money.ZERO;
     /** Na troca: a venda antiga que esta substitui (cancelada na mesma transação ao gravar). */
     private Integer idPedidoTrocado;
+    private String versaoPedidoTrocado;
+    public String getVersaoPedidoTrocado() { return versaoPedidoTrocado; }
+    public void setVersaoPedidoTrocado(String versao) { versaoPedidoTrocado=versao; }
 
     // Resumo de pagamentos de um pedido fiado (preenchido pela consulta da conta do cliente; não é gravado)
     private BigDecimal pagoNaVenda = Money.ZERO;

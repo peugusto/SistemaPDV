@@ -35,6 +35,8 @@ public class PDVController implements Initializable {
     /** Na troca, o estoque que a venda antiga devolve ao ser cancelada (id do produto -> quantidade). */
     private final Map<Integer, Integer> estoqueDaTroca = new HashMap<>();
     private Runnable aoConcluirTroca;
+    private boolean trocaDesatualizada;
+    public boolean isTrocaDesatualizada() { return trocaDesatualizada; }
 
 
     @FXML private Label labelUltimoItem;
@@ -46,6 +48,7 @@ public class PDVController implements Initializable {
 
     @FXML private ListView<OrderItem> listaItens;
     @FXML private Label labelTotal;
+    @FXML private Label labelDescontoTroca;
 
 
     @FXML private Button botaoAdicionar;
@@ -340,11 +343,7 @@ public class PDVController implements Initializable {
             return;
         }
 
-        Order order = new Order();
-        order.setItemPedido(new java.util.ArrayList<>(itensVenda));
-        order.aplicarDesconto(java.math.BigDecimal.ZERO);   // total = soma dos itens
-        if (trocaDe != null) order.setIdPedidoTrocado(trocaDe.getIdPedido());
-        order.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
+        Order order = prepararPedido();
 
         PaymentController[] pagamento = new PaymentController[1];
         com.casarural.sistemapdv.util.ViewLoader.showView(
@@ -362,6 +361,11 @@ public class PDVController implements Initializable {
                 }
         );
 
+        if (pagamento[0] != null && pagamento[0].isTrocaDesatualizada()) {
+            trocaDesatualizada=true;
+            fecharJanela();
+            return;
+        }
         // Resultado incerto não é cancelamento: reabrir este carrinho criaria outra venda.
         if (pagamento[0] != null && pagamento[0].isVendaPendenteConferencia()) {
             fecharJanela();
@@ -382,14 +386,35 @@ public class PDVController implements Initializable {
         }
     }
 
+    Order prepararPedido() {
+        Order pedido = new Order();
+        pedido.setItemPedido(new java.util.ArrayList<>(itensVenda));
+        pedido.aplicarDesconto(com.casarural.sistemapdv.model.entities.RegraTroca.descontoOriginal(trocaDe, itensVenda));
+        if (trocaDe != null) {
+            pedido.setIdPedidoTrocado(trocaDe.getIdPedido());
+            pedido.setVersaoPedidoTrocado(trocaDe.getVersao());
+        }
+        pedido.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
+        return pedido;
+    }
+
     private BigDecimal calcularTotalVenda() {
         return itensVenda.stream()
                 .map(OrderItem::getSubtotal)
-                .reduce(Money.ZERO, BigDecimal::add);
+                .reduce(Money.ZERO, BigDecimal::add)
+                .subtract(com.casarural.sistemapdv.model.entities.RegraTroca.descontoOriginal(trocaDe,itensVenda));
     }
 
     private void atualizarTotalVenda() {
         labelTotal.setText(Money.format(calcularTotalVenda()));
+        boolean mostrar = trocaDe != null && Money.isPositive(trocaDe.getDesconto());
+        labelDescontoTroca.setVisible(mostrar);
+        labelDescontoTroca.setManaged(mostrar);
+        if (mostrar) {
+            BigDecimal mantido = com.casarural.sistemapdv.model.entities.RegraTroca.descontoOriginal(trocaDe, itensVenda);
+            labelDescontoTroca.setText(Money.isPositive(mantido) ? "Desconto original mantido: " + Money.format(mantido)
+                    : "Carrinho alterado: desconto original removido. Novo desconto exige PIN no pagamento.");
+        }
     }
 
     private void resetarCamposVisuais() {
