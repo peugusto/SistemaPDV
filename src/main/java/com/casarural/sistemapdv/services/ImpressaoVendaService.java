@@ -2,6 +2,12 @@ package com.casarural.sistemapdv.services;
 
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.RelatorioImpressaoDao;
+import com.casarural.sistemapdv.model.dao.ArquivoComprovanteDao;
+import com.casarural.sistemapdv.model.dao.impl.ArquivoComprovanteDaoJdbc;
+import com.casarural.sistemapdv.model.entities.ComprovanteGuardado;
+import com.casarural.sistemapdv.model.entities.ComprovanteGuardado.Tipo;
+import com.casarural.sistemapdv.model.entities.Payment;
+import com.casarural.sistemapdv.services.impressao.SegundaVia;
 import com.casarural.sistemapdv.services.impressao.ComprovanteDivida;
 import com.casarural.sistemapdv.services.impressao.ComprovanteFechamento;
 import java.util.function.Supplier;
@@ -34,6 +40,7 @@ public class ImpressaoVendaService {
     private final Destino destino;
     private final Executor executor;
     private final RelatorioImpressaoDao relatorios;
+    private final ArquivoComprovanteDao arquivo;
 
     public ImpressaoVendaService() {
         this(new DestinoConfigurado(), FILA);
@@ -43,6 +50,10 @@ public class ImpressaoVendaService {
         this(destino, executor, DaoFactory.createRelatorioImpressaoDAO());
     }
     public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios) {
+        this(destino, executor, relatorios, new ArquivoComprovanteDaoJdbc());
+    }
+    public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios, ArquivoComprovanteDao arquivo) {
+        this.arquivo = java.util.Objects.requireNonNull(arquivo);
         this.relatorios = relatorios;
         this.destino = destino;
         this.executor = executor;
@@ -51,15 +62,39 @@ public class ImpressaoVendaService {
     public CompletableFuture<Void> emitir(Order venda, BigDecimal troco,
                                            Map<PaymentMethod, BigDecimal> devolucoes) {
         // Captura tudo na thread do carrinho, antes de ele ser limpo para a próxima venda.
-        return enviar(ComprovanteVenda.gerar(venda, troco, devolucoes));
+        return arquivarEEnviar(Tipo.VENDA,String.valueOf(venda.getIdPedido()),ComprovanteVenda.gerar(venda, troco, devolucoes));
     }
 
     public CompletableFuture<Void> emitir(RecebimentoFiado recebimento) {
-        return enviar(ComprovanteFiado.gerar(recebimento));
+        return arquivarEEnviar(Tipo.FIADO,String.valueOf(recebimento.getIdRecebimento()),ComprovanteFiado.gerar(recebimento));
     }
 
     public CompletableFuture<Void> emitirListaCompras(java.util.List<com.casarural.sistemapdv.model.entities.RegraListaCompras.Item> itens, java.time.LocalDateTime atualizadaEm) {
-        return enviar(com.casarural.sistemapdv.services.impressao.ComprovanteListaCompras.gerar(itens, atualizadaEm));
+        return arquivarEEnviar(Tipo.LISTA_COMPRAS,java.util.UUID.randomUUID().toString(),com.casarural.sistemapdv.services.impressao.ComprovanteListaCompras.gerar(itens, atualizadaEm));
+    }
+
+    private CompletableFuture<Void> arquivarEEnviar(Tipo tipo,String referencia,Comprovante documento) {
+        ComprovanteGuardado captura=new ComprovanteGuardado(tipo,referencia,documento);
+        return enviar(() -> arquivo.guardar(captura));
+    }
+    public CompletableFuture<Void> reimprimirVenda(int idVenda) {
+        return enviar(() -> {
+            Comprovante historico=relatorios.vendaHistorica(idVenda);
+            return SegundaVia.de(arquivo.buscar(Tipo.VENDA,String.valueOf(idVenda)).<Comprovante>map(d->d).orElse(historico),java.time.LocalDateTime.now());
+        });
+    }
+    public CompletableFuture<Void> reimprimirRecebimento(int idCliente,Payment selecionado) {
+        Integer id=selecionado.getIdRecebimento();
+        java.time.LocalDateTime data=selecionado.getDataPagamento();PaymentMethod forma=selecionado.getMetodo();
+        return enviar(() -> {
+            Comprovante historico=relatorios.recebimentoHistorico(idCliente,id,data,forma);
+            Comprovante original=id==null?historico:arquivo.buscar(Tipo.FIADO,String.valueOf(id)).<Comprovante>map(d->d).orElse(historico);
+            return SegundaVia.de(original,java.time.LocalDateTime.now());
+        });
+    }
+    public CompletableFuture<Void> reimprimirUltimaLista() {
+        return enviar(() -> SegundaVia.de(arquivo.ultimaLista().orElseThrow(() -> new IllegalArgumentException(
+                "Nenhuma lista de compras foi guardada ainda. Imprima uma lista primeiro.")),java.time.LocalDateTime.now()));
     }
 
     /** A leitura atualizada ocorre na fila, fora da thread da tela. */
@@ -68,9 +103,6 @@ public class ImpressaoVendaService {
     }
     public CompletableFuture<Void> emitirDivida(int idCliente) {
         return enviar(() -> ComprovanteDivida.gerar(relatorios.extratoFiado(idCliente)));
-    }
-    private CompletableFuture<Void> enviar(Comprovante comprovante) {
-        return enviar(() -> comprovante);
     }
     private CompletableFuture<Void> enviar(Supplier<Comprovante> obter) {
         return CompletableFuture.runAsync(() -> {

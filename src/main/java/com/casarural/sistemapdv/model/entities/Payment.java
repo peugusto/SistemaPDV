@@ -10,6 +10,9 @@ import java.time.LocalDateTime;
 
 public class Payment {
     private int idPagamento;
+    private Integer idRecebimento;
+    public Integer getIdRecebimento() { return idRecebimento; }
+    public void setIdRecebimento(Integer id) { this.idRecebimento = id; }
     private Order order;
     private BigDecimal valorPago = Money.ZERO;
     private LocalDateTime dataPagamento;

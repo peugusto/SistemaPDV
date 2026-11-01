@@ -104,6 +104,25 @@ Use quando o produto não tem código de barras ou o leitor não lê.
 O pagamento abate primeiro as compras mais antigas. Se o cliente estava Em atraso e pagou as compras atrasadas, aparece "Fiado liberado".
 ! O caixa precisa estar aberto para receber fiado.
 
+# Segunda via de comprovantes
+## Venda
+1. Abra Histórico de vendas e selecione o pedido.
+2. Clique em "Segunda via" no detalhe da venda. Não é necessário abrir o caixa novamente.
+! Vendas canceladas ou trocadas não permitem emitir um comprovante de venda válido.
+## Fiado
+- Em Clientes e fiado, abra a conta do cliente.
+- Na aba Pagamentos recebidos, selecione o pagamento e clique em "Segunda via". Isso reimprime o recebimento, sem receber novamente.
+- Nas abas Compras em aberto e Compras quitadas, selecione a compra e use "Segunda via da compra".
+- O botão Imprimir dívida continua mostrando a conta atual; a segunda via do recebimento conserva os valores e o saldo do comprovante original guardado.
+## Lista de compras
+- "Imprimir lista" guarda uma nova lista com as quantidades escolhidas na tela.
+- "Segunda via da última lista" reimprime a última lista guardada, mesmo depois de editar as quantidades, registrar reposição ou reiniciar o programa.
+- Imprimir e reimprimir não registram entrada de mercadoria nem abatem as pendências.
+## Se faltar papel ou ocorrer falha
+Confira a impressora e use Segunda via no histórico correspondente. Não refaça a venda nem o recebimento.
+O conteúdo preparado fica guardado antes do envio à impressora. A confirmação de envio não garante que o papel já saiu.
+! Operações antigas sem comprovante guardado são identificadas como "Reconstruído do histórico". Troco e saldo da época que não foram registrados não são inventados. Recebimentos antigos podem reunir pagamentos com a mesma data/hora e forma.
+
 # Clientes
 - Novo cliente: tela principal > "Novo cliente" (F4).
 - Ver, editar ou excluir: "Clientes e fiado" (F5).

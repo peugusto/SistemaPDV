@@ -6,7 +6,10 @@ import com.casarural.sistemapdv.model.dao.RelatorioImpressaoDao;
 import com.casarural.sistemapdv.model.entities.*;
 import com.casarural.sistemapdv.model.entities.enums.*;
 import com.casarural.sistemapdv.util.Money;
+import com.casarural.sistemapdv.services.impressao.Comprovante;
+import com.casarural.sistemapdv.services.impressao.ComprovanteHistorico;
 import java.sql.*;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -110,6 +113,56 @@ public class RelatorioImpressaoDaoJdbc implements RelatorioImpressaoDao {
                 }
             }
             return new FechamentoCaixa(caixa, resumo, new ArrayList<>(vendas.values()), movimentos, recebimentos);
+        });
+    }
+
+    @Override public Comprovante vendaHistorica(int idVenda) {
+        if(idVenda<=0)throw new IllegalArgumentException("Selecione uma venda.");
+        return consultar(conn -> {
+            Map<Integer,Order> compras=pedidos(conn,"p.id_pedido = ?",idVenda);
+            Order venda=compras.get(idVenda);
+            if(venda==null)throw new DbException("Venda não encontrada.");
+            if(venda.getStatus()==OrderStatus.CANCELADO)throw new DbException("Esta venda foi cancelada ou trocada. Não é possível emitir um comprovante de venda válido.");
+            carregarItens(conn,compras,"p.id_pedido = ?",idVenda);
+            try(PreparedStatement st=conn.prepareStatement("SELECT metodo_pagamento,valor_pago FROM pagamento WHERE id_pedido=? AND origem='VENDA' ORDER BY id_pagamento")) {
+                st.setInt(1,idVenda);try(ResultSet rs=st.executeQuery()) { while(rs.next()) {
+                    PaymentMethod forma=PaymentMethod.ler(rs.getString("metodo_pagamento"));
+                    if(forma==null)throw new DbException("Há uma forma de pagamento antiga sem identificação.");
+                    venda.getPagamentos().add(new Order.PaymentSlice(rs.getBigDecimal("valor_pago"),forma));
+                }}
+            }
+            return ComprovanteHistorico.venda(venda);
+        });
+    }
+
+    @Override public Comprovante recebimentoHistorico(int idCliente,Integer idRecebimento,LocalDateTime data,PaymentMethod forma) {
+        if(idCliente<=0 || (idRecebimento!=null && idRecebimento<=0) || data==null || forma==null || forma==PaymentMethod.FIADO)
+            throw new IllegalArgumentException("Selecione um recebimento válido.");
+        return consultar(conn -> {
+            Customer c;
+            try(PreparedStatement st=conn.prepareStatement("SELECT id_cliente,nome_cliente,telefone FROM cliente WHERE id_cliente=?")) {
+                st.setInt(1,idCliente);try(ResultSet rs=st.executeQuery()) {if(!rs.next())throw new DbException("Cliente não encontrado.");c=cliente(rs);}
+            }
+            if(idRecebimento!=null)try(PreparedStatement st=conn.prepareStatement("SELECT 1 FROM pagamento_estornado WHERE id_recebimento=? LIMIT 1")) {
+                st.setInt(1,idRecebimento);try(ResultSet rs=st.executeQuery()) {if(rs.next())throw new DbException("Este recebimento foi total ou parcialmente desfeito. Atualize o histórico.");}
+            }
+            String filtro=idRecebimento==null?"pg.id_recebimento IS NULL AND pg.data_pagamento=? AND pg.metodo_pagamento=?":"pg.id_recebimento=?";
+            List<Integer> ids=new ArrayList<>();BigDecimal pago=Money.ZERO;
+            try(PreparedStatement st=conn.prepareStatement("SELECT pg.id_pedido,pg.valor_pago,pg.data_pagamento,pg.metodo_pagamento FROM pagamento pg JOIN pedido p ON p.id_pedido=pg.id_pedido WHERE p.id_cliente=? AND pg.origem='RECEBIMENTO_FIADO' AND "+filtro+" ORDER BY pg.id_pagamento")) {
+                st.setInt(1,idCliente);
+                if(idRecebimento==null) {st.setTimestamp(2,Timestamp.valueOf(data));st.setString(3,forma.name());} else st.setInt(2,idRecebimento);
+                try(ResultSet rs=st.executeQuery()) {while(rs.next()) {
+                    if(!data.equals(data(rs,"data_pagamento")) || forma!=PaymentMethod.ler(rs.getString("metodo_pagamento")))
+                        throw new DbException("O recebimento mudou. Atualize o histórico antes de imprimir.");
+                    ids.add(rs.getInt("id_pedido"));pago=pago.add(Money.of(rs.getBigDecimal("valor_pago")));
+                }}
+            }
+            if(ids.isEmpty())throw new DbException("Recebimento não encontrado ou já desfeito. Atualize o histórico.");
+            List<Order> compras=new ArrayList<>();
+            for(Integer id:new LinkedHashSet<>(ids)) {
+                Map<Integer,Order> uma=pedidos(conn,"p.id_pedido = ?",id);carregarItens(conn,uma,"p.id_pedido = ?",id);compras.addAll(uma.values());
+            }
+            return ComprovanteHistorico.recebimento(c,data,forma,pago,compras,idRecebimento==null);
         });
     }
 

@@ -26,7 +26,7 @@ class ListaComprasAtualizacaoTest {
         Tela()throws Exception{
             f=new FXMLLoader(ListaComprasController.class.getResource("/com/casarural/sistemapdv/view/ListaCompras.fxml"));
             Parent root=f.load(); Stage stage=new Stage();stage.setScene(new Scene(root));com.casarural.sistemapdv.util.Tema.aplicar(stage.getScene());c=f.getController();
-            set(c,"executor",(Executor)Runnable::run);set(c,"impressaoVendaService",new ImpressaoVendaService(doc->{},impressao::add));
+            set(c,"executor",(Executor)Runnable::run);set(c,"impressaoVendaService",new com.casarural.sistemapdv.support.ImpressaoTeste(doc->{},impressao::add));
         }
         Button botao(String n){return (Button)f.getNamespace().get(n);}
         @SuppressWarnings("unchecked") List<Item> itens(){return ((TableView<Item>)f.getNamespace().get("tabela")).getItems();}

@@ -96,6 +96,7 @@
                                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                                     <children>
                                         <Label fx:id="labelVendaNumero" styleClass="titulo-cartao" text="Venda #0" />
+                                        <Button fx:id="btnSegundaVia" text="Segunda via" onAction="#onSegundaVia" disable="true" />
                                         <Pane HBox.hgrow="ALWAYS" />
                                         <Label fx:id="labelVendaValor" styleClass="valor-grande,texto-sucesso" text="R$ 0,00" />
                                     </children>

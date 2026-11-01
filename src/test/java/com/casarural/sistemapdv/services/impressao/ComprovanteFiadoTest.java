@@ -86,7 +86,7 @@ class ComprovanteFiadoTest {
     void mesmoDestinoDePreviaRecebeFiadoSemProcurarImpressora() throws Exception {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         PreviaTerminal terminal = new PreviaTerminal(new PrintStream(bytes, true, StandardCharsets.UTF_8));
-        ImpressaoVendaService impressao = new ImpressaoVendaService(terminal::enviar, Runnable::run);
+        ImpressaoVendaService impressao = new com.casarural.sistemapdv.support.ImpressaoTeste(terminal::enviar, Runnable::run);
         impressao.emitir(exemplo(false)).join();
         String texto = bytes.toString(StandardCharsets.UTF_8);
         assertTrue(texto.contains("Maria da Silva"));

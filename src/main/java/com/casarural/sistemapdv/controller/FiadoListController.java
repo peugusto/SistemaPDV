@@ -101,6 +101,8 @@ public class FiadoListController implements Initializable {
     @FXML private TextField campoValorPagamento;
     @FXML private Button btnPagar;
     @FXML private Button btnImprimirDivida;
+    @FXML private Button btnSegundaViaRecebimento, btnSegundaViaAberto, btnSegundaViaQuitado;
+    private boolean imprimindoSegundaVia;
     private boolean imprimindoDivida;
 
     private Customer customer;
@@ -148,6 +150,7 @@ public class FiadoListController implements Initializable {
         colAbertoFalta.getStyleClass().add("texto-perigo");
 
         configurarItens(colItemAbertoProduto, colItemAbertoQtd, colItemAbertoPreco, colItemAbertoSubtotal);
+        tableAbertos.getSelectionModel().selectedItemProperty().addListener((o,a,n)->atualizarSegundaVia());
         tableAbertos.getSelectionModel().selectedItemProperty().addListener((obs, antigo, pedido) ->
                 mostrarItens(pedido, tableItensAberto, labelItensAberto));
     }
@@ -160,6 +163,7 @@ public class FiadoListController implements Initializable {
         MoneyCells.format(colRecValor);
         colRecPedidos.setCellValueFactory(new PropertyValueFactory<>("pedidos"));
         tableRecebimentos.getSelectionModel().selectedItemProperty().addListener((obs, antes, rec) -> {
+            atualizarSegundaVia();
             boolean pode = rec != null && idCaixaAberto != null && idCaixaAberto.equals(rec.getIdCaixa());
             btnEstornar.setDisable(!pode);
             labelEstornoDica.setText(rec != null && !pode
@@ -176,6 +180,7 @@ public class FiadoListController implements Initializable {
         MoneyCells.format(colQuitTotal);
 
         configurarItens(colItemQuitProduto, colItemQuitQtd, colItemQuitPreco, colItemQuitSubtotal);
+        tableQuitados.getSelectionModel().selectedItemProperty().addListener((o,a,n)->atualizarSegundaVia());
         tableQuitados.getSelectionModel().selectedItemProperty().addListener((obs, antigo, pedido) ->
                 mostrarItens(pedido, tableItensQuitado, labelItensQuitado));
     }
@@ -338,6 +343,36 @@ public class FiadoListController implements Initializable {
         }
     }
 
+    private void atualizarSegundaVia() {
+        btnSegundaViaRecebimento.setDisable(imprimindoSegundaVia || tableRecebimentos.getSelectionModel().getSelectedItem()==null);
+        btnSegundaViaAberto.setDisable(imprimindoSegundaVia || tableAbertos.getSelectionModel().getSelectedItem()==null);
+        btnSegundaViaQuitado.setDisable(imprimindoSegundaVia || tableQuitados.getSelectionModel().getSelectedItem()==null);
+    }
+    @FXML public void onSegundaViaRecebimento() {
+        Payment rec=tableRecebimentos.getSelectionModel().getSelectedItem();
+        if(rec==null || customer==null || recebendo || imprimindoSegundaVia)return;
+        iniciarSegundaVia(()->impressaoVendaService.reimprimirRecebimento(customer.getIdCliente(),rec));
+    }
+    @FXML public void onSegundaViaAberto() { segundaViaCompra(tableAbertos); }
+    @FXML public void onSegundaViaQuitado() { segundaViaCompra(tableQuitados); }
+    private void segundaViaCompra(TableView<Order> tabela) {
+        Order compra=tabela.getSelectionModel().getSelectedItem();
+        if(compra==null || recebendo || imprimindoSegundaVia)return;
+        iniciarSegundaVia(()->impressaoVendaService.reimprimirVenda(compra.getIdPedido()));
+    }
+    private void iniciarSegundaVia(java.util.function.Supplier<java.util.concurrent.CompletableFuture<Void>> trabalho) {
+        imprimindoSegundaVia=true;atualizarSegundaVia();
+        try {trabalho.get().whenComplete((v,e)->finalizarSegundaVia(e));} catch(RuntimeException e) {finalizarSegundaVia(e);}
+    }
+    private void finalizarSegundaVia(Throwable erro) {
+        if(erro!=null)log.error("Erro ao emitir segunda via no fiado",erro);
+        javafx.application.Platform.runLater(()->{
+            imprimindoSegundaVia=false;atualizarSegundaVia();
+            if(erro!=null)Alerts.showAlert("Segunda via", "Não foi possível imprimir",
+                    "Confira a impressora e atualize o histórico. Recebimentos desfeitos e compras canceladas não permitem essa emissão. Nenhum pagamento foi registrado.",Alert.AlertType.WARNING);
+        });
+    }
+
     /** Imprimir o extrato nunca recebe nem compensa um pagamento. */
     @FXML
     public void onImprimirDividaAction() {
@@ -377,7 +412,7 @@ public class FiadoListController implements Initializable {
         log.error("Recebimento #{} salvo, mas o comprovante não pôde ser enviado", idRecebimento, erro);
         javafx.application.Platform.runLater(() -> Alerts.showAlert("Comprovante não enviado",
                 "O pagamento de fiado #" + idRecebimento + " foi salvo normalmente",
-                "Não foi possível emitir o comprovante. Confira a impressora e o papel. Não repita o pagamento.",
+                "Confira a impressora e o papel. Depois selecione o pagamento em Pagamentos recebidos e use Segunda via. Não repita o pagamento.",
                 Alert.AlertType.WARNING));
     }
 
@@ -431,7 +466,9 @@ public class FiadoListController implements Initializable {
 
         BigDecimal valor;
         try {
-            valor = orderService.estornarRecebimento(customer.getIdCliente(), rec.getDataPagamento(), rec.getMetodo(), motivo.get());
+            valor = rec.getIdRecebimento()==null
+                    ? orderService.estornarRecebimento(customer.getIdCliente(), rec.getDataPagamento(), rec.getMetodo(), motivo.get())
+                    : orderService.estornarRecebimentoPorId(customer.getIdCliente(),rec.getIdRecebimento(),motivo.get());
         } catch (ResultadoTransacaoIncertoException e) {
             log.error("Resultado do estorno de recebimento de {} precisa de conferência", customer.getNomeCliente(), e);
             tableRecebimentos.getSelectionModel().clearSelection();

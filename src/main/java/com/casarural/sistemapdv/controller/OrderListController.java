@@ -97,6 +97,9 @@ public class OrderListController implements Initializable {
     @FXML private HBox boxAcoes;
     @FXML private Button btnTrocar;
     @FXML private Button btnCancelarVenda;
+    @FXML private Button btnSegundaVia;
+    private boolean imprimindoSegundaVia;
+    private com.casarural.sistemapdv.services.ImpressaoVendaService impressaoVendaService = new com.casarural.sistemapdv.services.ImpressaoVendaService();
     @FXML private Label labelAcoesDica;
 
     private static final Logger log = LoggerFactory.getLogger(OrderListController.class);
@@ -368,6 +371,7 @@ public class OrderListController implements Initializable {
     }
 
     private void mostrarDetalhe(SaleSummary venda) {
+        atualizarSegundaVia();
         boolean temVenda = venda != null;
         painelVazio.setVisible(!temVenda);
         painelDetalhe.setVisible(temVenda);
@@ -412,6 +416,26 @@ public class OrderListController implements Initializable {
     }
 
     // ===================== Trocar e cancelar =====================
+
+    private void atualizarSegundaVia() {
+        SaleSummary venda=tabelaVendas.getSelectionModel().getSelectedItem();
+        btnSegundaVia.setDisable(imprimindoSegundaVia || venda==null || venda.getStatus()==OrderStatus.CANCELADO);
+    }
+    @FXML public void onSegundaVia() {
+        SaleSummary venda=tabelaVendas.getSelectionModel().getSelectedItem();
+        if(imprimindoSegundaVia || venda==null || venda.getStatus()==OrderStatus.CANCELADO)return;
+        imprimindoSegundaVia=true;atualizarSegundaVia();btnSegundaVia.setText("Imprimindo...");
+        try {impressaoVendaService.reimprimirVenda(venda.getIdPedido()).whenComplete((v,e)->finalizarSegundaVia(e));}
+        catch(RuntimeException e) {finalizarSegundaVia(e);}
+    }
+    private void finalizarSegundaVia(Throwable erro) {
+        if(erro!=null)log.error("Erro ao emitir segunda via de venda",erro);
+        javafx.application.Platform.runLater(()->{
+            imprimindoSegundaVia=false;btnSegundaVia.setText("Segunda via");atualizarSegundaVia();
+            if(erro!=null)Alerts.showAlert("Segunda via", "Não foi possível imprimir",
+                    "Confira a impressora e a conexão com o banco. Vendas canceladas ou trocadas não permitem essa emissão. Nenhuma venda ou pagamento foi registrado.",Alert.AlertType.WARNING);
+        });
+    }
 
     /** Botões só para venda do caixa aberto e não cancelada; senão explica por quê. */
     private void mostrarAcoes() {

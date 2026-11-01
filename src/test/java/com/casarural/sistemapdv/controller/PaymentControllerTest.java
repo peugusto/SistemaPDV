@@ -56,7 +56,7 @@ class PaymentControllerTest {
             cliente=new Customer("CLIENTE FICTÍCIO",r("500"),CustomerStatus.DISPONIVEL); cliente.setIdCliente(7);
             c.setDadosVenda(o,g,new CustomerService(null) { @Override public List<Customer> findAll(){ return List.of(cliente); } });
             combo().setValue(cliente);
-            set(c,"impressaoVendaService",new ImpressaoVendaService(cupom -> {},Runnable::run));
+            set(c,"impressaoVendaService",new com.casarural.sistemapdv.support.ImpressaoTeste(cupom -> {},Runnable::run));
         }
         @SuppressWarnings("unchecked") ComboBox<Customer> combo(){return (ComboBox<Customer>)loader.getNamespace().get("comboCliente");}
         void metodo(String id){((ToggleButton)loader.getNamespace().get(id)).setSelected(true);}

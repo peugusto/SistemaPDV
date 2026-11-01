@@ -113,8 +113,11 @@ class OrderDaoJdbcRecebimentoTest {
                         if (insercoes == falharNaInsercao) throw new SQLException("Inserção simulada falhou");
                         chave[0] = 899 + insercoes;
                         pendentes.add(row("pedido", parametros.get(1), "valor", parametros.get(2),
-                                "forma", parametros.get(3), "data", parametros.get(4), "caixa", parametros.get(5)));
+                                "forma", parametros.get(3), "data", parametros.get(4), "caixa", parametros.get(5), "id", chave[0], "recebimento", parametros.get(6)));
                     } else if (sql.startsWith("UPDATE pedido")) quitados.add((Integer) parametros.get(1));
+                    else if (sql.startsWith("UPDATE pagamento SET id_recebimento")) {
+                        for(Map<String,Object> linha:pendentes)if(Objects.equals(linha.get("id"),parametros.get(2)))linha.put("recebimento",parametros.get(1));
+                    }
                     else throw new AssertionError("Update inesperado: " + sql);
                     return 1;
                 }
@@ -129,7 +132,8 @@ class OrderDaoJdbcRecebimentoTest {
         RecebimentoFiado rec = banco.dao().registerPartialPayment(9, r("35"), PaymentMethod.PIX);
         assertTrue(banco.confirmou);
         assertEquals(1, banco.conexoes);
-        assertTrue(banco.consultas.get(0).contains("FROM cliente"));
+        assertTrue(banco.consultas.get(0).contains("FROM caixa"));
+        assertTrue(banco.consultas.get(1).contains("FROM cliente"));
         assertEquals(900, rec.getIdRecebimento());
         assertEquals("Maria da Silva", rec.getNomeCliente());
         assertEquals("11987654321", rec.getTelefone());

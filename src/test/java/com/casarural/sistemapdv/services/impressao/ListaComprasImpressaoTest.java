@@ -36,7 +36,7 @@ class ListaComprasImpressaoTest {
     }
     @Test void filaCapturaEscolhasAntesDeOutrasEdicoes() {
         List<Runnable> fila=new ArrayList<>(); List<Comprovante> enviados=new ArrayList<>(); Item i=item("Arroz",5,3);
-        ImpressaoVendaService s=new ImpressaoVendaService(enviados::add,fila::add);
+        ImpressaoVendaService s=new com.casarural.sistemapdv.support.ImpressaoTeste(enviados::add,fila::add);
         var f=s.emitirListaCompras(List.of(i),DATA); i.setComprar(99); fila.get(0).run(); f.join();
         assertTrue(enviados.get(0).getTexto().contains("[ ] 3 x Arroz")); assertFalse(enviados.get(0).getTexto().contains("99 x"));
     }

@@ -65,6 +65,9 @@
             <Button fx:id="btnAtualizar" text="Atualizar" onAction="#onAtualizar"/>
             <Button fx:id="btnCopiar" text="Copiar lista" onAction="#onCopiar" disable="true"/>
             <Button fx:id="btnImprimir" styleClass="botao-primario" text="Imprimir lista" onAction="#onImprimir" disable="true"/>
+            <Button fx:id="btnSegundaVia" text="Segunda via da última lista" onAction="#onSegundaVia">
+                <tooltip><Tooltip text="Reimprime a última lista guardada, com as quantidades daquela impressão."/></tooltip>
+            </Button>
         </HBox>
     </bottom>
 </BorderPane>

@@ -19,7 +19,7 @@ class ImpressaoVendaServiceTest {
     void limparCarrinhoAntesDoEnvioNaoMudaOComprovante() {
         List<Runnable> fila = new ArrayList<>();
         List<Comprovante> enviados = new ArrayList<>();
-        ImpressaoVendaService service = new ImpressaoVendaService(enviados::add, fila::add);
+        ImpressaoVendaService service = new com.casarural.sistemapdv.support.ImpressaoTeste(enviados::add, fila::add);
         Order venda = ComprovanteVendaTest.venda();
         CompletableFuture<Void> envio = service.emitir(venda, Money.ZERO, Map.of());
         venda.getItemPedido().clear();
@@ -35,7 +35,7 @@ class ImpressaoVendaServiceTest {
     @Test
     void falhaDeEnvioEhReportadaSemRepeticaoAutomatica() {
         int[] chamadas = {0};
-        ImpressaoVendaService service = new ImpressaoVendaService(c -> {
+        ImpressaoVendaService service = new com.casarural.sistemapdv.support.ImpressaoTeste(c -> {
             chamadas[0]++;
             throw new IOException("Impressora indisponível");
         }, Runnable::run);

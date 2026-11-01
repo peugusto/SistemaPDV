@@ -39,4 +39,7 @@ public interface OrderDao extends GenericDao<Order> {
      * Devolve o valor estornado.
      */
     BigDecimal reverseFiadoReceipt(int idCliente, LocalDateTime dataPagamento, PaymentMethod metodo, String motivo);
+    default BigDecimal reverseFiadoReceiptPorId(int idCliente, int idRecebimento, String motivo) {
+        throw new UnsupportedOperationException("Estorno por identificação indisponível.");
+    }
 }

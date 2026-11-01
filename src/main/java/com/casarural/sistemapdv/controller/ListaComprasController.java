@@ -48,6 +48,7 @@ public class ListaComprasController implements Initializable {
 
     private ListaComprasService service;
     @FXML private Button btnImprimir, btnCopiar, btnAtualizar;
+    @FXML private Button btnSegundaVia;
     private LocalDateTime atualizadaEm;
     private Clock relogio = Clock.systemDefaultZone();
     private Executor executor = ForkJoinPool.commonPool();
@@ -204,6 +205,7 @@ public class ListaComprasController implements Initializable {
         btnImprimir.setDisable(!temItens || carregando || imprimindo);
         btnCopiar.setDisable(!temItens || carregando || imprimindo);
         btnAtualizar.setDisable(carregando || imprimindo);
+        btnSegundaVia.setDisable(carregando || imprimindo);
         tabela.setDisable(carregando || imprimindo || !dadosValidos);
     }
 
@@ -252,6 +254,21 @@ public class ListaComprasController implements Initializable {
             impressaoVendaService.emitirListaCompras(tabela.getItems(), atualizadaEm)
                     .whenComplete((v, erro) -> finalizarImpressao(erro));
         } catch (RuntimeException erro) { finalizarImpressao(erro); }
+    }
+    @FXML public void onSegundaVia() {
+        if(carregando || imprimindo || fechada)return;
+        imprimindo=true;atualizarBotoes();
+        try {impressaoVendaService.reimprimirUltimaLista().whenComplete((v,e)->finalizarSegundaVia(e));}
+        catch(RuntimeException e) {finalizarSegundaVia(e);}
+    }
+    private void finalizarSegundaVia(Throwable erro) {
+        if(erro!=null)log.error("Falha ao reimprimir a lista de compras",erro);
+        javafx.application.Platform.runLater(()->{
+            imprimindo=false;if(fechada)return;atualizarBotoes();
+            lblCopiado.setText(erro==null?"Segunda via da última lista enviada para impressão.":"Não foi possível reimprimir a última lista.");
+            if(erro!=null)Alerts.showAlert("Segunda via da lista",null,
+                    "É preciso ter uma lista guardada. Imprima uma lista primeiro; se já imprimiu, confira a impressora e a conexão com o banco. Nenhuma pendência foi alterada.",Alert.AlertType.WARNING);
+        });
     }
     private void finalizarImpressao(Throwable erro) {
         if (erro != null) log.error("Falha ao imprimir a lista de compras", erro);

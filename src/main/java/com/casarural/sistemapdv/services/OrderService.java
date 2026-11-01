@@ -108,6 +108,9 @@ public class OrderService {
     public BigDecimal estornarRecebimento(int idCliente, LocalDateTime dataPagamento, PaymentMethod metodo, String motivo) {
         return dao.reverseFiadoReceipt(idCliente, dataPagamento, metodo, motivoObrigatorio(motivo));
     }
+    public BigDecimal estornarRecebimentoPorId(int idCliente, int idRecebimento, String motivo) {
+        return dao.reverseFiadoReceiptPorId(idCliente,idRecebimento,motivoObrigatorio(motivo));
+    }
 
     private static String motivoObrigatorio(String motivo) {
         if (motivo == null || motivo.isBlank()) throw new IllegalArgumentException("Escreva o motivo.");

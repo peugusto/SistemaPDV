@@ -98,7 +98,7 @@ class ExtratosImpressaoTest {
             public ExtratoFiado extratoFiado(int id) { assertEquals(7,id); leituras[0]++; return extrato(); }
             public FechamentoCaixa fechamentoCaixa(int id) { assertEquals(3,id); leituras[1]++; return fechamento(); }
         };
-        ImpressaoVendaService s = new ImpressaoVendaService(enviados::add,fila::add,dao);
+        ImpressaoVendaService s = new com.casarural.sistemapdv.support.ImpressaoTeste(enviados::add,fila::add,dao);
         CompletableFuture<Void> a=s.emitirDivida(7), b=s.emitirFechamento(3);
         assertEquals(0,leituras[0]+leituras[1]); fila.forEach(Runnable::run); a.join(); b.join();
         assertArrayEquals(new int[]{1,1},leituras); assertEquals(2,enviados.size());
@@ -109,7 +109,7 @@ class ExtratosImpressaoTest {
             public ExtratoFiado extratoFiado(int id) { leituras[0]++; throw new IllegalStateException("Banco indisponível"); }
             public FechamentoCaixa fechamentoCaixa(int id) { return fechamento(); }
         };
-        ImpressaoVendaService s = new ImpressaoVendaService(c -> { throw new IOException("Sem papel"); },Runnable::run,dao);
+        ImpressaoVendaService s = new com.casarural.sistemapdv.support.ImpressaoTeste(c -> { throw new IOException("Sem papel"); },Runnable::run,dao);
         assertThrows(CompletionException.class,()->s.emitirDivida(7).join()); assertEquals(1,leituras[0]);
         assertThrows(CompletionException.class,()->s.emitirFechamento(3).join()); assertEquals(1,leituras[0]);
     }
