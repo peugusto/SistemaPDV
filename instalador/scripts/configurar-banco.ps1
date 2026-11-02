@@ -8,9 +8,9 @@
 #   3. Pasta de dados do MySQL (so na primeira vez), fechada so para administradores.
 #   4. Servico do Windows "SistemaPDV-MySQL": liga sozinho com o PC e reinicia se cair.
 #   5. Senha do root (primeira vez) e os usuarios pdv_app e pdv_migracao, com senhas
-#      sorteadas, gravadas em C:\ProgramData\SistemaPDV\db.properties.
+#      sorteadas, em arquivos separados (migracao acessivel so a administradores/SYSTEM).
 #   6. (-Backup) usuario pdv_backup, backup.cnf, nuvem.txt e a tarefa agendada (12:00 e 18:30).
-#  As tabelas NAO sao criadas aqui: o SistemaPDV cria/atualiza ao abrir (Flyway).
+#  As tabelas sao criadas/atualizadas aqui, no processo elevado, antes de liberar o programa.
 #
 #  O root nunca fica gravado: so passa por um arquivo temporario, apagado no fim.
 #  Texto sem acentos de proposito: o PowerShell do Windows estraga acentos em arquivo sem BOM.
@@ -39,6 +39,8 @@ $pastaMysql  = Join-Path $Dados "mysql"
 $pastaDados  = Join-Path $pastaMysql "data"
 $ini         = Join-Path $pastaMysql "my.ini"
 $config      = Join-Path $Dados "db.properties"
+$pastaAdmin  = Join-Path $Dados "admin"
+$configAdmin = Join-Path $pastaAdmin "migracao.properties"
 $pastaBackup = Join-Path $Dados "backup"
 $cnfBackup   = Join-Path $pastaBackup "backup.cnf"
 $log         = Join-Path $Dados "instalacao.log"
@@ -53,6 +55,12 @@ $SISTEMA  = "*S-1-5-18"
 $CARACTERES_ROOT = '^[A-Za-z0-9!@#$%&*()_=+.,;:?-]{8,64}$'
 
 $temporarios = New-Object System.Collections.ArrayList
+. (Join-Path $PSScriptRoot 'seguranca-config.ps1')
+
+function PrepararConfig([string]$caminho, [switch]$LeituraUsuarios) {
+    if ($Teste) { if (-not (Test-Path -LiteralPath $caminho)) { GravarTexto $caminho '' }; return }
+    Preparar-ArquivoPdv $caminho -LeituraUsuarios:$LeituraUsuarios
+}
 
 function Escrever([string]$texto) {
     $linha = "{0}  {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $texto
@@ -112,6 +120,7 @@ function PortaOcupada([int]$p) {
 # Arquivo temporario de login do root (apagado no fim, mesmo com erro)
 function CnfRoot([string]$senha, [int]$p) {
     $arq = Join-Path $env:TEMP ("pdv-root-{0}.cnf" -f [guid]::NewGuid().ToString("N"))
+    PrepararConfig $arq
     GravarTexto $arq ("[client]`r`nuser=root`r`npassword=`"{0}`"`r`nhost=127.0.0.1`r`nport={1}`r`n" -f $senha, $p)
     [void]$temporarios.Add($arq)
     return $arq
@@ -147,6 +156,15 @@ function EsperarMysql([int]$p, [int]$segundos = 120) {
 }
 
 try {
+    if (-not $Teste) {
+        Proteger-PastaPdv $Dados -LeituraUsuarios
+        Proteger-PastaPdv $pastaAdmin
+    } else {
+        New-Item -ItemType Directory -Force -Path $pastaAdmin | Out-Null
+    }
+    $configExistia = Test-Path -LiteralPath $config
+    # Ate separar o legado, o arquivo de execucao tambem fica exclusivo do administrador.
+    if ($configExistia) { PrepararConfig $config }
     foreach ($pasta in @($Dados, (Join-Path $Dados "logs"), $pastaMysql, (Join-Path $pastaMysql "arquivos"))) {
         if (-not (Test-Path $pasta)) { New-Item -ItemType Directory -Force -Path $pasta | Out-Null }
     }
@@ -228,8 +246,10 @@ secure-file-priv="$(& $barra (Join-Path $pastaMysql 'arquivos'))"
         $novo = $true
         # banco novo = usuarios novos; um db.properties antigo nao serve mais
         if (Test-Path $config) {
+            PrepararConfig $config
             $antigo = "$config.antigo-" + (Get-Date -Format "yyyyMMdd-HHmm")
             Move-Item $config $antigo
+            $configExistia = $false
             Escrever "db.properties de uma instalacao anterior guardado como $antigo"
         }
     }
@@ -257,7 +277,7 @@ secure-file-priv="$(& $barra (Join-Path $pastaMysql 'arquivos'))"
     Escrever "MySQL respondendo na porta $porta"
 
     # ---- 5. root e usuarios do sistema ----
-    $precisaRoot = $novo -or -not (Test-Path $config) -or ($Backup -and -not (Test-Path $cnfBackup))
+    $precisaRoot = $novo -or -not $configExistia -or ($Backup -and -not (Test-Path $cnfBackup))
     $cnf = $null
     if ($precisaRoot) {
         if ($senhaRoot -eq "") { throw "Faltou a senha do root (o instalador pede quando precisa criar usuarios)." }
@@ -273,35 +293,46 @@ secure-file-priv="$(& $barra (Join-Path $pastaMysql 'arquivos'))"
         }
     }
 
-    if (-not (Test-Path $config)) {
+    if (-not $configExistia) {
         $senhaApp = NovaSenha
         $senhaMigracao = NovaSenha
         Sql $cnf @"
 CREATE DATABASE IF NOT EXISTS casarural CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE USER IF NOT EXISTS 'pdv_app'@'localhost' IDENTIFIED BY '$senhaApp';
 ALTER USER 'pdv_app'@'localhost' IDENTIFIED BY '$senhaApp';
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'pdv_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON casarural.* TO 'pdv_app'@'localhost';
 CREATE USER IF NOT EXISTS 'pdv_migracao'@'localhost' IDENTIFIED BY '$senhaMigracao';
 ALTER USER 'pdv_migracao'@'localhost' IDENTIFIED BY '$senhaMigracao';
 GRANT ALL PRIVILEGES ON casarural.* TO 'pdv_migracao'@'localhost';
 "@ | Out-Null
+        PrepararConfig $config
+        PrepararConfig $configAdmin
+        GravarTexto $configAdmin "dburl=jdbc:mysql://localhost:$porta/casarural?allowPublicKeyRetrieval=true&useSSL=false`r`nmigracao.user=pdv_migracao`r`nmigracao.password=$senhaMigracao`r`n"
         GravarTexto $config (@"
 # Configuracao do banco do SistemaPDV. Gerado pelo instalador em $(Get-Date -Format "dd/MM/yyyy HH:mm").
 # As senhas foram sorteadas pelo instalador. O root nao fica aqui.
 #   pdv_app      -> usado o tempo todo; so le e altera dados
-#   pdv_migracao -> usado ao abrir, para criar/atualizar as tabelas
 # Para trocar uma senha: ALTER USER no Workbench (como root) e troque aqui tambem.
 dburl=jdbc:mysql://localhost:$porta/casarural?allowPublicKeyRetrieval=true&useSSL=false
 user=pdv_app
 password=$senhaApp
-
-migracao.user=pdv_migracao
-migracao.password=$senhaMigracao
 "@)
         Escrever "Usuarios pdv_app e pdv_migracao criados; configuracao em $config"
     } else {
         Escrever "db.properties ja existia; usuarios mantidos"
     }
+
+    PrepararConfig $configAdmin
+    # Converte o formato antigo sem interpretar senhas/escapes Java no PowerShell.
+    # Os dois arquivos ja existem com ACL administrativa antes de qualquer escrita.
+    $java = Join-Path $Programa 'runtime\bin\java.exe'
+    $r = Executar $java @('--module-path', (Join-Path $Programa 'app\mods'), '--add-modules=ALL-MODULE-PATH',
+        '-m', 'com.casarural.sistemapdv/com.casarural.sistemapdv.db.MigracaoBanco', $config, $configAdmin)
+    if ($r.Codigo -ne 0) { throw 'Nao foi possivel atualizar a estrutura do banco. Confira a configuracao administrativa e execute o instalador novamente.' }
+    # Somente depois da separacao e migracao o operador recebe leitura da credencial DML.
+    PrepararConfig $config -LeituraUsuarios
+    Escrever 'Estrutura atualizada pelo instalador; credencial de migracao isolada em admin\migracao.properties'
 
     # ---- 6. backup ----
     if ($Backup) {

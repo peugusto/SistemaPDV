@@ -121,6 +121,9 @@ O pagamento abate primeiro as compras mais antigas. Se o cliente estava Em atras
 ## Se faltar papel ou ocorrer falha
 Confira a impressora e use Segunda via no histórico correspondente. Não refaça a venda nem o recebimento.
 O conteúdo preparado fica guardado antes do envio à impressora. A confirmação de envio não garante que o papel já saiu.
+Se o envio demorar demais, o sistema interrompe a tentativa. O trabalho pode já estar na fila do Windows: confira a fila e o papel antes de pedir outra via.
+Quando a fila estiver cheia ou o comprovante tiver esperado demais, ele não será enviado automaticamente depois. Use a segunda via quando a impressora estiver pronta.
+Ao fechar o sistema, os envios pendentes são interrompidos; os originais guardados continuam disponíveis nos históricos. Não refaça vendas ou recebimentos por causa de impressão.
 ! Operações antigas sem comprovante guardado são identificadas como "Reconstruído do histórico". Troco e saldo da época que não foram registrados não são inventados. Recebimentos antigos podem reunir pagamentos com a mesma data/hora e forma.
 
 # Clientes

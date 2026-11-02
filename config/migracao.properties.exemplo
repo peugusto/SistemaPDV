@@ -1,0 +1,8 @@
+# SOMENTE para instalação/manutenção administrativa. Nunca juntar ao db.properties.
+# Produção: o instalador gera C:/ProgramData/SistemaPDV/admin/migracao.properties,
+# com proprietário Administradores e DACL exclusiva de Administradores/SYSTEM.
+# Desenvolvimento: mantenha o arquivo administrativo fora do acesso dos operadores.
+# Não versione senhas. migracao.properties está no .gitignore.
+dburl=jdbc:mysql://localhost:3306/casarural?allowPublicKeyRetrieval=true&useSSL=false
+migracao.user=pdv_migracao
+migracao.password=COLOQUE_AQUI_A_SENHA_DO_PDV_MIGRACAO

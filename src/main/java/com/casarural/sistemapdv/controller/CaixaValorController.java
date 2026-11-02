@@ -36,6 +36,7 @@ public class CaixaValorController implements Initializable {
     private CashRegisterService service;
     private CashRegister caixa;
     private boolean concluido = false;
+    private boolean confirmando;
     private ProtecaoPin protecao = new ProtecaoPin();
 
     @Override
@@ -93,6 +94,7 @@ public class CaixaValorController implements Initializable {
 
     @FXML
     public void onConfirmar() {
+        if (concluido || confirmando) return;
         String texto = campoValor.getText();
         if (texto == null || texto.trim().isEmpty()) {
             Alerts.showAlert("Valor", null,
@@ -109,6 +111,8 @@ public class CaixaValorController implements Initializable {
             return;
         }
 
+        confirmando = true;
+        btnConfirmar.setDisable(true);
         try {
             switch (modo) {
                 case ABRIR:
@@ -127,13 +131,22 @@ public class CaixaValorController implements Initializable {
             }
             concluido = true;
             fechar();
+        } catch (com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException e) {
+            concluido = true;
+            Alerts.showAlertAndWait("Confira o caixa", "O resultado do movimento precisa ser conferido",
+                    "O movimento pode ter sido registrado. Confira os movimentos do caixa antes de repetir a retirada ou a entrada de dinheiro.", Alert.AlertType.WARNING);
+            fechar();
         } catch (DbException e) {
             Alerts.showAlert("Caixa", null, e.getMessage(), Alert.AlertType.WARNING);
+        } finally {
+            confirmando = false;
+            btnConfirmar.setDisable(concluido);
         }
     }
 
     @FXML
     public void onCancelar() {
+        if (confirmando) return;
         fechar();
     }
 

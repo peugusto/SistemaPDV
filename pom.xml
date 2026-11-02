@@ -60,7 +60,7 @@
             <artifactId>HikariCP</artifactId>
             <version>${hikari.version}</version>
         </dependency>
-        <!-- Migrações do banco: aplica automaticamente os scripts de src/main/resources/db-migrations -->
+        <!-- Migrações aplicadas pelo instalador elevado; abertura normal apenas valida a estrutura. -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>

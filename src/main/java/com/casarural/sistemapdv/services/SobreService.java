@@ -91,6 +91,10 @@ public class SobreService {
     }
 
     private List<String[]> banco() {
+        return com.casarural.sistemapdv.util.BancoEmSegundoPlano.executar(this::consultarBanco);
+    }
+
+    private List<String[]> consultarBanco() {
         List<String[]> b = new ArrayList<>();
         try (Connection conn = DB.getConnection(); Statement st = conn.createStatement()) {
             b.add(par("Banco", conn.getCatalog()));

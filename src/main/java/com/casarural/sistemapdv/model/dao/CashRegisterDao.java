@@ -15,7 +15,8 @@ public interface CashRegisterDao {
 
     CashRegister open(BigDecimal valorInicial);
 
-    void close(int idCaixa, BigDecimal valorEsperado, BigDecimal valorContado, String observacao);
+    /** Calcula o esperado e fecha atomicamente, devolvendo os valores efetivamente confirmados. */
+    CashRegister close(int idCaixa, BigDecimal valorContado, String observacao);
 
     void addMovement(int idCaixa, CashMovementType tipo, BigDecimal valor, String motivo);
 

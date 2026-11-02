@@ -63,12 +63,6 @@ public class CashRegisterService {
     /** Retirada de dinheiro da gaveta. Não deixa tirar mais do que o sistema calcula que há nela. */
     public void addSangria(CashRegister caixa, BigDecimal valor, String motivo) {
         validarMovimento(caixa, valor);
-        BigDecimal naGaveta = dao.summarize(caixa).getDinheiroEsperado();
-        if (valor.compareTo(naGaveta) > 0) {
-            throw new DbException(String.format(
-                    "Pela conta do sistema há %s em dinheiro na gaveta. Não é possível retirar %s.",
-                    Money.format(naGaveta), Money.format(valor)));
-        }
         dao.addMovement(caixa.getIdCaixa(), CashMovementType.SANGRIA, Money.of(valor), limpar(motivo));
         log.info("Caixa {}: sangria de {} ({})", caixa.getIdCaixa(), Money.format(valor), limpar(motivo));
     }
@@ -88,12 +82,14 @@ public class CashRegisterService {
         if (valorContado != null && valorContado.signum() < 0) {
             throw new DbException("O valor contado não pode ser negativo.");
         }
-        CashSummary resumo = dao.summarize(caixa);
-        BigDecimal esperado = resumo.getDinheiroEsperado();
-        dao.close(caixa.getIdCaixa(), esperado, valorContado == null ? null : Money.of(valorContado), limpar(observacao));
-
+        if (caixa == null || !caixa.isAberto()) throw new DbException("O caixa está fechado.");
+        CashRegister fechado = dao.close(caixa.getIdCaixa(), valorContado == null ? null : Money.of(valorContado), limpar(observacao));
+        BigDecimal esperado = fechado.getValorEsperado();
+        caixa.setValorInicial(fechado.getValorInicial());
+        caixa.setFechadoEm(fechado.getFechadoEm());
         caixa.setValorEsperado(esperado);
-        caixa.setValorContado(valorContado);
+        caixa.setValorContado(fechado.getValorContado());
+        caixa.setObservacao(fechado.getObservacao());
         if (valorContado == null) {
             log.info("Caixa {} fechado sem conferência. Esperado em dinheiro: {}", caixa.getIdCaixa(), Money.format(esperado));
         } else if (caixa.getDiferenca().signum() == 0) {

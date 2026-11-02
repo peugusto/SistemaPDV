@@ -57,6 +57,16 @@ class ImpressaoTelasTest {
         assertTrue(c.isConcluido()); assertEquals(1,serv.fechamentos); assertEquals(1,imp.chamadas); assertEquals(11,imp.caixa);
         imp.trabalho.complete(null);
     });}
+    @Test void fechamentoIncertoBloqueiaRepeticaoESolicitaConferenciaSemImprimir() throws Exception {JavafxTestSupport.executar(() -> {
+        FXMLLoader l=tela("FecharCaixa");FecharCaixaController c=l.getController();
+        CaixaFake serv=new CaixaFake(){
+            public CashRegister close(CashRegister caixa,BigDecimal contado,String obs){fechamentos++;throw new com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException("fechar caixa",new java.sql.SQLException("SINTETICO"));}
+        };
+        ImpressaoFake imp=new ImpressaoFake();set(c,"impressaoVendaService",imp);c.configurar(serv,caixa());
+        confirmar(true);Platform.runLater(()->confirmar(true));c.onFecharCaixa();c.onFecharCaixa();
+        assertTrue(c.isConcluido());assertEquals(1,serv.fechamentos);assertEquals(0,imp.chamadas);
+        assertTrue(((Button)l.getNamespace().get("btnFechar")).isDisabled());
+    });}
     @Test void fechamentoRecusadoNaoImprimeENaoMarcaConcluido() throws Exception {JavafxTestSupport.executar(() -> {
         FXMLLoader l=tela("FecharCaixa"); FecharCaixaController c=l.getController(); CaixaFake serv=new CaixaFake(); serv.falha=true;
         ImpressaoFake imp=new ImpressaoFake(); set(c,"impressaoVendaService",imp); c.configurar(serv,caixa());

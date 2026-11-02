@@ -92,6 +92,10 @@ try {
 } finally {
     Pop-Location
 }
+Passo "Validando as permissoes das configuracoes em pasta sintetica"
+& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass `
+    -File (Join-Path $PSScriptRoot 'tests\seguranca-config.test.ps1') -PastaTeste (Join-Path $alvo 'testes-acl')
+Conferir "Testes das permissoes"
 Copy-Item (Join-Path $raiz "target\SistemaPDV-$versao.jar") (Join-Path $mods "sistemapdv-$versao.jar")
 # O JavaFX vem em dois jars: um vazio (sem sufixo) e o de verdade (-win). Fica so o de verdade.
 Get-ChildItem $mods -Filter "javafx-*.jar" | Where-Object { $_.Name -notlike "*-win.jar" } | Remove-Item
@@ -136,6 +140,7 @@ foreach ($dll in @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")) {
 $instalacao = Join-Path $pacote "instalacao"
 New-Item -ItemType Directory -Force -Path $instalacao | Out-Null
 Copy-Item (Join-Path $PSScriptRoot "scripts\configurar-banco.ps1") $instalacao
+Copy-Item (Join-Path $PSScriptRoot "scripts\seguranca-config.ps1") $instalacao
 Copy-Item (Join-Path $PSScriptRoot "scripts\remover.ps1") $instalacao
 Copy-Item (Join-Path $PSScriptRoot "LEIA-ME.txt") $instalacao
 Copy-Item (Join-Path $raiz "config\backup\backup-casarural.ps1") $instalacao

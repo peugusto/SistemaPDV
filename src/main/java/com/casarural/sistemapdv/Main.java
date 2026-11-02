@@ -98,7 +98,8 @@ public class Main extends Application {
     }
 
     /**
-     * Atualiza a estrutura do banco (Flyway) antes de qualquer tela. Se falhar, o sistema não abre:
+     * Valida a estrutura do banco antes de qualquer tela. As migrações ficam no instalador elevado.
+     * Se falhar, o sistema não abre:
      * usar um banco desatualizado ou atualizado pela metade pode gravar dados errados.
      * Sem conexão (MySQL ainda iniciando), tenta de novo por até ESPERA_BANCO_MS.
      */
@@ -107,7 +108,7 @@ public class Main extends Application {
         int tentativa = 1;
         while (true) {
             try {
-                DB.migrate();
+                DB.verificarEstrutura();
                 return;
             } catch (DbException e) {
                 boolean semConexao = DB.MENSAGEM_SEM_CONEXAO.equals(e.getMessage());
@@ -129,8 +130,11 @@ public class Main extends Application {
     private void abrirTelaPrincipal(Stage stage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/casarural/sistemapdv/view/main-view.fxml"));
 
-        try (Connection conn = DB.getConnection()) {
-            log.info("Banco de dados conectado com sucesso");
+        try {
+            com.casarural.sistemapdv.util.BancoEmSegundoPlano.executar(() -> {
+                try (Connection conn = DB.getConnection()) { log.info("Banco de dados conectado com sucesso"); }
+                return null;
+            });
         } catch (DbException e) {
             Alerts.showAlert("Banco de Dados", "Sem conexão com o banco", e.getMessage(), Alert.AlertType.WARNING);
         }
@@ -176,6 +180,7 @@ public class Main extends Application {
 
     @Override
     public void stop() {
+        com.casarural.sistemapdv.services.ImpressaoVendaService.encerrar();
         DB.closeDataSource();
         log.info("Sistema encerrado");
     }

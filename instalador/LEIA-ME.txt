@@ -39,7 +39,8 @@ INSTALAR NO PC DA LOJA (primeira vez)
    O sistema não usa essa senha; ela serve para você mexer no banco pelo Workbench.
    As senhas que o sistema usa (pdv_app, pdv_migracao, pdv_backup) são sorteadas
    pelo instalador e ficam só no PC da loja.
-5. No fim, "Abrir o SistemaPDV agora": na primeira abertura ele cria as tabelas sozinho.
+5. O instalador cria as tabelas antes de liberar "Abrir o SistemaPDV agora".
+   A abertura normal só valida a estrutura; não lê a senha de migração nem executa DDL.
 6. Backup na nuvem: abra  C:\ProgramData\SistemaPDV\backup\nuvem.txt  no Bloco de Notas
    e escreva o caminho da pasta do OneDrive/Google Drive (instruções dentro do arquivo).
    Depois teste: Agendador de Tarefas > "SistemaPDV - Backup" > botão direito > Executar,
@@ -53,8 +54,11 @@ ATUALIZAR (versão nova do sistema)
 Rode o instalador novo por cima. Ele:
   - fecha o SistemaPDV se estiver aberto e desliga o MySQL por alguns segundos;
   - troca os arquivos do programa;
-  - NÃO mexe no banco, nas senhas, nem no backup (e não pede a senha do root);
-  - liga o MySQL de novo. Ao abrir, o sistema atualiza as tabelas sozinho (Flyway).
+  - mantém os dados, as senhas e o backup (e não pede a senha do root numa atualização comum);
+  - liga o MySQL e aplica as migrações pelo processo administrativo do instalador (Flyway).
+Na atualização do formato antigo, o instalador separa automaticamente a senha de migração
+do db.properties, preserva os escapes das senhas e reaplica proprietário/DACL exatos.
+Se a preparação falhar, o sistema não deve ser aberto; corrija e execute o instalador novamente.
 Faça com a loja fechada ou sem nenhuma venda em andamento.
 
 
@@ -62,7 +66,8 @@ ONDE FICA CADA COISA NO PC DA LOJA
 ----------------------------------
 C:\Program Files\SistemaPDV\              programa, Java e MySQL (trocados a cada atualização)
 C:\Program Files\SistemaPDV\instalacao\   scripts do instalador e estes LEIA-ME
-C:\ProgramData\SistemaPDV\db.properties   senhas do sistema (sorteadas pelo instalador)
+C:\ProgramData\SistemaPDV\db.properties   credencial DML do programa (Users: somente leitura)
+C:\ProgramData\SistemaPDV\admin\migracao.properties   credencial DDL (só Administradores/SYSTEM)
 C:\ProgramData\SistemaPDV\mysql\data\     O BANCO (só administradores conseguem abrir)
 C:\ProgramData\SistemaPDV\mysql\my.ini    configuração do MySQL (porta, memória)
 C:\ProgramData\SistemaPDV\mysql\mysql-erros.log   erros do MySQL
@@ -102,3 +107,20 @@ Pode testar sem medo de misturar os bancos:
   - o SistemaPDV instalado (atalho) usa o banco do instalador.
 Se marcar o backup, a tarefa vai rodar às 12:00 e 18:30 no seu PC também.
 Para limpar depois: desinstale e responda SIM para apagar o banco (só no seu PC!).
+
+PREPARAR O BANCO PARA EXECUTAR PELA IDE
+---------------------------------------
+A classe Main não aplica mais migrações. Não use root ou pdv_migracao na configuração de execução.
+1. Mantenha config\db.properties com dburl, user=pdv_app e password (modelo em config).
+2. Em uma pasta administrativa separada, crie migracao.properties usando o outro modelo.
+   Proteja a pasta/arquivo contra leitura e alteração pelos operadores do PDV. No Windows,
+   use as funções Proteger-PastaPdv e Preparar-ArquivoPdv de instalador\scripts\seguranca-config.ps1
+   em um PowerShell elevado, antes de colocar a senha; não use -LeituraUsuarios no arquivo administrativo.
+3. Execute separadamente na IDE a classe com.casarural.sistemapdv.db.MigracaoBanco, com dois argumentos:
+     "caminho\config\db.properties" "caminho-administrativo\migracao.properties"
+   O diretório de trabalho e as dependências são os mesmos da aplicação. Isto prepara o banco.
+4. Abra Main normalmente, com o usuário comum do banco.
+Para converter um db.properties antigo que já contenha migracao.user/password, restrinja-o
+ao administrador primeiro e crie o arquivo administrativo vazio com ACL restrita. O passo 3
+separa as propriedades antes de migrar. Só depois libere leitura do arquivo de execução.
+Não copie o segredo de migração de volta para o arquivo de execução.

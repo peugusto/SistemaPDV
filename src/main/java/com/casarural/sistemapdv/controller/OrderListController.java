@@ -433,7 +433,7 @@ public class OrderListController implements Initializable {
         javafx.application.Platform.runLater(()->{
             imprimindoSegundaVia=false;btnSegundaVia.setText("Segunda via");atualizarSegundaVia();
             if(erro!=null)Alerts.showAlert("Segunda via", "Não foi possível imprimir",
-                    "Confira a impressora e a conexão com o banco. Vendas canceladas ou trocadas não permitem essa emissão. Nenhuma venda ou pagamento foi registrado.",Alert.AlertType.WARNING);
+                    com.casarural.sistemapdv.services.ImpressaoVendaService.orientacaoFalha(erro)+"\nVendas canceladas ou trocadas não permitem essa emissão. Nenhuma venda ou pagamento foi registrado.",Alert.AlertType.WARNING);
         });
     }
 

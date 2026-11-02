@@ -3,7 +3,6 @@ package com.casarural.sistemapdv.services;
 import com.casarural.sistemapdv.model.dao.DaoFactory;
 import com.casarural.sistemapdv.model.dao.RelatorioImpressaoDao;
 import com.casarural.sistemapdv.model.dao.ArquivoComprovanteDao;
-import com.casarural.sistemapdv.model.dao.impl.ArquivoComprovanteDaoJdbc;
 import com.casarural.sistemapdv.model.entities.ComprovanteGuardado;
 import com.casarural.sistemapdv.model.entities.ComprovanteGuardado.Tipo;
 import com.casarural.sistemapdv.model.entities.Payment;
@@ -17,7 +16,6 @@ import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.services.impressao.ComprovanteVenda;
 import com.casarural.sistemapdv.services.impressao.Comprovante;
 import com.casarural.sistemapdv.services.impressao.ComprovanteFiado;
-import com.casarural.sistemapdv.services.impressao.ImpressoraTermica;
 import com.casarural.sistemapdv.services.impressao.PreviaTerminal;
 
 import java.math.BigDecimal;
@@ -25,7 +23,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -33,14 +32,18 @@ public class ImpressaoVendaService {
     @FunctionalInterface
     public interface Destino { void enviar(Comprovante comprovante) throws Exception; }
 
-    // Uma fila preserva a ordem das vendas. A thread termina após ficar ociosa e não abandona
-    // um envio em andamento quando a janela do sistema é fechada.
-    private static final Executor FILA = new ThreadPoolExecutor(0, 1, 2, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(), tarefa -> new Thread(tarefa, "impressao-comprovantes"));
+    private static final ThreadPoolExecutor FILA = criarFila(16);
+    static ThreadPoolExecutor criarFila(int capacidade) {
+        ThreadPoolExecutor fila = new ThreadPoolExecutor(1,1,2,TimeUnit.SECONDS,new ArrayBlockingQueue<>(capacidade),r -> {
+            Thread t=new Thread(r,"impressao-comprovantes");t.setDaemon(true);return t;
+        });
+        fila.allowCoreThreadTimeOut(true);return fila;
+    }
     private final Destino destino;
     private final Executor executor;
     private final RelatorioImpressaoDao relatorios;
     private final ArquivoComprovanteDao arquivo;
+    private final java.util.function.LongSupplier agora;
 
     public ImpressaoVendaService() {
         this(new DestinoConfigurado(), FILA);
@@ -50,9 +53,13 @@ public class ImpressaoVendaService {
         this(destino, executor, DaoFactory.createRelatorioImpressaoDAO());
     }
     public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios) {
-        this(destino, executor, relatorios, new ArquivoComprovanteDaoJdbc());
+        this(destino, executor, relatorios, DaoFactory.createArquivoComprovanteDAO());
     }
     public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios, ArquivoComprovanteDao arquivo) {
+        this(destino,executor,relatorios,arquivo,System::nanoTime);
+    }
+    public ImpressaoVendaService(Destino destino, Executor executor, RelatorioImpressaoDao relatorios, ArquivoComprovanteDao arquivo, java.util.function.LongSupplier agora) {
+        this.agora=java.util.Objects.requireNonNull(agora);
         this.arquivo = java.util.Objects.requireNonNull(arquivo);
         this.relatorios = relatorios;
         this.destino = destino;
@@ -75,7 +82,13 @@ public class ImpressaoVendaService {
 
     private CompletableFuture<Void> arquivarEEnviar(Tipo tipo,String referencia,Comprovante documento) {
         ComprovanteGuardado captura=new ComprovanteGuardado(tipo,referencia,documento);
-        return enviar(() -> arquivo.guardar(captura));
+        try {
+            // Guarda antes de entrar na fila do driver, inclusive quando ela estiver cheia/travada.
+            Comprovante original=arquivo.guardar(captura);
+            return enviar(() -> original);
+        } catch (Exception erro) {
+            CompletableFuture<Void> resultado=new CompletableFuture<>();resultado.completeExceptionally(erro);return resultado;
+        }
     }
     public CompletableFuture<Void> reimprimirVenda(int idVenda) {
         return enviar(() -> {
@@ -105,13 +118,35 @@ public class ImpressaoVendaService {
         return enviar(() -> ComprovanteDivida.gerar(relatorios.extratoFiado(idCliente)));
     }
     private CompletableFuture<Void> enviar(Supplier<Comprovante> obter) {
-        return CompletableFuture.runAsync(() -> {
+        Trabalho trabalho=new Trabalho(obter);
+        try { executor.execute(trabalho); }
+        catch (RejectedExecutionException e) { trabalho.resultado.completeExceptionally(new java.io.IOException("Fila de impressão cheia ou encerrada. Use a segunda via depois de conferir a impressora.")); }
+        return trabalho.resultado;
+    }
+    private final class Trabalho implements Runnable {
+        final CompletableFuture<Void> resultado=new CompletableFuture<>();
+        final Supplier<Comprovante> obter;final long criado=agora.getAsLong();
+        Trabalho(Supplier<Comprovante> obter){this.obter=obter;}
+        public void run() {
             try {
-                destino.enviar(obter.get());
-            } catch (Exception e) {
-                throw new CompletionException(e);
-            }
-        }, executor);
+                if (agora.getAsLong()-criado>TimeUnit.SECONDS.toNanos(60)) throw new java.io.IOException("O comprovante esperou demais na fila e não foi enviado. Confira a impressora e use a segunda via.");
+                destino.enviar(obter.get());resultado.complete(null);
+            } catch (Throwable e) { resultado.completeExceptionally(e); }
+        }
+    }
+    public static void encerrar() {
+        encerrar(FILA);
+    }
+    static void encerrar(ThreadPoolExecutor fila) {
+        for (Runnable r:fila.shutdownNow()) if(r instanceof ImpressaoVendaService.Trabalho) {
+            ((ImpressaoVendaService.Trabalho)r).resultado.completeExceptionally(new java.io.IOException("Envio encerrado. O comprovante pode ser recuperado pela segunda via."));
+        }
+    }
+    public static String orientacaoFalha(Throwable erro) {
+        while (erro.getCause()!=null && (erro instanceof CompletionException || erro instanceof java.util.concurrent.ExecutionException)) erro=erro.getCause();
+        if(erro instanceof com.casarural.sistemapdv.services.impressao.EnvioImpressaoIncertoException) return erro.getMessage();
+        if(erro instanceof java.io.IOException) return erro.getMessage()+"\nConfira a impressora antes de solicitar outra via. Não repita a venda ou o pagamento.";
+        return "Confira a impressora e o papel. Depois use a segunda via, sem repetir a venda ou o pagamento.";
     }
 
     public static String modo(String propriedade, String ambiente) {
@@ -132,7 +167,7 @@ public class ImpressaoVendaService {
                 previa.enviar(comprovante);
             } else {
                 String nome = System.getProperty("pdv.impressora.nome", "ELGIN i7(USB)");
-                new ImpressoraTermica(nome).enviar(comprovante);
+                new com.casarural.sistemapdv.services.impressao.DestinoProcesso(nome).enviar(comprovante);
             }
         }
     }

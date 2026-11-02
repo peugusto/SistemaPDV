@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
-import org.flywaydb.core.api.output.MigrateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +39,11 @@ public class DB {
         if (dataSource == null) {
             Properties props = loadProperties();
             validarConfiguracao(props, false);
+            validarUsuarioRuntime(props);
 
             HikariConfig config = new HikariConfig();
             config.setPoolName("SistemaPDV");
-            config.setJdbcUrl(props.getProperty("dburl"));
+            config.setJdbcUrl(PrazosBanco.url(props.getProperty("dburl"), false));
             config.setUsername(props.getProperty("user"));
             config.setPassword(props.getProperty("password"));
 
@@ -66,7 +66,7 @@ public class DB {
 
     public static Connection getConnection() {
         try {
-            return getDataSource().getConnection();
+            return PrazosBanco.limitar(getDataSource().getConnection());
         } catch (SQLException e) {
             // Detalhe técnico vai para o log; o usuário vê só o que fazer
             log.error("Falha ao conectar ao banco", e);
@@ -83,42 +83,37 @@ public class DB {
             "Não foi possível atualizar o banco de dados.\n\n"
             + "Não use o sistema e entre em contato com o responsável pelo sistema.";
 
-    /**
-     * Aplica as migrações pendentes (src/main/resources/db-migrations) antes de o sistema abrir.
-     *
-     * Usa o usuário de migração (migracao.user), que pode alterar a estrutura do banco, apenas
-     * durante esta chamada; o resto do sistema usa o usuário comum (user), que só mexe em dados.
-     *
-     * - Banco vazio (computador da loja): cria o banco e todas as tabelas a partir da V1.
-     * - Banco que já tinha tabelas sem histórico do Flyway (desenvolvimento): marca a V1 como
-     *   baseline sem executá-la e aplica só as versões seguintes.
-     */
-    public static void migrate() {
+    /** Apenas consulta e valida o histórico. A instalação elevada é responsável pelas migrações. */
+    public static void verificarEstrutura() {
         Properties props = loadProperties();
-        validarConfiguracao(props, true);
-        String user = props.getProperty("migracao.user");
-        String password = props.getProperty("migracao.password");
-
-
-        // Só a conexão de migração pode criar o banco, se ele ainda não existir
-        String url = props.getProperty("dburl");
-        url += (url.contains("?") ? "&" : "?") + "createDatabaseIfNotExist=true";
-
+        validarConfiguracao(props, false);
+        validarUsuarioRuntime(props);
         try {
             Flyway flyway = Flyway.configure()
-                    .dataSource(url, user, password)
+                    .dataSource(PrazosBanco.url(props.getProperty("dburl"), false), props.getProperty("user"), props.getProperty("password"))
                     .locations("classpath:db-migrations")
-                    .baselineOnMigrate(true)
-                    .baselineVersion("1")
-                    .baselineDescription("estrutura existente antes do Flyway")
+                    .ignoreMigrationPatterns(new String[0])
                     .load();
-            MigrateResult result = flyway.migrate();
-            log.info("Banco na versão {} ({} migração(ões) aplicada(s) agora)",
-                    flyway.info().current().getVersion(), result.migrationsExecuted);
+            if (flyway.info().current() == null || flyway.info().pending().length > 0) {
+                throw new DbException(MENSAGEM_ATUALIZACAO_NECESSARIA);
+            }
+            flyway.validate();
+            log.info("Estrutura do banco validada, sem executar migrações");
         } catch (FlywayException e) {
-            log.error("Falha na migração do banco", e);
+            log.error("Falha ao validar a estrutura do banco", e);
             throw new DbException(isConnectionFailure(e) ? MENSAGEM_SEM_CONEXAO : MENSAGEM_ATUALIZACAO_FALHOU, e);
         }
+    }
+
+    public static final String MENSAGEM_ATUALIZACAO_NECESSARIA =
+            "O banco precisa ser preparado para esta versão. Execute o instalador atualizado como administrador antes de abrir o sistema.";
+
+    static void validarUsuarioRuntime(Properties props) {
+        String usuario = props.getProperty("user", "");
+        if (props.containsKey("migracao.user") || props.containsKey("migracao.password")) {
+            throw new DbException("A configuração antiga precisa ser separada pelo instalador atualizado. Execute-o como administrador antes de abrir o sistema.");
+        }
+        if (usuario.equalsIgnoreCase("root") || usuario.equalsIgnoreCase("pdv_migracao")) throw erroConfiguracao("user");
     }
 
     /** Validação sem abrir conexão; diagnósticos não incluem URL, senhas ou seus valores. */
@@ -209,13 +204,19 @@ public class DB {
                     System.getProperty("pdv.config") == null ? "" : " e " + System.getProperty("pdv.config"));
             throw new DbException(MENSAGEM_SEM_CONFIGURACAO);
         }
-        try (InputStream is = Files.newInputStream(arquivo.get())) {
-            props.load(is);
+        try {
+            props = carregarArquivo(arquivo.get());
         } catch (IOException e) {
             log.error("Erro ao ler {}", arquivo.get(), e);
             throw new DbException(MENSAGEM_SEM_CONFIGURACAO, e);
         }
         log.info("Configuração do banco: {}", arquivo.get());
+        return props;
+    }
+
+    static Properties carregarArquivo(Path arquivo) throws IOException {
+        Properties props = new Properties();
+        try (InputStream is = Files.newInputStream(arquivo)) { props.load(is); }
         return props;
     }
 

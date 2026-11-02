@@ -144,6 +144,12 @@ public class FecharCaixaController implements Initializable {
             if (!Alerts.showConfirmation("Fechar caixa", "Depois de fechado, para vender será preciso abrir um novo caixa.", pergunta)) return;
             try {
                 service.close(caixa, contado, campoObservacao.getText());
+            } catch (com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException e) {
+                concluido = true;
+                Alerts.showAlertAndWait("Confira o caixa", "O resultado do fechamento precisa ser conferido",
+                        "A conexão falhou durante a confirmação. Não repita o fechamento antes de conferir o Histórico de caixas. Se estiver fechado, imprima por lá.", Alert.AlertType.WARNING);
+                ((Stage) campoContado.getScene().getWindow()).close();
+                return;
             } catch (DbException e) {
                 Alerts.showAlert("Fechar caixa", null, e.getMessage(), Alert.AlertType.WARNING);
                 return;
@@ -167,7 +173,7 @@ public class FecharCaixaController implements Initializable {
     private void avisarFalhaImpressao(Throwable erro) {
         log.error("Caixa #{} fechado, mas o relatório não pôde ser impresso", caixa.getIdCaixa(), erro);
         javafx.application.Platform.runLater(() -> Alerts.showAlert("Relatório não impresso", "O caixa foi fechado normalmente",
-                "Não foi possível imprimir o relatório. Confira a impressora e o papel e use Imprimir fechamento no Histórico de caixas. Não feche o caixa novamente.",
+                ImpressaoVendaService.orientacaoFalha(erro)+"\nUse Imprimir fechamento no Histórico de caixas. Não feche o caixa novamente.",
                 Alert.AlertType.WARNING));
     }
 

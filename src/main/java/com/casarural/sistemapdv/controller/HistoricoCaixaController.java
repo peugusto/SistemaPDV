@@ -105,7 +105,7 @@ public class HistoricoCaixaController implements Initializable {
             imprimindo = false; btnImprimir.setText("Imprimir fechamento");
             btnImprimir.setDisable(tabela.getSelectionModel().getSelectedItem() == null);
             if (erro != null) Alerts.showAlert("Relatório não impresso", "O caixa continua fechado",
-                    "Não foi possível imprimir o fechamento. Confira a conexão com o banco, a impressora e o papel e tente novamente.", Alert.AlertType.WARNING);
+                    ImpressaoVendaService.orientacaoFalha(erro), Alert.AlertType.WARNING);
         });
     }
 

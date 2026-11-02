@@ -37,7 +37,7 @@ class DBConfiguracaoTest {
     @Test void migracaoComArquivoSemUrlFalhaAntesDeFlyway(@TempDir Path tmp) throws Exception {
         Path config=tmp.resolve("config-ficticia.properties"); Files.writeString(config,"migracao.user=TESTE\nmigracao.password=SEGREDO_FICTICIO\n");
         String anterior=System.getProperty("pdv.config"); System.setProperty("pdv.config",config.toString());
-        try { DbException e=assertThrows(DbException.class,DB::migrate); assertTrue(e.getMessage().contains("dburl")); }
+        try { DbException e=assertThrows(DbException.class,DB::verificarEstrutura); assertTrue(e.getMessage().contains("dburl")); }
         finally { if(anterior==null) System.clearProperty("pdv.config"); else System.setProperty("pdv.config",anterior); }
     }
 }

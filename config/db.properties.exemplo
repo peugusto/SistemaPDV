@@ -9,21 +9,22 @@
 #   3. C:\ProgramData\SistemaPDV\db.properties   (computador da loja)
 # Nunca de dentro do programa (.jar): nenhuma senha vai junto quando o programa é copiado.
 #
-# Dois usuários, nunca o root:
-#   user / password                     -> pdv_app: usado pelo sistema o tempo todo; só lê e altera dados
-#   migracao.user / migracao.password   -> pdv_migracao: usado só ao abrir o sistema, para criar/atualizar
-#                                          as tabelas (Flyway); tem permissão total, mas só no casarural
+# Este arquivo contém SOMENTE a credencial de execução (DML), nunca a de migração.
+# A credencial administrativa fica separada: admin/migracao.properties, legível só por
+# Administradores e SYSTEM. Veja migracao.properties.exemplo e instalador/LEIA-ME.txt.
 #
 # Criar no MySQL da loja (no Workbench, como root), com senhas novas e diferentes:
+#   CREATE DATABASE IF NOT EXISTS casarural;
 #   CREATE USER 'pdv_app'@'localhost' IDENTIFIED BY '...';
 #   GRANT SELECT, INSERT, UPDATE, DELETE ON casarural.* TO 'pdv_app'@'localhost';
 #   CREATE USER 'pdv_migracao'@'localhost' IDENTIFIED BY '...';
 #   GRANT ALL PRIVILEGES ON casarural.* TO 'pdv_migracao'@'localhost';
-# Não é preciso criar o banco nem as tabelas: o sistema faz isso na primeira vez que abrir.
+# O instalador elevado cria/atualiza as tabelas antes de liberar a abertura normal.
+# Na IDE, execute a classe db.MigracaoBanco separadamente para preparar a estrutura.
+# Na execução normal, o programa aplica limites de conexão (3 s), rede (10 s) e
+# consulta (8 s), mesmo se um arquivo antigo tiver timeout zero. Não repete escritas
+# automaticamente após falhas. A preparação administrativa tem prazo de rede de 60 s.
 
 dburl=jdbc:mysql://localhost:3306/casarural?allowPublicKeyRetrieval=true&useSSL=false
 user=pdv_app
 password=COLOQUE_AQUI_A_SENHA_DO_PDV_APP
-
-migracao.user=pdv_migracao
-migracao.password=COLOQUE_AQUI_A_SENHA_DO_PDV_MIGRACAO

@@ -597,7 +597,7 @@ public class PaymentController implements Initializable {
         javafx.application.Platform.runLater(() -> Alerts.showAlert("Comprovante não enviado",
                 "A venda #" + idVenda + " foi salva normalmente",
                 "Não foi possível emitir o comprovante. Não refaça a venda.\n"
-                        + "Confira a impressora e o papel. Depois use Segunda via no Histórico de vendas.",
+                        + ImpressaoVendaService.orientacaoFalha(erro) + "\nA segunda via fica no Histórico de vendas.",
                 Alert.AlertType.WARNING));
     }
 

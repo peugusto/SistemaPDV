@@ -369,7 +369,7 @@ public class FiadoListController implements Initializable {
         javafx.application.Platform.runLater(()->{
             imprimindoSegundaVia=false;atualizarSegundaVia();
             if(erro!=null)Alerts.showAlert("Segunda via", "Não foi possível imprimir",
-                    "Confira a impressora e atualize o histórico. Recebimentos desfeitos e compras canceladas não permitem essa emissão. Nenhum pagamento foi registrado.",Alert.AlertType.WARNING);
+                    ImpressaoVendaService.orientacaoFalha(erro)+"\nAtualize o histórico. Recebimentos desfeitos e compras canceladas não permitem essa emissão. Nenhum pagamento foi registrado.",Alert.AlertType.WARNING);
         });
     }
 
@@ -392,7 +392,7 @@ public class FiadoListController implements Initializable {
             btnImprimirDivida.setDisable(false);
             btnImprimirDivida.setText("Imprimir dívida");
             if (erro != null) Alerts.showAlert("Extrato não impresso", null,
-                    "Não foi possível imprimir a conta de fiado. Confira a conexão com o banco, a impressora e o papel e tente novamente. Nenhum pagamento foi registrado.",
+                    ImpressaoVendaService.orientacaoFalha(erro)+"\nNenhum pagamento foi registrado.",
                     Alert.AlertType.WARNING);
         });
     }
@@ -412,7 +412,7 @@ public class FiadoListController implements Initializable {
         log.error("Recebimento #{} salvo, mas o comprovante não pôde ser enviado", idRecebimento, erro);
         javafx.application.Platform.runLater(() -> Alerts.showAlert("Comprovante não enviado",
                 "O pagamento de fiado #" + idRecebimento + " foi salvo normalmente",
-                "Confira a impressora e o papel. Depois selecione o pagamento em Pagamentos recebidos e use Segunda via. Não repita o pagamento.",
+                ImpressaoVendaService.orientacaoFalha(erro)+"\nA segunda via fica em Pagamentos recebidos. Não repita o pagamento.",
                 Alert.AlertType.WARNING));
     }
 

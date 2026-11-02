@@ -267,7 +267,7 @@ public class ListaComprasController implements Initializable {
             imprimindo=false;if(fechada)return;atualizarBotoes();
             lblCopiado.setText(erro==null?"Segunda via da última lista enviada para impressão.":"Não foi possível reimprimir a última lista.");
             if(erro!=null)Alerts.showAlert("Segunda via da lista",null,
-                    "É preciso ter uma lista guardada. Imprima uma lista primeiro; se já imprimiu, confira a impressora e a conexão com o banco. Nenhuma pendência foi alterada.",Alert.AlertType.WARNING);
+                    ImpressaoVendaService.orientacaoFalha(erro)+"\nÉ preciso ter uma lista guardada. Nenhuma pendência foi alterada.",Alert.AlertType.WARNING);
         });
     }
     private void finalizarImpressao(Throwable erro) {
@@ -280,7 +280,7 @@ public class ListaComprasController implements Initializable {
             else {
                 lblCopiado.setText("Não foi possível imprimir. As pendências foram mantidas.");
                 Alerts.showAlert("Lista não impressa", null,
-                        "Confira a impressora e o papel e tente novamente. Imprimir não dá entrada na mercadoria nem abate a lista.", Alert.AlertType.WARNING);
+                        ImpressaoVendaService.orientacaoFalha(erro)+"\nImprimir não dá entrada na mercadoria nem abate a lista.", Alert.AlertType.WARNING);
             }
         });
     }
