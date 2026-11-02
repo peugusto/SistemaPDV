@@ -24,7 +24,7 @@ class RelatorioDaoJdbcResumoTest {
                 if(sql.contains("GROUP BY p.id_pedido")) rows=List.of(
                         Map.of("receita",100,"receita_com_custo",100,"custo",50,"desconto",descontoConhecido?20:0),
                         Map.of("receita",100,"receita_com_custo",0,"custo",0,"desconto",descontoConhecido?0:20));
-                else if(sql.contains("COUNT(*),")) rows=List.of(Map.of(1,2,2,180,3,20));
+                else if(sql.contains("FROM movimento_venda_relatorio p")&&!sql.contains("JOIN")) rows=List.of(Map.of(1,2,2,180,3,20));
                 else if(sql.contains("GROUP BY pg.metodo")) rows=List.of();
                 else rows=List.of(Map.of(1,0));
                 return proxy(PreparedStatement.class,(stmt,method,args)->method.getName().equals("executeQuery")?linhas(rows):padrao(method.getReturnType()));

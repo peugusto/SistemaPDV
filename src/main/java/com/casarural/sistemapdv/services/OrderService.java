@@ -104,6 +104,10 @@ public class OrderService {
     public Map<PaymentMethod, BigDecimal> cancelar(int idPedido, String motivo) {
         return dao.cancel(idPedido, motivoObrigatorio(motivo));
     }
+    public Map<PaymentMethod,BigDecimal> cancelar(VendaParaDesfazer venda,String motivo) {
+        if(venda==null)throw new IllegalArgumentException("Selecione uma venda.");
+        return dao.cancel(venda.getIdPedido(),motivoObrigatorio(motivo),venda.getVersao());
+    }
 
     public BigDecimal estornarRecebimento(int idCliente, LocalDateTime dataPagamento, PaymentMethod metodo, String motivo) {
         return dao.reverseFiadoReceipt(idCliente, dataPagamento, metodo, motivoObrigatorio(motivo));

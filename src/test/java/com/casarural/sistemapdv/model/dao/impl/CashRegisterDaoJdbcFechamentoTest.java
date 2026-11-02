@@ -41,6 +41,7 @@ class CashRegisterDaoJdbcFechamentoTest {
             }
             if(sql.contains("FROM pagamento")){eventos.add("pagamentos");if(erroResumo)throw new SQLException("RESUMO SINTETICO");return rows(List.of(Map.of("origem","VENDA","metodo_pagamento","DINHEIRO","total",r("20"))));}
             if(sql.contains("FROM movimento_caixa")){eventos.add("movimentos");return rows(List.of(Map.of("tipo","SANGRIA","total",retirado)));}
+            if(sql.contains("FROM devolucao_venda_forma"))return rows(List.of());
             throw new AssertionError(sql);
         });}
         ResultSet rows(List<Map<String,Object>> dados){int[] i={-1};return proxy(ResultSet.class,(p,m,a)->{

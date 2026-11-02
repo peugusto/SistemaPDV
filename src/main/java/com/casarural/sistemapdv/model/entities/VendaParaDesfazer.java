@@ -27,8 +27,14 @@ public class VendaParaDesfazer {
     private final List<OrderItem> itens = new ArrayList<>();
     /** Quanto foi pago em cada forma (inclusive recebimentos depois); FIADO = o que ainda ficou na conta. */
     private final Map<PaymentMethod, BigDecimal> pagoPorForma = new EnumMap<>(PaymentMethod.class);
-    /** A venda foi feita no caixa que está aberto agora (só essas podem ser desfeitas). */
+    /** Distingue cancelamento do caixa atual e devolução de um caixa anterior. */
     private boolean doCaixaAberto;
+    private boolean caixaAtualDisponivel;
+    private Integer idCaixaOriginal;
+    public Integer getIdCaixaOriginal(){return idCaixaOriginal;}
+    public void setIdCaixaOriginal(Integer id){idCaixaOriginal=id;}
+    public void setCaixaAtualDisponivel(boolean disponivel){caixaAtualDisponivel=disponivel;}
+    public boolean isCaixaAtualDisponivel(){return caixaAtualDisponivel;}
 
     public int getIdPedido() { return idPedido; }
     public void setIdPedido(int idPedido) { this.idPedido = idPedido; }
@@ -57,8 +63,8 @@ public class VendaParaDesfazer {
 
     public boolean isCancelada() { return status == OrderStatus.CANCELADO; }
 
-    /** Pode cancelar ou trocar: não está cancelada e é do caixa aberto. */
-    public boolean podeDesfazer() { return !isCancelada() && doCaixaAberto && temBaixaConhecida(); }
+    /** Precisa de caixa atual e de uma origem/baixa conhecida para desfazer sem adivinhar saldos. */
+    public boolean podeDesfazer() { return !isCancelada() && (doCaixaAberto||caixaAtualDisponivel&&idCaixaOriginal!=null) && temBaixaConhecida(); }
 
     public boolean temBaixaConhecida() { return !itens.isEmpty() && itens.stream().allMatch(i -> i.getEstoqueBaixado() != null); }
     /** O que voltaria para a mão do cliente ao cancelar (tudo menos o fiado). */

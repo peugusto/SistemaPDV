@@ -10,6 +10,7 @@ import com.casarural.sistemapdv.model.dao.impl.RelatorioDaoJdbc;
 import com.casarural.sistemapdv.model.dao.impl.RelatorioImpressaoDaoJdbc;
 
 public class DaoFactory {
+    public static VendaSuspensaDao createVendaSuspensaDAO() { return proteger(VendaSuspensaDao.class,new com.casarural.sistemapdv.model.dao.impl.VendaSuspensaDaoJdbc()); }
     private static <T>T proteger(Class<T> tipo,T dao) { return com.casarural.sistemapdv.util.BancoEmSegundoPlano.proteger(tipo,dao); }
     public static ListaComprasDao createListaComprasDAO() { return proteger(ListaComprasDao.class,new com.casarural.sistemapdv.model.dao.impl.ListaComprasDaoJdbc()); }
     public static CustomerDao createCustomerDAO() { return proteger(CustomerDao.class,new CustomerDaoJdbc()); }

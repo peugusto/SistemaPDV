@@ -75,10 +75,16 @@ public class RelatorioImpressaoDaoJdbc implements RelatorioImpressaoDao {
             if (caixa.isAberto()) throw new DbException("Feche o caixa antes de imprimir o fechamento.");
             Map<Integer, Order> vendas = pedidos(conn, "p.id_caixa = ?", idCaixa);
             carregarItens(conn, vendas, "p.id_caixa = ?", idCaixa);
+            // O comprovante de um caixa encerrado mostra a venda como estava no seu fechamento.
+            try(PreparedStatement st=conn.prepareStatement("SELECT d.id_pedido,d.status_original FROM devolucao_venda d JOIN pedido p ON p.id_pedido=d.id_pedido WHERE p.id_caixa=? AND d.id_caixa<>?")){
+                st.setInt(1,idCaixa);st.setInt(2,idCaixa);try(ResultSet rs=st.executeQuery()){while(rs.next()){
+                    Order venda=vendas.get(rs.getInt("id_pedido"));if(venda!=null)venda.setStatus(OrderStatus.valueOf(rs.getString("status_original")));
+                }}
+            }
             CashSummary resumo = new CashSummary(caixa.getValorInicial());
             List<Payment> recebimentos = new ArrayList<>();
             try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT pg.*, c.id_cliente, c.nome_cliente, c.telefone FROM pagamento pg "
+                    "SELECT pg.*, c.id_cliente, c.nome_cliente, c.telefone FROM pagamento_caixa pg "
                     + "JOIN pedido p ON p.id_pedido = pg.id_pedido LEFT JOIN cliente c ON c.id_cliente = p.id_cliente "
                     + "WHERE pg.id_caixa = ? ORDER BY pg.data_pagamento, pg.id_pagamento")) {
                 st.setInt(1, idCaixa);
@@ -112,7 +118,8 @@ public class RelatorioImpressaoDaoJdbc implements RelatorioImpressaoDao {
                     }
                 }
             }
-            return new FechamentoCaixa(caixa, resumo, new ArrayList<>(vendas.values()), movimentos, recebimentos);
+            DevolucaoVendaJdbc.compensar(conn,idCaixa,resumo);
+            return new FechamentoCaixa(caixa, resumo, new ArrayList<>(vendas.values()), movimentos, recebimentos,DevolucaoVendaJdbc.carregar(conn,idCaixa));
         });
     }
 

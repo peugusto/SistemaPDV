@@ -180,6 +180,7 @@ public class Main extends Application {
 
     @Override
     public void stop() {
+        com.casarural.sistemapdv.db.SessaoVendasSuspensas.atual().close();
         com.casarural.sistemapdv.services.ImpressaoVendaService.encerrar();
         DB.closeDataSource();
         log.info("Sistema encerrado");

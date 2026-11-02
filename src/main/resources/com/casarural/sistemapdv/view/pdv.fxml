@@ -45,6 +45,7 @@
             <!-- Cupom -->
             <VBox styleClass="cartao" spacing="8" prefWidth="470" minWidth="420">
                 <Label styleClass="titulo-cartao" text="Cupom da venda"/>
+                <Label fx:id="labelVendaSuspensa" styleClass="texto-suave" wrapText="true" maxWidth="420" visible="false" managed="false"/>
                 <HBox spacing="10">
                     <padding><Insets top="6" bottom="2" left="6"/></padding>
                     <Label styleClass="rotulo-secao" text="QTD" prefWidth="40"/>
@@ -64,14 +65,15 @@
     </center>
 
     <bottom>
-        <HBox styleClass="barra-inferior" spacing="12" alignment="CENTER_LEFT">
+        <FlowPane styleClass="barra-inferior" hgap="12" vgap="8" alignment="CENTER_LEFT">
             <Button fx:id="botaoAdicionar" text="Adicionar (Enter)" minHeight="46"/>
             <Button fx:id="botaoBuscar" styleClass="botao-info" text="Buscar produto (F2)" minHeight="46"/>
             <Button fx:id="botaoRemover" text="Excluir item" minHeight="46"/>
             <Button fx:id="botaoLimpar" text="Cancelar venda (Esc)" minHeight="46"/>
-            <Pane HBox.hgrow="ALWAYS"/>
+            <Button fx:id="botaoSuspender" text="Suspender venda (F3)" minHeight="46" disable="true"/>
+            <Button fx:id="botaoRetomar" text="Retomar venda (F4)" minHeight="46" disable="true"/>
             <Button fx:id="botaoFinalizar" styleClass="botao-primario,botao-grande" text="Finalizar venda (F1)" minWidth="270" minHeight="56"/>
-        </HBox>
+        </FlowPane>
     </bottom>
 
 </BorderPane>

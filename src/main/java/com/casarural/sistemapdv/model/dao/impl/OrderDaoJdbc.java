@@ -148,12 +148,13 @@ public class OrderDaoJdbc implements OrderDao {
                     Statement.RETURN_GENERATED_KEYS)) {
 
                 int idCaixa = idCaixaAberto(conn);   // antes de gravar qualquer coisa
+                if (obj.getVendaSuspensa()!=null) validarVendaSuspensa(conn,obj);
                 if (obj.isTroca()) validarReferenciaTroca(conn, obj);
                 validarFiadoAtual(conn, obj);
 
                 // Troca: desfaz a venda antiga primeiro (o estoque dela volta e pode ser vendido de novo)
                 if (obj.isTroca()) {
-                    cancelarNaTransacao(conn, obj.getIdPedidoTrocado(), "Troca", TIPO_TROCA);
+                    cancelarNaTransacao(conn, obj.getIdPedidoTrocado(), "Troca", TIPO_TROCA, obj);
                 }
 
                 if (obj.getCostumer() != null) {
@@ -174,6 +175,7 @@ public class OrderDaoJdbc implements OrderDao {
                             obj.setIdPedido(idPedido);
                             inserirItensEBaixarEstoque(conn, obj.getItemPedido(), idPedido);
                             inserirPagamento(conn, obj, idPedido, idCaixa);
+                            if (obj.getVendaSuspensa()!=null) concluirVendaSuspensa(conn,obj,idPedido);
                             if (obj.isTroca()) {
                                 try (PreparedStatement up = conn.prepareStatement(
                                         "UPDATE pedido SET id_pedido_troca = ? WHERE id_pedido = ?")) {
@@ -188,6 +190,29 @@ public class OrderDaoJdbc implements OrderDao {
             }
             return null;
         });
+    }
+
+    /** Após o lock do caixa, confirma a posse do carrinho antes das escritas financeiras. */
+    private void validarVendaSuspensa(Connection conn,Order venda) throws SQLException {
+        com.casarural.sistemapdv.model.entities.VendaSuspensa v=venda.getVendaSuspensa();
+        if(venda.isTroca()||v.token==null||v.sessao==null||v.estado!=com.casarural.sistemapdv.model.entities.VendaSuspensa.Estado.EM_PAGAMENTO)throw new com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException("Referência inválida do carrinho retomado.");
+        try(PreparedStatement st=conn.prepareStatement("SELECT estado,versao,token,sessao,id_pedido FROM venda_suspensa WHERE id=? FOR UPDATE")) {
+            st.setString(1,v.id.toString());try(ResultSet rs=st.executeQuery()) {
+                if(!rs.next())throw new com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException("O carrinho retomado não foi encontrado. Reabra a lista.");
+                if(rs.getObject("id_pedido")!=null)throw new com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException("Este carrinho já foi finalizado na venda #"+rs.getInt("id_pedido")+". Confira o histórico; não registre outra venda.");
+                if(!"EM_PAGAMENTO".equals(rs.getString("estado")) || v.versao!=rs.getLong("versao") || !v.token.equals(rs.getString("token")) || !v.sessao.equals(rs.getString("sessao")))
+                    throw new com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException("O carrinho mudou ou foi retomado em outra tela. Confira a lista antes de continuar.");
+            }
+        }
+        try(PreparedStatement st=conn.prepareStatement("SELECT IS_USED_LOCK(?)")){
+            st.setString(1,com.casarural.sistemapdv.db.SessaoVendasSuspensas.PREFIXO+v.sessao);
+            try(ResultSet rs=st.executeQuery()){if(!rs.next()||rs.getObject(1)==null)throw new com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException("A sessão do carrinho foi interrompida. Confira os pagamentos e reabra a lista.");}
+        }
+    }
+    private void concluirVendaSuspensa(Connection conn,Order venda,int idPedido)throws SQLException{
+        try(PreparedStatement st=conn.prepareStatement("UPDATE venda_suspensa SET estado='CONCLUIDA', id_pedido=?, versao=versao+1, atualizada_em=NOW() WHERE id=?")){
+            st.setInt(1,idPedido);st.setString(2,venda.getVendaSuspensa().id.toString());if(st.executeUpdate()!=1)throw new SQLException("Não foi possível concluir o carrinho retomado.");
+        }
     }
 
     /** Após o lock do caixa (e da referência na troca), valida as regras atuais antes das escritas. */
@@ -786,24 +811,44 @@ public class OrderDaoJdbc implements OrderDao {
      * arquiva os pagamentos e marca a venda CANCELADO.
      */
     private Map<PaymentMethod, BigDecimal> cancelarNaTransacao(Connection conn, int idPedido, String motivo, String tipo) throws SQLException {
+        return cancelarNaTransacao(conn,idPedido,motivo,tipo,null);
+    }
+
+    private Map<PaymentMethod, BigDecimal> cancelarNaTransacao(Connection conn, int idPedido, String motivo, String tipo, Order nova) throws SQLException {
+        int caixaAtual=idCaixaAberto(conn);
         LocalDateTime abertura = aberturaDoCaixa(conn);
         BigDecimal valorTotal;
+        String statusOriginal;
+        boolean outroCaixa;
         try (PreparedStatement st = conn.prepareStatement(
-                "SELECT status, data_pedido, valor_total FROM pedido WHERE id_pedido = ? FOR UPDATE")) {
+                "SELECT status, data_pedido, valor_total, id_caixa FROM pedido WHERE id_pedido = ? FOR UPDATE")) {
             st.setInt(1, idPedido);
             try (ResultSet rs = st.executeQuery()) {
                 if (!rs.next()) throw new SQLException("Venda #" + idPedido + " não encontrada.");
                 if (OrderStatus.CANCELADO.name().equals(rs.getString("status"))) {
                     throw new SQLException("A venda #" + idPedido + " já foi cancelada.");
                 }
-                if (rs.getTimestamp("data_pedido").toLocalDateTime().isBefore(abertura)) {
-                    throw new SQLException(MENSAGEM_SO_CAIXA_ABERTO);
-                }
+                Integer origem=inteiroOpcional(rs,"id_caixa");
+                outroCaixa=origem==null?rs.getTimestamp("data_pedido").toLocalDateTime().isBefore(abertura):origem!=caixaAtual;
+                statusOriginal=rs.getString("status");
                 valorTotal = rs.getBigDecimal("valor_total");
             }
         }
 
         Map<PaymentMethod, BigDecimal> pago = pagoPorForma(conn, idPedido, valorTotal);
+
+        if(outroCaixa) {
+            // Sem identidade de caixa, não se inventa a origem financeira de uma venda legada.
+            try(PreparedStatement st=conn.prepareStatement("SELECT id_caixa FROM pedido WHERE id_pedido=?")){
+                st.setInt(1,idPedido);try(ResultSet rs=st.executeQuery()){if(!rs.next()||rs.getObject(1)==null)throw new SQLException("Venda antiga sem identificação do caixa de origem. É necessário conferir manualmente antes de devolver ou trocar.");}
+            }
+            try(PreparedStatement st=conn.prepareStatement("SELECT id_caixa,metodo_pagamento FROM pagamento WHERE id_pedido=? AND metodo_pagamento<>'FIADO' FOR UPDATE")){
+                st.setInt(1,idPedido);try(ResultSet rs=st.executeQuery()){while(rs.next())if(rs.getObject(1)==null||PaymentMethod.ler(rs.getString(2))==null)throw new SQLException("Há pagamento antigo sem identificação de caixa ou forma de pagamento. Confira manualmente antes de devolver ou trocar.");}
+            }
+            BigDecimal recebido=pago.entrySet().stream().filter(e->e.getKey()!=PaymentMethod.FIADO).map(Map.Entry::getValue).reduce(Money.ZERO,BigDecimal::add);
+            if(recebido.compareTo(valorTotal)>0)throw new SQLException("Os pagamentos antigos ultrapassam o valor da compra. Confira o histórico antes de devolver ou trocar.");
+            DevolucaoVendaJdbc.registrar(conn,idPedido,caixaAtual,tipo,statusOriginal,valorTotal,motivo,pago,nova);
+        }
 
         // Reverte somente a baixa registrada na venda, independentemente da configuração atual.
         Map<Integer, Integer> reposicoes = new java.util.TreeMap<>();
@@ -833,7 +878,8 @@ public class OrderDaoJdbc implements OrderDao {
                 if (st.executeUpdate() != 1) throw new SQLException("Não foi possível repor o estoque dentro do limite permitido. Nenhuma alteração foi confirmada.");
             }
         }
-        arquivarPagamentos(conn, "id_pedido = ?", new Object[]{idPedido}, tipo, motivo);
+        String tipoArquivo=outroCaixa?(TIPO_TROCA.equals(tipo)?"TROCA_EXTERNA":"DEVOLUCAO_EXTERNA"):tipo;
+        arquivarPagamentos(conn, "id_pedido = ?", new Object[]{idPedido}, tipoArquivo, motivo);
 
         try (PreparedStatement st = conn.prepareStatement(
                 "UPDATE pedido SET status = 'CANCELADO', cancelado_em = NOW(), motivo_cancelamento = ? WHERE id_pedido = ?")) {
@@ -851,6 +897,17 @@ public class OrderDaoJdbc implements OrderDao {
     public Map<PaymentMethod, BigDecimal> cancel(int idPedido, String motivo) {
         return executarTransacao("cancelar a venda #" + idPedido,
                 conn -> cancelarNaTransacao(conn, idPedido, motivo, TIPO_CANCELAMENTO));
+    }
+
+    @Override
+    public Map<PaymentMethod, BigDecimal> cancel(int idPedido,String motivo,String versao) {
+        return executarTransacao("devolver a venda #"+idPedido,conn->{
+            idCaixaAberto(conn);
+            Order referencia=new Order();referencia.setIdPedidoTrocado(idPedido);referencia.setVersaoPedidoTrocado(versao);
+            try{validarReferenciaTroca(conn,referencia);}
+            catch(TrocaDesatualizadaException e){throw new DbException("A venda mudou desde a conferência. Reabra o histórico e confira os valores antes de devolver. Nenhuma alteração foi feita.");}
+            return cancelarNaTransacao(conn,idPedido,motivo,TIPO_CANCELAMENTO);
+        });
     }
 
     @Override
@@ -920,13 +977,14 @@ public class OrderDaoJdbc implements OrderDao {
 
     private Optional<VendaParaDesfazer> cabecalhoTroca(Connection conn, int idPedido, boolean bloquear) throws SQLException {
         try (PreparedStatement st = conn.prepareStatement(
-                "SELECT status, data_pedido, valor_total, desconto, id_cliente FROM pedido WHERE id_pedido = ?" + (bloquear ? " FOR UPDATE" : ""))) {
+                "SELECT status, data_pedido, valor_total, desconto, id_cliente, id_caixa FROM pedido WHERE id_pedido = ?" + (bloquear ? " FOR UPDATE" : ""))) {
             st.setInt(1, idPedido);
             try (ResultSet rs = st.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 VendaParaDesfazer v = new VendaParaDesfazer();
                 v.setIdPedido(idPedido);
                 v.setIdCliente(inteiroOpcional(rs, "id_cliente"));
+                v.setIdCaixaOriginal(inteiroOpcional(rs,"id_caixa"));
                 v.setStatus(OrderStatus.valueOf(rs.getString("status")));
                 v.setDataPedido(rs.getTimestamp("data_pedido").toLocalDateTime());
                 v.setValorTotal(rs.getBigDecimal("valor_total"));
@@ -983,9 +1041,13 @@ public class OrderDaoJdbc implements OrderDao {
                     return Optional.empty();
                 }
                 VendaParaDesfazer v = encontrada.get();
-                try (PreparedStatement st = conn.prepareStatement("SELECT aberto_em FROM caixa WHERE fechado_em IS NULL");
+                try (PreparedStatement st = conn.prepareStatement("SELECT aberto_em, id_caixa FROM caixa WHERE fechado_em IS NULL");
                      ResultSet rs = st.executeQuery()) {
-                    if (rs.next()) v.setDoCaixaAberto(!v.getDataPedido().isBefore(rs.getTimestamp(1).toLocalDateTime()));
+                    if (rs.next()) {
+                        java.time.LocalDateTime abertura=rs.getTimestamp(1).toLocalDateTime();
+                        v.setCaixaAtualDisponivel(abertura.toLocalDate().equals(java.time.LocalDate.now(relogio)));
+                        v.setDoCaixaAberto(v.isCaixaAtualDisponivel()&&(v.getIdCaixaOriginal()==null?!v.getDataPedido().isBefore(abertura):v.getIdCaixaOriginal()==rs.getInt("id_caixa")));
+                    }
                 }
                 ProductDaoJdbc produtos = new ProductDaoJdbc();
                 try (PreparedStatement st = conn.prepareStatement(

@@ -88,10 +88,10 @@ public class ResumoVendas {
         this.descontoComCusto = valor == null ? null : Money.of(valor);
     }
 
-    public boolean temReceitaComCusto() { return receitaComCusto.signum() > 0; }
+    public boolean temReceitaComCusto() { return receitaComCusto.signum() != 0; }
 
     public boolean temCustoParcial() {
-        return temReceitaComCusto() && receitaComCusto.compareTo(receitaItens) < 0;
+        return temReceitaComCusto() && receitaComCusto.abs().compareTo(receitaItens.abs()) < 0;
     }
 
     /** Percentual apenas para apresentação. A existência/completude é decidida pelos valores reais. */

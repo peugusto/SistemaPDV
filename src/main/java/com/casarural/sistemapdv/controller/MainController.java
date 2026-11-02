@@ -308,6 +308,7 @@ public class MainController implements Initializable {
         ViewLoader.showView(true, "/com/casarural/sistemapdv/view/pdv.fxml", "Caixa Aberto",
                 (PDVController controller) -> {
                     controller.setProductService(new ProductService(DaoFactory.createProductDAO()));
+                    controller.setVendaSuspensaService(new com.casarural.sistemapdv.services.VendaSuspensaService());
                 }
         );
         atualizarCaixa();

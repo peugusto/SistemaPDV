@@ -437,16 +437,18 @@ public class OrderListController implements Initializable {
         });
     }
 
-    /** Botões só para venda do caixa aberto e não cancelada; senão explica por quê. */
+    /** Habilita cancelamento/devolução ou troca com caixa atual e dados de origem conhecidos. */
     private void mostrarAcoes() {
         boolean pode = vendaDetalhe != null && vendaDetalhe.podeDesfazer();
         btnTrocar.setVisible(pode);
         btnTrocar.setManaged(pode);
         btnCancelarVenda.setVisible(pode);
         btnCancelarVenda.setManaged(pode);
+        btnCancelarVenda.setText(vendaDetalhe!=null&&!vendaDetalhe.isDoCaixaAberto()?"Devolver venda":"Cancelar venda");
         String dica = "";
         if (vendaDetalhe != null && !vendaDetalhe.isCancelada() && !vendaDetalhe.isDoCaixaAberto()) {
-            dica = "Venda de um caixa já fechado: não dá para cancelar nem trocar.";
+            dica = pode?"Troca/devolução será registrada no caixa de hoje. O fechamento original será preservado."
+                    :"Abra o caixa de hoje para trocar ou devolver. Vendas sem identificação de caixa ou baixa de estoque exigem conferência manual.";
         }
         if (vendaDetalhe != null && !vendaDetalhe.isCancelada() && vendaDetalhe.isDoCaixaAberto() && !vendaDetalhe.temBaixaConhecida()) dica = "Venda anterior ao registro das baixas: troca ou cancelamento exige conferência manual do estoque.";
         labelAcoesDica.setText(dica);
@@ -459,8 +461,10 @@ public class OrderListController implements Initializable {
     public void onCancelarVenda() {
         VendaParaDesfazer v = vendaDetalhe;
         if (v == null || !v.podeDesfazer()) return;
+        boolean devolucao=!v.isDoCaixaAberto();
+        String acao=devolucao?"Devolver venda":"Cancelar venda";
         javafx.stage.Window janela = tabelaVendas.getScene().getWindow();
-        if (!PinDialogo.liberar(acesso, janela, "Cancelar venda", "cancelar a venda #" + v.getIdPedido())) return;
+        if (!PinDialogo.liberar(acesso, janela, acao, (devolucao?"devolver":"cancelar")+" a venda #" + v.getIdPedido())) return;
 
         Map<PaymentMethod, BigDecimal> devolver = v.getDevolverAoCancelar();
         String explicacao = "Venda #" + v.getIdPedido() + " de " + Money.format(v.getValorTotal()) + ".\n\n"
@@ -469,15 +473,16 @@ public class OrderListController implements Initializable {
                     ? " e " + Money.format(v.getPagoPorForma().get(PaymentMethod.FIADO)) + " saem da conta de fiado do cliente" : "")
                 + ".\n"
                 + (devolver.isEmpty() ? "" : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolver) + ".\n")
-                + "\nPor que está cancelando?";
-        Optional<String> motivo = Alerts.pedirTexto("Cancelar venda", "Cancelar a venda #" + v.getIdPedido() + "?",
-                explicacao, "Motivo (ex.: passou produto errado)", "Cancelar venda");
+                + (devolucao?"\nA devolução será lançada no caixa de hoje, preservando o fechamento original.\n":"")
+                + "\nInforme o motivo:";
+        Optional<String> motivo = Alerts.pedirTexto(acao, acao+" #" + v.getIdPedido() + "?",
+                explicacao, "Motivo (ex.: cliente devolveu os produtos)", acao);
         if (motivo.isEmpty()) return;
 
         try {
-            Map<PaymentMethod, BigDecimal> devolvido = service.cancelar(v.getIdPedido(), motivo.get());
+            Map<PaymentMethod, BigDecimal> devolvido = service.cancelar(v, motivo.get());
             log.warn("Venda #{} cancelada. Motivo: {}. Devolvido: {}", v.getIdPedido(), motivo.get(), devolvido);
-            Alerts.showAlertAndWait("Venda cancelada", "Venda #" + v.getIdPedido() + " cancelada",
+            Alerts.showAlertAndWait(devolucao?"Venda devolvida":"Venda cancelada", "Venda #" + v.getIdPedido() + (devolucao?" devolvida":" cancelada"),
                     devolvido.isEmpty() ? "Os produtos voltaram para o estoque."
                             : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolvido) + ".",
                     Alert.AlertType.INFORMATION);
@@ -490,7 +495,8 @@ public class OrderListController implements Initializable {
                     e.getMessage(), Alert.AlertType.WARNING);
             buscar();
         } catch (RuntimeException e) {
-            Alerts.showAlert("Cancelar venda", "Não foi possível cancelar", e.getMessage(), Alert.AlertType.WARNING);
+            Alerts.showAlert(acao, "Não foi possível concluir", e.getMessage(), Alert.AlertType.WARNING);
+            buscar();
         }
     }
 

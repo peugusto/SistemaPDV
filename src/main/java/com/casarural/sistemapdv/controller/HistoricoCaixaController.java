@@ -130,6 +130,7 @@ public class HistoricoCaixaController implements Initializable {
         sb.append(linha("+ Fiado recebido em dinheiro", r.getRecebimentosFiado(PaymentMethod.DINHEIRO)));
         sb.append(linha("+ Reforços", r.getReforcos()));
         sb.append(linha("- Sangrias", r.getSangrias()));
+        sb.append(linha("- Pagamentos de trocas/devoluções anteriores",r.getCompensacao(PaymentMethod.DINHEIRO)));
         sb.append(linha("= Devia ter na gaveta", r.getDinheiroEsperado()));
         sb.append(String.format("%n"));
         sb.append(linha("PIX", r.getTotalPix()));

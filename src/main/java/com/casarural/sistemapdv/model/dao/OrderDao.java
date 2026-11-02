@@ -29,10 +29,11 @@ public interface OrderDao extends GenericDao<Order> {
     Optional<VendaParaDesfazer> findParaDesfazer(int idPedido);
 
     /**
-     * Cancela a venda (só do caixa aberto): estoque volta, pagamentos vão para pagamento_estornado.
+     * Cancela/devolve a venda no caixa atual: estoque volta, pagamentos vão para pagamento_estornado.
      * Devolve quanto o cliente tinha pago em cada forma (dinheiro, PIX, cartão) para devolver.
      */
     Map<PaymentMethod, BigDecimal> cancel(int idPedido, String motivo);
+    default Map<PaymentMethod,BigDecimal> cancel(int idPedido,String motivo,String versao) { return cancel(idPedido,motivo); }
 
     /**
      * Desfaz um recebimento de fiado (só do caixa aberto): as compras que ele tinha quitado voltam a dever.

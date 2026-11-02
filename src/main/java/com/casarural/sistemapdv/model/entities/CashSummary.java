@@ -22,6 +22,7 @@ public class CashSummary {
     private final BigDecimal valorInicial;
     private final Map<PaymentMethod, BigDecimal> vendas = new EnumMap<>(PaymentMethod.class);
     private final Map<PaymentMethod, BigDecimal> recebimentos = new EnumMap<>(PaymentMethod.class);
+    private final Map<PaymentMethod, BigDecimal> compensacoes = new EnumMap<>(PaymentMethod.class);
     private BigDecimal sangrias = Money.ZERO;
     private BigDecimal reforcos = Money.ZERO;
 
@@ -57,23 +58,28 @@ public class CashSummary {
         return recebimentos.getOrDefault(metodo, Money.ZERO);
     }
 
+    public CashSummary addCompensacao(PaymentMethod metodo,BigDecimal valor) {
+        compensacoes.merge(metodo,Money.of(valor),BigDecimal::add);return this;
+    }
+    public BigDecimal getCompensacao(PaymentMethod metodo) { return compensacoes.getOrDefault(metodo,Money.ZERO); }
+
     /** Dinheiro que deveria estar na gaveta agora. */
     public BigDecimal getDinheiroEsperado() {
         return valorInicial
                 .add(getVendas(PaymentMethod.DINHEIRO))
                 .add(getRecebimentosFiado(PaymentMethod.DINHEIRO))
                 .add(reforcos)
-                .subtract(sangrias);
+                .subtract(sangrias).subtract(getCompensacao(PaymentMethod.DINHEIRO));
     }
 
     /** Tudo que entrou em PIX (vendas + fiado recebido). */
     public BigDecimal getTotalPix() {
-        return getVendas(PaymentMethod.PIX).add(getRecebimentosFiado(PaymentMethod.PIX));
+        return getVendas(PaymentMethod.PIX).add(getRecebimentosFiado(PaymentMethod.PIX)).subtract(getCompensacao(PaymentMethod.PIX));
     }
 
     /** Tudo que entrou em cartão (vendas + fiado recebido). */
     public BigDecimal getTotalCartao() {
-        return getVendas(PaymentMethod.CARTAO).add(getRecebimentosFiado(PaymentMethod.CARTAO));
+        return getVendas(PaymentMethod.CARTAO).add(getRecebimentosFiado(PaymentMethod.CARTAO)).subtract(getCompensacao(PaymentMethod.CARTAO));
     }
 
     /** Vendas que ficaram para o cliente pagar depois. */

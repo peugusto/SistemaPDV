@@ -4,6 +4,10 @@ import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
 import com.casarural.sistemapdv.model.entities.VendaParaDesfazer;
+import com.casarural.sistemapdv.model.entities.VendaSuspensa;
+import com.casarural.sistemapdv.model.entities.VendaSuspensa.Estado;
+import com.casarural.sistemapdv.model.entities.VendaSuspensa.Gravacao;
+import com.casarural.sistemapdv.services.VendaSuspensaService;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Money;
@@ -37,6 +41,16 @@ public class PDVController implements Initializable {
     private Runnable aoConcluirTroca;
     private boolean trocaDesatualizada;
     public boolean isTrocaDesatualizada() { return trocaDesatualizada; }
+    private VendaSuspensaService suspensas;
+    private int quantidadeSuspensas=-1;
+    private VendaSuspensa rascunho;
+    private Gravacao pendente;
+    private boolean operando,carregando,rascunhoBloqueado,finalizando;
+    private PaymentController pagamentoRetido;
+    private java.util.List<OrderItem> ultimoCarrinhoConfirmado=java.util.List.of();
+    @FXML private Button botaoSuspender,botaoRetomar;
+    @FXML private Label labelVendaSuspensa;
+    public void setVendaSuspensaService(VendaSuspensaService service){this.suspensas=service;atualizarContagem();atualizarAcoes();}
 
 
     @FXML private Label labelUltimoItem;
@@ -121,17 +135,27 @@ public class PDVController implements Initializable {
                         onBuscarProduto();
                         event.consume();
                     }
-                    // Esc só é do PDV quando há o que cancelar; cupom vazio: a janela pergunta se fecha
-                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && (trocaDe != null || !itensVenda.isEmpty())) {
+                    if(event.getCode()==javafx.scene.input.KeyCode.F3){onSuspenderVenda();event.consume();}
+                    if(event.getCode()==javafx.scene.input.KeyCode.F4){onRetomarVenda();event.consume();}
+                    // Mesmo vazio, o carrinho pode ter uma gravação pendente ou ainda possuir um rascunho.
+                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && (trocaDe != null || !itensVenda.isEmpty()
+                            || rascunho!=null||pendente!=null||rascunhoBloqueado||pagamentoRetido!=null)) {
                         onLimparVenda();
                         event.consume();
                     }
                 });
             }
         });
+        botaoSuspender.setOnAction(e->onSuspenderVenda());botaoRetomar.setOnAction(e->onRetomarVenda());
+        labelTotal.sceneProperty().addListener((o,a,cena)->{
+            if(cena!=null)cena.windowProperty().addListener((w,antiga,janela)->{
+                if(janela!=null)janela.addEventFilter(javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST,e->{if(!prepararSaida())e.consume();});
+            });
+        });
     }
 
     private void onAdicionarItem() {
+        if(!podeEditar())return;
         String codigo = campoCodigoProduto.getText() == null ? "" : campoCodigoProduto.getText().trim();
         if (codigo.isEmpty()) return;
 
@@ -262,6 +286,7 @@ public class PDVController implements Initializable {
      * então vale a quantidade do campo, a janela da balança e a conferência de estoque.
      */
     private void onBuscarProduto() {
+        if(!podeEditar())return;
         if (quantidadeDoFormulario() == null) return;
         try {
             Optional<Product> escolhido = BuscaProdutoController.abrir(productService, labelTotal.getScene().getWindow());
@@ -278,6 +303,7 @@ public class PDVController implements Initializable {
     }
 
     private void onRemoverItem() {
+        if(!podeEditar())return;
         OrderItem selecionado = listaItens.getSelectionModel().getSelectedItem();
         if (selecionado != null) {
             itensVenda.remove(selecionado);
@@ -292,6 +318,8 @@ public class PDVController implements Initializable {
     }
 
     private void onLimparVenda() {
+        if(operando||finalizando||pendente!=null||rascunhoBloqueado)return;
+        if(pagamentoRetido!=null||rascunho!=null&&rascunho.estado==Estado.EM_PAGAMENTO){Alerts.showAlert("Pagamento em andamento",null,"Use Continuar pagamento para conferir a finalização antes de cancelar o carrinho.",Alert.AlertType.WARNING);return;}
         if (trocaDe != null) {
             if (Alerts.showConfirmation("Desistir da troca", null,
                     "Desistir da troca? A venda #" + trocaDe.getIdPedido() + " continua como estava.")) {
@@ -299,9 +327,10 @@ public class PDVController implements Initializable {
             }
             return;
         }
-        if (itensVenda.isEmpty()) return;
+        if (itensVenda.isEmpty()&&rascunho==null) return;
 
         if (Alerts.showConfirmation("Cancelar Venda", null, "Deseja cancelar toda a venda atual?")) {
+            if(rascunho!=null){gravarSuspensa(Estado.DESCARTADA,rascunho.identificacao);return;}
             itensVenda.clear();
             atualizarTotalVenda();
             resetarCamposVisuais();
@@ -330,6 +359,7 @@ public class PDVController implements Initializable {
         }
         atualizarTotalVenda();
         labelUltimoItem.setText("TROCA DA VENDA #" + venda.getIdPedido());
+        atualizarAcoes();
         campoCodigoProduto.requestFocus();
     }
 
@@ -338,28 +368,21 @@ public class PDVController implements Initializable {
     }
 
     private void onFinalizarVenda() {
+        if(operando||finalizando||pendente!=null||rascunhoBloqueado)return;
         if (itensVenda.isEmpty()) {
             Alerts.showAlert("Aviso", "Carrinho Vazio", "Adicione produtos antes de finalizar a venda.", Alert.AlertType.WARNING);
             return;
         }
 
-        Order order = prepararPedido();
-
+        finalizando=true;atualizarAcoes();
+        try {
         PaymentController[] pagamento = new PaymentController[1];
-        com.casarural.sistemapdv.util.ViewLoader.showView(
-                true,
-                "/com/casarural/sistemapdv/view/FechamentoVenda.fxml",
-                "Finalizar Pagamento - Casa Rural",
-                (PaymentController controller) -> {
-                    pagamento[0] = controller;
-                    controller.setDadosVenda(
-                            order,
-                            new com.casarural.sistemapdv.services.OrderService(),
-                            new com.casarural.sistemapdv.services.CustomerService(com.casarural.sistemapdv.model.dao.DaoFactory.createCustomerDAO())
-                    );
-                    if (trocaDe != null) controller.setTroca(trocaDe);
-                }
-        );
+        if(pagamentoRetido!=null){
+            pagamento[0]=pagamentoRetido;continuarPagamento(pagamentoRetido);
+        }else{
+        if(rascunho!=null&&rascunho.estado!=Estado.EM_PAGAMENTO&&!gravarSuspensa(Estado.EM_PAGAMENTO,rascunho.identificacao))return;
+        pagamento[0]=abrirPagamento(prepararPedido());
+        }
 
         if (pagamento[0] != null && pagamento[0].isTrocaDesatualizada()) {
             trocaDesatualizada=true;
@@ -368,6 +391,7 @@ public class PDVController implements Initializable {
         }
         // Resultado incerto não é cancelamento: reabrir este carrinho criaria outra venda.
         if (pagamento[0] != null && pagamento[0].isVendaPendenteConferencia()) {
+            liberarPagamentoInterrompido();
             fecharJanela();
             return;
         }
@@ -378,13 +402,29 @@ public class PDVController implements Initializable {
             if (aoConcluirTroca != null) aoConcluirTroca.run();
             fecharJanela();
         } else if (pagamento[0] != null && pagamento[0].isVendaConcluida()) {
+            rascunho=null;pagamentoRetido=null;
             itensVenda.clear();
             atualizarTotalVenda();
             resetarCamposVisuais();
+            atualizarContagem();
         } else {
+            if(pagamento[0]!=null&&pagamento[0].isHouveLancamento())pagamentoRetido=pagamento[0];
+            else if(rascunho!=null)gravarSuspensa(Estado.EM_USO,rascunho.identificacao);
             campoCodigoProduto.requestFocus();
         }
+        atualizarAcoes();
+        } finally {finalizando=false;atualizarAcoes();if(podeEditar())campoCodigoProduto.requestFocus();}
     }
+
+    protected PaymentController abrirPagamento(Order order){
+        PaymentController[] pagamento=new PaymentController[1];
+        com.casarural.sistemapdv.util.ViewLoader.showView(true,"/com/casarural/sistemapdv/view/FechamentoVenda.fxml","Finalizar Pagamento - Casa Rural",(PaymentController controller)->{
+            pagamento[0]=controller;controller.setDadosVenda(order,new com.casarural.sistemapdv.services.OrderService(),
+                    new com.casarural.sistemapdv.services.CustomerService(com.casarural.sistemapdv.model.dao.DaoFactory.createCustomerDAO()));
+            if(trocaDe!=null)controller.setTroca(trocaDe);
+        });return pagamento[0];
+    }
+    protected void continuarPagamento(PaymentController pagamento){pagamento.getJanela().showAndWait();}
 
     Order prepararPedido() {
         Order pedido = new Order();
@@ -395,6 +435,7 @@ public class PDVController implements Initializable {
             pedido.setVersaoPedidoTrocado(trocaDe.getVersao());
         }
         pedido.setStatus(com.casarural.sistemapdv.model.entities.enums.OrderStatus.PAGO);
+        pedido.setVendaSuspensa(rascunho);
         return pedido;
     }
 
@@ -406,6 +447,10 @@ public class PDVController implements Initializable {
     }
 
     private void atualizarTotalVenda() {
+        if(!carregando&&rascunho!=null&&rascunho.estado==Estado.EM_USO&&pendente==null&&!rascunhoBloqueado) {
+            try{if(!VendaSuspensa.capturar(itensVenda).equals(rascunho.itens))gravarSuspensa(Estado.EM_USO,rascunho.identificacao);}
+            catch(IllegalArgumentException e){itensVenda.setAll(copiarItens(ultimoCarrinhoConfirmado));Alerts.showAlert("Carrinho não alterado",null,e.getMessage(),Alert.AlertType.WARNING);}
+        }
         labelTotal.setText(Money.format(calcularTotalVenda()));
         boolean mostrar = trocaDe != null && Money.isPositive(trocaDe.getDesconto());
         labelDescontoTroca.setVisible(mostrar);
@@ -415,6 +460,93 @@ public class PDVController implements Initializable {
             labelDescontoTroca.setText(Money.isPositive(mantido) ? "Desconto original mantido: " + Money.format(mantido)
                     : "Carrinho alterado: desconto original removido. Novo desconto exige PIN no pagamento.");
         }
+        atualizarAcoes();
+    }
+
+    private boolean podeEditar(){return !operando&&!finalizando&&pendente==null&&!rascunhoBloqueado&&pagamentoRetido==null&&(rascunho==null||rascunho.estado==Estado.EM_USO);}
+    private void atualizarAcoes(){
+        boolean edita=podeEditar();
+        botaoAdicionar.setDisable(!edita);botaoBuscar.setDisable(!edita);botaoRemover.setDisable(!edita);botaoLimpar.setDisable(!edita);
+        campoCodigoProduto.setDisable(!edita);campoQuantidade.setDisable(!edita);
+        botaoFinalizar.setDisable(operando||finalizando||pendente!=null||rascunhoBloqueado||itensVenda.isEmpty());
+        botaoFinalizar.setText(pagamentoRetido==null&&(rascunho==null||rascunho.estado!=Estado.EM_PAGAMENTO)?"Finalizar venda (F1)":"Continuar pagamento (F1)");
+        botaoSuspender.setDisable(suspensas==null||trocaDe!=null||operando||finalizando||rascunhoBloqueado||pagamentoRetido!=null||pendente==null&&(itensVenda.isEmpty()||rascunho!=null&&rascunho.estado!=Estado.EM_USO));
+        botaoSuspender.setText(pendente==null?"Suspender venda (F3)":"Confirmar salvamento (F3)");
+        botaoRetomar.setDisable(suspensas==null||quantidadeSuspensas==0||trocaDe!=null||!edita||rascunho!=null||!itensVenda.isEmpty());
+        String status=rascunho==null?"":"Carrinho retomado: "+rascunho.getIdentificacao();
+        if(pendente!=null)status="Salvamento pendente. Confirme a mesma tentativa antes de continuar.";
+        if(rascunhoBloqueado)status="Carrinho indisponível. Feche esta tela e confira a lista.";
+        if(pagamentoRetido!=null)status="Há pagamentos lançados. Use Continuar pagamento; o carrinho não pode ser suspenso.";
+        labelVendaSuspensa.setText(status);labelVendaSuspensa.setVisible(!status.isEmpty());labelVendaSuspensa.setManaged(!status.isEmpty());
+    }
+    private void atualizarContagem(){
+        quantidadeSuspensas=-1;
+        if(suspensas==null)return;
+        try{quantidadeSuspensas=suspensas.listar().size();botaoRetomar.setText("Retomar venda ("+quantidadeSuspensas+") (F4)");}
+        catch(Exception e){botaoRetomar.setText("Retomar venda (F4)");log.warn("Não foi possível atualizar a contagem de carrinhos",e);}
+        finally{atualizarAcoes();}
+    }
+    private boolean gravarSuspensa(Estado destino,String nome){
+        if(suspensas==null)return false;
+        try{
+            if(pendente==null)pendente=suspensas.gravacao(rascunho,nome,itensVenda,destino);
+            return confirmarGravacao();
+        }catch(Exception e){Alerts.showAlert("Salvar carrinho",null,e.getMessage(),Alert.AlertType.WARNING);return false;}
+    }
+    private boolean confirmarGravacao(){
+        if(operando||pendente==null)return false;operando=true;atualizarAcoes();
+        try{
+            VendaSuspensa salva=suspensas.gravar(pendente);pendente=null;
+            if(salva.estado==Estado.CONCLUIDA){rascunhoBloqueado=true;Alerts.showAlert("Venda já finalizada",null,"Confira a venda #"+salva.pedido+" no histórico. Não registre o carrinho novamente.",Alert.AlertType.WARNING);return false;}
+            if(salva.estado==Estado.SUSPENSA||salva.estado==Estado.DESCARTADA){rascunho=null;carregando=true;itensVenda.clear();atualizarTotalVenda();carregando=false;resetarCamposVisuais();atualizarContagem();}
+            else {rascunho=salva;ultimoCarrinhoConfirmado=copiarItens(itensVenda);}
+            return true;
+        }catch(com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException e){pendente=null;rascunhoBloqueado=true;Alerts.showAlert("Carrinho indisponível",null,e.getMessage(),Alert.AlertType.WARNING);return false;}
+        catch(Exception e){Alerts.showAlert("Salvamento não confirmado",null,"O carrinho continua nesta tela. Use Confirmar salvamento para repetir a mesma tentativa, sem alterar os itens.\n\n"+e.getMessage(),Alert.AlertType.WARNING);return false;}
+        finally{operando=false;atualizarAcoes();if(podeEditar())campoCodigoProduto.requestFocus();}
+    }
+    @FXML public void onSuspenderVenda(){
+        if(suspensas==null||trocaDe!=null||operando||finalizando||rascunhoBloqueado)return;
+        if(pendente!=null){confirmarGravacao();return;}
+        if(rascunho!=null&&rascunho.estado!=Estado.EM_USO)return;
+        if(pagamentoRetido!=null){Alerts.showAlert("Pagamento em andamento",null,"Confira e conclua os pagamentos antes de suspender outra venda.",Alert.AlertType.WARNING);return;}
+        if(itensVenda.isEmpty())return;
+        TextInputDialog d=new TextInputDialog(rascunho==null?"":rascunho.identificacao);d.setTitle("Suspender venda");d.setHeaderText("Identificação opcional do carrinho");d.setContentText("Nome ou observação (até 80 caracteres):");
+        if(labelTotal.getScene()!=null&&labelTotal.getScene().getWindow()!=null)d.initOwner(labelTotal.getScene().getWindow());
+        com.casarural.sistemapdv.util.Tema.aplicar(d.getDialogPane());d.showAndWait().ifPresent(nome->gravarSuspensa(Estado.SUSPENSA,nome));
+    }
+    @FXML public void onRetomarVenda(){
+        if(suspensas==null||quantidadeSuspensas==0||trocaDe!=null||operando||!podeEditar())return;
+        if(!itensVenda.isEmpty()||rascunho!=null){Alerts.showAlert("Carrinho ocupado",null,"Suspenda ou cancele o carrinho atual antes de retomar outro.",Alert.AlertType.WARNING);return;}
+        try{
+            VendasSuspensasDialogo.abrir(suspensas,labelTotal.getScene().getWindow()).ifPresent(this::carregarRetomada);
+        }finally{atualizarContagem();atualizarAcoes();}
+    }
+    void carregarRetomada(VendasSuspensasDialogo.Resultado resultado){
+        rascunho=resultado.venda;carregando=true;itensVenda.clear();
+        for(OrderItem i:resultado.itens)itensVenda.add(new OrderItem(i.getProduto(),i.getQtd(),i.getPrecoUnitario()));
+        ultimoCarrinhoConfirmado=copiarItens(itensVenda);atualizarTotalVenda();carregando=false;labelUltimoItem.setText("VENDA RETOMADA");campoCodigoProduto.requestFocus();
+    }
+    private static java.util.List<OrderItem> copiarItens(java.util.List<OrderItem> itens){java.util.List<OrderItem> r=new java.util.ArrayList<>();for(OrderItem i:itens)r.add(new OrderItem(i.getProduto(),i.getQtd(),i.getPrecoUnitario()));return r;}
+    private void liberarPagamentoInterrompido(){
+        if(rascunho==null)return;
+        try{suspensas.gravar(suspensas.interromperPagamento(rascunho));}
+        catch(Exception e){log.warn("Carrinho com finalização interrompida deve ser conferido na próxima abertura",e);}
+    }
+    private boolean prepararSaida(){
+        if(finalizando)return false;
+        if(trocaDe!=null)return Alerts.showConfirmation("Desistir da troca",null,"Desistir da troca? A venda original continua como estava.");
+        if(operando||pendente!=null){Alerts.showAlert("Salvamento pendente",null,"Confirme o salvamento do carrinho antes de fechar.",Alert.AlertType.WARNING);return false;}
+        if(rascunhoBloqueado)return Alerts.showConfirmation("Fechar carrinho indisponível",null,"Fechar esta cópia? Confira a versão salva pela lista antes de continuar.");
+        if(pagamentoRetido!=null||rascunho!=null&&rascunho.estado==Estado.EM_PAGAMENTO){
+            if(rascunho==null){Alerts.showAlert("Pagamento em andamento",null,"Continue e confira o pagamento antes de fechar esta venda.",Alert.AlertType.WARNING);return false;}
+            if(!Alerts.showConfirmation("Pagamento interrompido",null,"Deixar este carrinho pendente para conferência? Os pagamentos lançados nesta tela não serão compensados automaticamente. Confira o histórico e os valores recebidos antes de retomar."))return false;
+            liberarPagamentoInterrompido();return true;
+        }
+        if(rascunho!=null){return gravarSuspensa(itensVenda.isEmpty()?Estado.DESCARTADA:Estado.SUSPENSA,rascunho.identificacao);}
+        if(itensVenda.isEmpty())return true;
+        int escolha=Alerts.showChoice("Sair da venda",null,"Há produtos no carrinho. Deseja guardar para continuar depois?",Alert.AlertType.CONFIRMATION,"Continuar na venda","Suspender e sair","Descartar e sair");
+        if(escolha==0){onSuspenderVenda();return itensVenda.isEmpty();}return escolha==1;
     }
 
     private void resetarCamposVisuais() {

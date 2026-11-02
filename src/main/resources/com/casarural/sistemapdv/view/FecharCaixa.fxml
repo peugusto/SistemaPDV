@@ -42,9 +42,11 @@
                                 <Label fx:id="valReforcos" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="3" />
                                 <Label text="− Dinheiro retirado (sangrias)" GridPane.rowIndex="4" />
                                 <Label fx:id="valSangrias" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                                <Separator GridPane.columnSpan="2" GridPane.rowIndex="5" />
-                                <Label styleClass="texto-forte" text="= Deve ter na gaveta" GridPane.rowIndex="6" />
-                                <Label fx:id="valEsperado" styleClass="valor-destaque" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                                <Label text="− Pagamentos de trocas/devoluções anteriores" wrapText="true" GridPane.rowIndex="5" />
+                                <Label fx:id="valCompensacoes" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                                <Separator GridPane.columnSpan="2" GridPane.rowIndex="6" />
+                                <Label styleClass="texto-forte" text="= Deve ter na gaveta" GridPane.rowIndex="7" />
+                                <Label fx:id="valEsperado" styleClass="valor-destaque" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="7" />
                             </children>
                         </GridPane>
                     </children>
@@ -60,9 +62,9 @@
                                 <ColumnConstraints halignment="RIGHT" />
                             </columnConstraints>
                             <children>
-                                <Label text="PIX (vendas + fiado recebido)" GridPane.rowIndex="0" />
+                                <Label text="PIX líquido (após trocas/devoluções)" GridPane.rowIndex="0" />
                                 <Label fx:id="valPix" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-                                <Label text="Cartão (vendas + fiado recebido)" GridPane.rowIndex="1" />
+                                <Label text="Cartão líquido (após trocas/devoluções)" GridPane.rowIndex="1" />
                                 <Label fx:id="valCartao" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                                 <Label text="Vendido no fiado (a receber)" GridPane.rowIndex="2" />
                                 <Label fx:id="valFiadoVendido" styleClass="texto-alerta" text="R$ 0,00" GridPane.columnIndex="1" GridPane.rowIndex="2" />

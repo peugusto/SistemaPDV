@@ -284,6 +284,7 @@ class OrderDaoJdbcTransacaoTest {
                     case "getInt": return ((Number) valor).intValue();
                     case "getBigDecimal": return valor;
                     case "getTimestamp": return valor;
+                    case "getObject": return valor;
                     case "getString": return String.valueOf(valor);
                     default: throw new AssertionError("ResultSet não esperado: " + nome);
                 }

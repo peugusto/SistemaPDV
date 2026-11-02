@@ -194,10 +194,10 @@ public class CashRegisterDaoJdbc implements CashRegisterDao {
         }
     }
 
-    private CashSummary summarize(Connection conn, CashRegister caixa) throws SQLException {
+    CashSummary summarize(Connection conn, CashRegister caixa) throws SQLException {
         CashSummary resumo = new CashSummary(caixa.getValorInicial());
         try (PreparedStatement st = conn.prepareStatement(
-                "SELECT origem, metodo_pagamento, SUM(valor_pago) AS total FROM pagamento " +
+                "SELECT origem, metodo_pagamento, SUM(valor_pago) AS total FROM pagamento_caixa " +
                         "WHERE id_caixa = ? GROUP BY origem, metodo_pagamento")) {
             st.setInt(1, caixa.getIdCaixa());
             try (ResultSet rs = st.executeQuery()) {
@@ -217,6 +217,7 @@ public class CashRegisterDaoJdbc implements CashRegisterDao {
                 }
             }
         }
+        DevolucaoVendaJdbc.compensar(conn,caixa.getIdCaixa(),resumo);
         return resumo;
     }
 

@@ -23,6 +23,9 @@ public class Order {
     private BigDecimal desconto = Money.ZERO;
     /** Na troca: a venda antiga que esta substitui (cancelada na mesma transação ao gravar). */
     private Integer idPedidoTrocado;
+    private com.casarural.sistemapdv.model.entities.VendaSuspensa vendaSuspensa;
+    public VendaSuspensa getVendaSuspensa() { return vendaSuspensa; }
+    public void setVendaSuspensa(VendaSuspensa venda) { vendaSuspensa=venda; }
     private String versaoPedidoTrocado;
     public String getVersaoPedidoTrocado() { return versaoPedidoTrocado; }
     public void setVersaoPedidoTrocado(String versao) { versaoPedidoTrocado=versao; }

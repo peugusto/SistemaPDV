@@ -57,6 +57,15 @@ public final class ComprovanteFechamento implements Comprovante {
             }
         }
         CashSummary r = fechamento.getResumo();
+        if(!fechamento.getDevolucoes().isEmpty()){
+            separar(linhas);escrever(linhas,"TROCAS / DEVOLUÇÕES DE OUTROS CAIXAS");
+            for(DevolucaoVenda d:fechamento.getDevolucoes()){
+                escrever(linhas,data(d.data,"HH:mm")+" "+("TROCA".equals(d.tipo)?"Troca":"Devolução")+" da venda #"+d.pedido);
+                escrever(linhas,"Motivo: "+d.motivo);
+                for(PaymentMethod m:PaymentMethod.values())if(Money.isPositive(d.devolvido.get(m)))valores(linhas,"Devolvido - "+nome(m),Money.format(d.devolvido.get(m)));
+                if(Money.isPositive(d.fiadoBaixado))valores(linhas,"Fiado anterior retirado",Money.format(d.fiadoBaixado));
+            }
+        }
         separar(linhas); escrever(linhas, "RESUMO DO CAIXA");
         for (PaymentMethod forma : PaymentMethod.values()) valores(linhas, "Vendas - " + nome(forma), Money.format(r.getVendas(forma)));
         valores(linhas, "TOTAL VENDIDO", Money.format(r.getTotalVendido()));
@@ -68,6 +77,8 @@ public final class ComprovanteFechamento implements Comprovante {
         valores(linhas, "Troco inicial", Money.format(r.getValorInicial()));
         valores(linhas, "Reforços", Money.format(r.getReforcos()));
         valores(linhas, "TOTAL RETIRADO", Money.format(r.getSangrias()));
+        for(PaymentMethod forma:new PaymentMethod[]{PaymentMethod.DINHEIRO,PaymentMethod.PIX,PaymentMethod.CARTAO})if(Money.isPositive(r.getCompensacao(forma)))
+            valores(linhas,"(-) Pagamentos anteriores - "+nome(forma),Money.format(r.getCompensacao(forma)));
         BigDecimal esperado = caixa.getValorEsperado() == null ? r.getDinheiroEsperado() : caixa.getValorEsperado();
         valores(linhas, "ESPERADO NA GAVETA", Money.format(esperado));
         if (caixa.getValorContado() == null) escrever(linhas, "Gaveta não conferida.");

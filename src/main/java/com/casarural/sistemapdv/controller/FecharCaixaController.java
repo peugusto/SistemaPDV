@@ -38,6 +38,7 @@ public class FecharCaixaController implements Initializable {
     @FXML private Label valFiadoDinheiro;
     @FXML private Label valReforcos;
     @FXML private Label valSangrias;
+    @FXML private Label valCompensacoes;
     @FXML private Label valEsperado;
     @FXML private Label valPix;
     @FXML private Label valCartao;
@@ -76,6 +77,7 @@ public class FecharCaixaController implements Initializable {
         valFiadoDinheiro.setText(Money.format(resumo.getRecebimentosFiado(PaymentMethod.DINHEIRO)));
         valReforcos.setText(Money.format(resumo.getReforcos()));
         valSangrias.setText(Money.format(resumo.getSangrias()));
+        valCompensacoes.setText(Money.format(resumo.getCompensacao(PaymentMethod.DINHEIRO)));
         valEsperado.setText(Money.format(resumo.getDinheiroEsperado()));
         valPix.setText(Money.format(resumo.getTotalPix()));
         valCartao.setText(Money.format(resumo.getTotalCartao()));

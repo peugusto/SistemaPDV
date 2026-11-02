@@ -50,6 +50,27 @@ Quando o pão chegar às 7h, abra Relatórios > Pão do dia (F7) e registre quan
 - Desistir da venda inteira: "Cancelar venda (Esc)".
 - Produtos marcados [sem fiado] não podem ir para o fiado (cigarro, bebida).
 
+# Suspender e retomar uma venda
+Use para atender outra pessoa enquanto o cliente busca um produto ou precisa esperar.
+## Guardar o carrinho (F3)
+1. Antes de ir ao pagamento, clique em "Suspender venda (F3)".
+2. Se quiser, escreva um nome ou observação de até 80 caracteres. Não precisa cadastrar um cliente.
+3. Confirme. O cupom só fica vazio depois que o carrinho é salvo.
+! Suspender não registra venda, dívida, pagamento ou saída de estoque. Os produtos não ficam reservados.
+## Continuar depois (F4)
+1. Com o cupom vazio, clique em "Retomar venda (F4)".
+2. Selecione o carrinho e clique em "Retomar venda".
+3. Confira as alterações de preço, cadastro e estoque, se houver. Cancelar a conferência mantém o carrinho guardado.
+4. Continue passando produtos e finalize normalmente com F1. A venda será registrada no caixa aberto no momento da conclusão.
+As edições de um carrinho retomado são salvas após adicionar ou excluir itens. Ao fechar essa tela, ele volta para a lista. Um carrinho novo só fica protegido após a primeira suspensão.
+Se o preço por peso ou o tipo de um produto mudou, ele será retirado na conferência e precisará ser lançado ou pesado novamente.
+## Descartar ou recuperar
+- "Descartar" na lista remove o carrinho guardado, sem cancelar vendas nem alterar estoque ou caixa.
+- Depois de reiniciar o programa, os carrinhos guardados continuam na lista. Um carrinho em uso fica indisponível para outra tela enquanto a sessão estiver ativa.
+- Se a resposta ao salvar falhar, mantenha a tela aberta e use "Confirmar salvamento (F3)". A tentativa é a mesma, sem duplicar o carrinho.
+! Se já lançou algum pagamento, use "Continuar pagamento (F1)" para voltar à mesma tela com os valores preservados. Não é permitido suspender esse pagamento.
+! Depois de uma queda durante o pagamento, o carrinho aparece como "Pagamento interrompido — conferir". O responsável precisa usar o PIN e conferir o histórico e os valores já recebidos antes de retomar ou descartar. Esses valores não são recuperados nem compensados automaticamente.
+
 # Pagamento e troco
 A tela de pagamento mostra quanto FALTA PAGAR.
 ## Pagar tudo de uma forma só
@@ -64,7 +85,7 @@ A tela de pagamento mostra quanto FALTA PAGAR.
 2. Digite o PIN da loja.
 3. Digite o desconto e escolha R$ ou %. A janela mostra o total que fica. Clique em "Aplicar".
 4. O FALTA PAGAR já aparece com o desconto. Para tirar o desconto, faça de novo e digite 0.
-! "Voltar (Esc)" desiste do pagamento, mas o cupom continua lá para você terminar a venda.
+! "Voltar (Esc)" retorna ao cupom. Se já lançou pagamentos, use "Continuar pagamento (F1)" para conferir os mesmos valores e terminar a venda.
 
 # Queijo, mortadela e outros pesados
 Produtos pesáveis não usam quantidade: vale o valor que a balança mostra.
@@ -218,6 +239,15 @@ O que muda:
 - O que tinha ficado no fiado sai da conta do cliente.
 - A venda continua no histórico como "Cancelada", com o motivo.
 
+# Devolver uma venda de outro dia
+1. Abra o caixa de hoje e procure a compra no Histórico de vendas, usando o período da compra.
+2. Clique em "Devolver venda", autorize com o PIN e confira os valores que serão devolvidos.
+3. Informe o motivo e confirme. Esse botão devolve a compra inteira; para devolver parte e manter os demais produtos, use Trocar produtos e deixe no cupom somente os produtos que o cliente manteve.
+Os produtos voltam ao estoque e o fiado ainda pendente dessa compra sai da conta. O que já foi pago, inclusive recebimentos posteriores, é devolvido nas formas indicadas.
+O fechamento original fica preservado. A devolução aparece no caixa e no relatório da data em que foi feita. No histórico a compra original continua identificada como cancelada/devolvida.
+! PIX e cartão são devolvidos manualmente no banco ou na maquininha. O PDV registra a operação; não envia estorno para esses serviços.
+! Se faltar dinheiro na gaveta, registre primeiro um reforço de caixa. Venda antiga sem identificação de caixa ou sem baixa de estoque registrada exige conferência manual.
+
 # Trocar produtos
 O cliente levou um produto e voltou para trocar por outro.
 1. Abra "Histórico de vendas" e clique na venda dele.
@@ -226,6 +256,7 @@ O cliente levou um produto e voltou para trocar por outro.
 4. Aperte F1. O que o cliente já tinha pago entra como crédito da troca.
 5. Se a compra nova for mais cara, ele paga só a diferença. Se for mais barata, a tela diz quanto devolver.
 6. Confirme. A venda antiga fica como "Trocada" e o estoque se acerta sozinho.
+Compras de outros caixas também podem ser trocadas com o caixa de hoje aberto. O caixa anterior fica preservado; o caixa de hoje recebe a diferença e mostra separadamente os pagamentos anteriores compensados.
 ! Mesmos produtos, quantidades e preços: o desconto original é mantido. Se mudar o carrinho, o desconto original é removido; para dar outro desconto, use F4 no pagamento e autorize com o PIN.
 ! Se aparecer "Troca desatualizada", a venda original mudou depois de abrir a troca (por exemplo, recebeu um pagamento de fiado). A tentativa não grava nada. Reabra a troca pelo histórico para usar os créditos atualizados.
 ! Desistiu no meio? Aperte Esc na venda: nada muda.
@@ -253,7 +284,7 @@ O PIN da loja protege: relatórios de vendas, histórico de caixas, cancelar ven
 - Esqueceu? Veja "Problemas e soluções".
 
 # Histórico de vendas
-Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos. Nas vendas do caixa aberto aparecem os botões "Trocar produtos" e "Cancelar venda".
+Tela principal > "Histórico de vendas". Procure vendas antigas por período, forma de pagamento, situação, cliente ou produto. Clique numa venda para ver os produtos e os pagamentos. Com caixa de hoje aberto, use "Trocar produtos" e "Cancelar venda" (compra do caixa atual) ou "Devolver venda" (compra de outro caixa).
 
 # Atalhos do teclado
 ## Em qualquer tela

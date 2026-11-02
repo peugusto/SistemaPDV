@@ -66,6 +66,9 @@ public class PaymentController implements Initializable {
     private boolean vendaConcluida = false;
     private boolean vendaPendenteConferencia = false;
     private boolean trocaDesatualizada;
+    private boolean houveLancamento;
+    public boolean isHouveLancamento(){return houveLancamento;}
+    public javafx.stage.Stage getJanela(){return (javafx.stage.Stage)btnCancelar.getScene().getWindow();}
     public boolean isTrocaDesatualizada() { return trocaDesatualizada; }
     private BigDecimal trocoDinheiro = Money.ZERO;
     private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
@@ -430,7 +433,7 @@ public class PaymentController implements Initializable {
         if (metodo == PaymentMethod.DINHEIRO) {
             trocoDinheiro = Money.max(Money.ZERO, valor.subtract(valorEfetivo));
         }
-        if (Money.isPositive(valorEfetivo)) order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo));
+        if (Money.isPositive(valorEfetivo)) { houveLancamento=true;order.getPagamentos().add(new Order.PaymentSlice(valorEfetivo, metodo)); }
 
         saldoRestante = saldoRestante.subtract(valorEfetivo);
         txtValorRecebido.clear();
@@ -535,6 +538,11 @@ public class PaymentController implements Initializable {
             }
 
             orderService.insert(order);
+        } catch (com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException e) {
+            vendaPendenteConferencia=true;
+            btnConfirmar.setDisable(true);btnDesconto.setDisable(true);txtValorRecebido.setDisable(true);
+            Alerts.showAlertAndWait("Confira o carrinho","A finalização foi bloqueada",e.getMessage(),Alert.AlertType.WARNING);
+            fecharJanela();return;
         } catch (TrocaDesatualizadaException e) {
             trocaDesatualizada = true;
             btnConfirmar.setDisable(true);
