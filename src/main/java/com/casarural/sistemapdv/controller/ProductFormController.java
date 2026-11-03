@@ -30,6 +30,7 @@ public class ProductFormController implements Initializable {
     private ProductService service;
     private ProductListController listController;
     private boolean salvamentoConfirmado;
+    private boolean resultadoIncerto;
     private ProtecaoPin protecao = new ProtecaoPin();
 
     @FXML private TextField txtCodBarras;
@@ -83,6 +84,7 @@ public class ProductFormController implements Initializable {
 
     @FXML
     public void onBtnSaveAction(ActionEvent event) {
+        if(resultadoIncerto)return;
         if (salvamentoConfirmado) {
             closeStage(event);
             return;
@@ -102,11 +104,22 @@ public class ProductFormController implements Initializable {
             java.util.List<String> acoes = com.casarural.sistemapdv.services.AcoesProtegidas.produto(entity,alterado);
             if (!acoes.isEmpty() && !protecao.autorizar(btnSave.getScene().getWindow(),
                     String.join(", ",acoes)+" de "+alterado.getNomeProduto())) return;
+            if(entity.getIdProduto()>0&&entity.getEstoque()!=alterado.getEstoque()){
+                java.util.Optional<String> motivo=Alerts.pedirTexto("Correção de estoque",entity.getNomeProduto(),
+                        "Estoque: "+entity.getEstoque()+" → "+alterado.getEstoque()+". Informe o motivo para o histórico.","Motivo da correção","Confirmar correção");
+                if(motivo.isEmpty())return;
+                alterado.setMotivoAjusteEstoque(com.casarural.sistemapdv.model.entities.AjusteEstoque.validarMotivo(motivo.get()));
+            }
             service.saveOrUpdate(alterado);
             entity = alterado;
             salvamentoConfirmado = true;
         } catch (IllegalArgumentException e) {
             Alerts.showAlert("Erro de Validação", "Confira os dados do produto", e.getMessage(), Alert.AlertType.ERROR);
+            return;
+        } catch (com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException e) {
+            resultadoIncerto=true;btnSave.setDisable(true);
+            Alerts.showAlert("Confira o produto", "A confirmação do salvamento não chegou",
+                    "O produto pode já ter sido salvo. Feche e reabra o estoque para conferir antes de salvar novamente. Se alterou a quantidade, consulte o Histórico de ajustes.",Alert.AlertType.WARNING);
             return;
         } catch (Exception e) {
             Alerts.showAlert("Erro ao Salvar", "Não foi possível salvar o produto", e.getMessage(), Alert.AlertType.ERROR);

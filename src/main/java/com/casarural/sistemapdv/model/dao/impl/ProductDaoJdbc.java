@@ -255,9 +255,12 @@ public class ProductDaoJdbc implements ProductDao {
     @Override
     public void update(Product obj) {
         Object[] esperado = obj.getEstadoOriginal();
-        boolean confirmado = false;
-        try (Connection conn = conexoes.get();
-             PreparedStatement st = conn.prepareStatement(
+        if(obj.getEstoque()<0)throw new IllegalArgumentException("O estoque não pode ser negativo.");
+        int saldoAntes=((Number)esperado[3]).intValue();
+        boolean mudouEstoque=saldoAntes!=obj.getEstoque();
+        String motivo=mudouEstoque?com.casarural.sistemapdv.model.entities.AjusteEstoque.validarMotivo(obj.getMotivoAjusteEstoque()):null;
+        TransacaoEstoque.executar(conexoes,"salvar o produto",conn->{
+        try (PreparedStatement st = conn.prepareStatement(
                      "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
                              + "tipo_venda = ?, controla_estoque = ?, preco_custo = ?, ativo = ? WHERE id_produto = ? AND BINARY cod_barras <=> BINARY ? AND BINARY nome_produto <=> BINARY ? AND preco_produto <=> ? AND estoque <=> ? AND permite_fiado <=> ? AND tipo_venda <=> ? AND controla_estoque <=> ? AND preco_custo <=> ? AND ativo <=> ?")) {
 
@@ -274,14 +277,10 @@ public class ProductDaoJdbc implements ProductDao {
 
             for (int i = 0; i < esperado.length; i++) st.setObject(11 + i, esperado[i]);
             if (st.executeUpdate() != 1) throw new DbException("Este produto foi alterado ou removido por outra operação. Feche e reabra a edição para conferir os dados atuais.");
-            confirmado = true;
-        } catch (SQLException | RuntimeException e) {
-            if (!confirmado) {
-                if (e instanceof RuntimeException) throw (RuntimeException)e;
-                throw new DbException(e.getMessage(), e);
-            }
-            log.warn("Produto {} salvo; falha ao liberar conexão", obj.getIdProduto(), e);
+            if(mudouEstoque)AjusteEstoqueDaoJdbc.registrarEdicao(conn,obj,saldoAntes,motivo);
         }
+        return null;
+        });
         obj.registrarEstadoOriginal();
     }
 
@@ -300,12 +299,14 @@ public class ProductDaoJdbc implements ProductDao {
     /** Em quantas vendas e compras de pão o produto aparece (se > 0, não pode ser excluído). */
     @Override
     public int contarUsos(int idProduto) {
-        try (Connection conn = DB.getConnection();
+        try (Connection conn = conexoes.get();
              PreparedStatement st = conn.prepareStatement(
                      "SELECT (SELECT COUNT(*) FROM itempedido WHERE id_produto = ?) " +
-                     "     + (SELECT COUNT(*) FROM compra_pao WHERE id_produto = ?)")) {
+                     "     + (SELECT COUNT(*) FROM compra_pao WHERE id_produto = ?) " +
+                     "     + (SELECT COUNT(*) FROM ajuste_estoque WHERE id_produto = ?)")) {
             st.setInt(1, idProduto);
             st.setInt(2, idProduto);
+            st.setInt(3,idProduto);
             try (ResultSet rs = st.executeQuery()) {
                 rs.next();
                 return rs.getInt(1);

@@ -269,6 +269,14 @@ class CadastroProdutosControllerTest {
         CheckBox opcao(String nome) { return (CheckBox) loader.getNamespace().get(nome); }
         Button botao(String nome) { return (Button) loader.getNamespace().get(nome); }
         void salvar() { botao("btnSave").fire(); }
+        void salvarComMotivo() {
+            Platform.runLater(()->{
+                DialogPane d=Window.getWindows().stream().filter(w->w.isShowing()&&w.getScene()!=null&&w.getScene().getRoot() instanceof DialogPane).map(w->(DialogPane)w.getScene().getRoot()).findFirst().orElseThrow();
+                ((TextField)d.lookup(".text-field")).setText("Correção após contagem física");
+                ButtonType ok=d.getButtonTypes().stream().filter(b->b.getButtonData()==ButtonBar.ButtonData.OK_DONE).findFirst().orElseThrow();((Button)d.lookupButton(ok)).fire();
+            });
+            salvar();
+        }
         void cancelar() { botao("btnCancel").fire(); }
     }
 
@@ -601,7 +609,7 @@ class CadastroProdutosControllerTest {
                 tela.opcao("chkPermiteFiado").setSelected(false);
                 tela.opcao("chkAtivo").setSelected(false);
                 tela.opcao("chkPesavel").setSelected(true);
-                tela.salvar();
+                tela.salvarComMotivo();
                 assertEquals(1, dao.atualizacoes);
                 Product salvo = dao.registros.get(1);
                 assertEquals(custo.isEmpty() ? null : Money.parse(custo), salvo.getPrecoCusto());
@@ -638,7 +646,7 @@ class CadastroProdutosControllerTest {
             tela.opcao("chkAtivo").setSelected(false);
             tela.opcao("chkPermiteFiado").setSelected(false);
             dao.falharAtualizacao = true;
-            tela.salvar();
+            tela.salvarComMotivo();
             assertEquals(1, dao.atualizacoes);
             produtoPreservado(antes, original);
             produtoPreservado(antes, dao.registros.get(1));
@@ -663,10 +671,10 @@ class CadastroProdutosControllerTest {
             tela.campo("txtNome").setText("Arroz confirmado");
             tela.campo("txtEstoque").setText("5");
             dao.falharAtualizacao = true;
-            tela.salvar();
+            tela.salvarComMotivo();
             produtoPreservado(antes, original);
             fecharAviso();
-            tela.salvar();
+            tela.salvarComMotivo();
             assertEquals(2, dao.atualizacoes);
             assertEquals("Arroz confirmado", dao.registros.get(1).getNomeProduto());
             assertEquals(5, dao.registros.get(1).getEstoque());
@@ -696,6 +704,22 @@ class CadastroProdutosControllerTest {
             assertEquals(1, dao.atualizacoes);
             assertEquals(1, tela.lista.atualizacoes);
             tela.cancelar();
+        });
+    }
+
+    @Test void cancelarMotivoDaCorrecaoNaoChamaDao()throws Exception{
+        noJavafx(()->{
+            ProdutosEmMemoria dao=new ProdutosEmMemoria("900001");Product original=dao.findById(1).orElseThrow();TelaEdicao tela=new TelaEdicao(dao,original);tela.campo("txtEstoque").setText("2");
+            Platform.runLater(()->{DialogPane d=Window.getWindows().stream().filter(w->w.isShowing()&&w.getScene()!=null&&w.getScene().getRoot() instanceof DialogPane).map(w->(DialogPane)w.getScene().getRoot()).findFirst().orElseThrow();ButtonType cancelar=d.getButtonTypes().stream().filter(b->b.getButtonData()==ButtonBar.ButtonData.CANCEL_CLOSE).findFirst().orElseThrow();((Button)d.lookupButton(cancelar)).fire();});
+            tela.salvar();assertEquals(0,dao.atualizacoes);assertEquals(0,dao.consultasCodigo);assertEquals(10,original.getEstoque());
+        });
+    }
+    @Test void edicaoDeResultadoIncertoBloqueiaNovaGravacaoAteReabrir()throws Exception{
+        noJavafx(()->{
+            ProdutosEmMemoria dao=new ProdutosEmMemoria("900001");Product original=dao.findById(1).orElseThrow();TelaEdicao tela=new TelaEdicao(dao,original);int[] chamadas={0};
+            tela.controller.setServices(new ProductService(dao){@Override public void saveOrUpdate(Product p){chamadas[0]++;throw new ResultadoTransacaoIncertoException("salvar produto",new SQLException("SINTETICO"));}},tela.lista);
+            tela.campo("txtNome").setText("Nome alterado");tela.salvar();assertTrue(tela.botao("btnSave").isDisabled());fecharAviso();
+            Button b=tela.botao("btnSave");tela.controller.onBtnSaveAction(new ActionEvent(b,b));assertEquals(1,chamadas[0]);assertEquals("Arroz",original.getNomeProduto());
         });
     }
 

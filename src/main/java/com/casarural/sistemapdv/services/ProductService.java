@@ -16,7 +16,7 @@ public class ProductService {
         this.dao = dao;
     }
 
-    /** Já foi vendido (ou registrado no Pão do dia): não pode ser excluído, só desativado. */
+    /** Histórico de venda, pão ou ajuste: não pode ser excluído, só desativado. */
     public boolean temHistorico(int idProduto) {
         return dao.contarUsos(idProduto) > 0;
     }
@@ -24,7 +24,7 @@ public class ProductService {
     /** Exclui de vez. Só para produto sem histórico; com histórico, use desativar. */
     public void delete(Integer id) {
         if (temHistorico(id)) {
-            throw new DbException("Este produto já foi vendido e não pode ser excluído. Desative-o em vez disso.");
+            throw new DbException("Este produto possui histórico de vendas ou estoque e não pode ser excluído. Desative-o em vez disso.");
         }
         dao.deleteById(id);
     }

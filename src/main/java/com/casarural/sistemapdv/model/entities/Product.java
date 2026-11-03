@@ -7,6 +7,10 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Product {
+    /** Justificativa transitória: só é persistida junto do movimento de estoque. */
+    private String motivoAjusteEstoque;
+    public String getMotivoAjusteEstoque(){return motivoAjusteEstoque;}
+    public void setMotivoAjusteEstoque(String motivo){motivoAjusteEstoque=motivo;}
     /** Tamanhos das colunas no banco (V1): passar disso dá erro ao gravar. */
     public static final int TAMANHO_MAX_NOME = 30;
     public static final int TAMANHO_MAX_CODIGO = 60;

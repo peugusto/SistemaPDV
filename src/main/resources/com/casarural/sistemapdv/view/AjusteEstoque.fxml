@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.casarural.sistemapdv.controller.AjusteEstoqueController" styleClass="tela" spacing="16" prefWidth="560">
+    <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+    <Label fx:id="titulo" styleClass="titulo-cartao"/>
+    <Label fx:id="produto" wrapText="true" maxWidth="510"/>
+    <Label fx:id="saldoAtual" styleClass="texto-forte"/>
+    <Label fx:id="rotuloQuantidade"/>
+    <TextField fx:id="quantidade" promptText="Quantidade inteira"/>
+    <Label fx:id="saldoNovo" styleClass="texto-forte"/>
+    <Label text="Motivo (obrigatório)"/>
+    <TextArea fx:id="motivo" promptText="Ex.: embalagens danificadas, vencimento ou correção após contagem" wrapText="true" prefRowCount="3"/>
+    <Label text="A necessidade de reposição acompanha a diferença do estoque. Esta operação não movimenta caixa, vendas ou fiado." wrapText="true" maxWidth="510" styleClass="texto-suave"/>
+    <Label fx:id="status" wrapText="true" maxWidth="510"/>
+    <FlowPane hgap="12" vgap="8">
+        <Button fx:id="btnSalvar" text="Confirmar ajuste" styleClass="botao-primario" onAction="#onSalvar"/>
+        <Button fx:id="btnCancelar" text="Voltar" onAction="#onCancelar"/>
+    </FlowPane>
+</VBox>

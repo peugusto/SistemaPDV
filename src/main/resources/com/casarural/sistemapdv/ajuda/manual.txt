@@ -167,9 +167,24 @@ Ao fechar o sistema, os envios pendentes são interrompidos; os originais guarda
 
 # Estoque
 Tela principal > "Estoque" (F3). Mostra todos os produtos, preço e estoque. Estoque em vermelho: 15 unidades ou menos. Pesáveis e produtos sem controle aparecem como "Pesável" ou "Não controla".
+## Registrar perda
+1. Selecione o produto e clique em "Registrar perda".
+2. Informe quantas unidades foram perdidas e o motivo (ex.: vencimento ou embalagem danificada).
+3. Confira o estoque anterior e o saldo que ficará. Confirme e autorize com o PIN.
+A perda deve ser maior que zero e não pode passar do saldo disponível. O botão fica desativado para produtos sem controle por unidade ou com saldo zerado. Produtos inativos com saldo ainda podem registrar perdas.
+## Corrigir contagem
+1. Conte fisicamente as unidades e selecione o produto no Estoque.
+2. Clique em "Corrigir contagem", informe a quantidade encontrada e o motivo.
+3. Confira o novo saldo, confirme e autorize com o PIN. A quantidade pode ser zero ou maior que a atual.
+Ao alterar a quantidade pelo formulário Editar, o sistema também pede o motivo e registra a correção no mesmo histórico.
+## Histórico de ajustes
+Selecione o produto e clique em "Histórico de ajustes". A consulta mostra os últimos 200 registros, com data/hora, tipo, quantidade anterior, variação, quantidade posterior e motivo. Os registros anteriores continuam guardados no banco.
+Entradas e vendas mantêm seus registros próprios. Os ajustes não alteram vendas, pagamentos, caixa ou fiado. Perdas e reduções de saldo aumentam a necessidade de reposição; aumentos de saldo reduzem essa pendência até zero.
+! Se o estoque mudar durante a conferência, feche e reabra a operação para usar o saldo atual. Nada é ajustado usando uma conferência desatualizada.
+! Se a confirmação não chegar, mantenha a tela aberta e use "Confirmar tentativa". Essa ação confirma a mesma operação sem repetir a perda. Se o programa for interrompido, confira o histórico antes de registrar outra perda.
 ## Excluir ou desativar um produto
-- Produto que nunca foi vendido: "Excluir" apaga o cadastro.
-- Produto que já foi vendido não pode ser apagado (as vendas antigas precisam dele). O sistema oferece "Desativar produto": ele some da venda, da busca (F2) e da lista de compras, e aparece como "(inativo)" no Estoque.
+- Produto sem histórico de venda ou ajuste: "Excluir" apaga o cadastro.
+- Produto com histórico não pode ser apagado. O sistema oferece "Desativar produto": ele some da venda, da busca (F2) e da lista de compras, e aparece como "(inativo)" no Estoque. Os registros são preservados.
 - Para voltar a vender: Estoque > Editar > marque "Produto ativo".
 
 # Caixa: retirar, colocar e fechar

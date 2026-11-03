@@ -21,6 +21,12 @@
             <Button fx:id="searchButton" text="Buscar" minHeight="36"/>
         </HBox>
 
+        <FlowPane hgap="10" vgap="8">
+            <Button fx:id="botaoPerda" text="Registrar perda" onAction="#onRegistrarPerda" disable="true" styleClass="botao-perigo"/>
+            <Button fx:id="botaoContagem" text="Corrigir contagem" onAction="#onCorrigirContagem" disable="true" styleClass="botao-info"/>
+            <Button fx:id="botaoHistoricoAjustes" text="Histórico de ajustes" onAction="#onHistoricoAjustes" disable="true"/>
+        </FlowPane>
+
         <TableView fx:id="productTable" VBox.vgrow="ALWAYS">
             <placeholder><Label text="Nenhum produto encontrado."/></placeholder>
             <columns>

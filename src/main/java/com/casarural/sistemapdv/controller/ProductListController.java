@@ -3,6 +3,9 @@ package com.casarural.sistemapdv.controller;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Product;
+import com.casarural.sistemapdv.model.entities.AjusteEstoque;
+import com.casarural.sistemapdv.model.entities.RegistroAjusteEstoque;
+import com.casarural.sistemapdv.services.AjusteEstoqueService;
 import com.casarural.sistemapdv.services.ProductService;
 import com.casarural.sistemapdv.util.Alerts;
 import com.casarural.sistemapdv.util.Tema;
@@ -33,6 +36,8 @@ public class ProductListController implements Initializable {
 
 
     private ProductService service;
+    private AjusteEstoqueService ajustes=new AjusteEstoqueService();
+    @FXML private Button botaoPerda,botaoContagem,botaoHistoricoAjustes;
 
     @FXML private TextField searchField;
     @FXML private TableView<Product> productTable;
@@ -47,7 +52,8 @@ public class ProductListController implements Initializable {
     private static final int ESTOQUE_BAIXO = 15;
     @FXML private TableColumn<Product, Void> actionsColumn;
 
-    private ObservableList<Product> obsList;
+    private final ObservableList<Product> obsList=FXCollections.observableArrayList();
+    private final FilteredList<Product> filtrados=new FilteredList<>(obsList,p->true);
 
 
     public void setProductService(ProductService service) {
@@ -60,6 +66,13 @@ public class ProductListController implements Initializable {
     }
 
     private void initializeNodes() {
+        productTable.setItems(filtrados);
+        searchField.textProperty().addListener((o,a,n)->filtrados.setPredicate(p->{
+            String busca=n==null?"":n.toLowerCase(java.util.Locale.ROOT);
+            return p.getNomeProduto().toLowerCase(java.util.Locale.ROOT).contains(busca)||p.getCodBarras().toLowerCase(java.util.Locale.ROOT).contains(busca);
+        }));
+        productTable.getSelectionModel().selectedItemProperty().addListener((o,a,n)->atualizarAcoesEstoque());
+        initEditButtons();atualizarAcoesEstoque();
 
         idColumn.setCellValueFactory(new PropertyValueFactory<>("idProduto"));
         barcodeColumn.setCellValueFactory(new PropertyValueFactory<>("codBarras"));
@@ -126,27 +139,46 @@ public class ProductListController implements Initializable {
             throw new IllegalStateException("Service was null");
         }
         List<Product> list = service.findAll();
-        obsList = FXCollections.observableArrayList(list);
+        obsList.setAll(list);atualizarAcoesEstoque();
+    }
 
-
-        FilteredList<Product> filteredData = new FilteredList<>(obsList, p -> true);
-
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            filteredData.setPredicate(product -> {
-                if (newValue == null || newValue.isEmpty()) {
-                    return true;
-                }
-                String lowerCaseFilter = newValue.toLowerCase();
-
-                if (product.getNomeProduto().toLowerCase().contains(lowerCaseFilter)) return true;
-                if (product.getCodBarras().contains(lowerCaseFilter)) return true;
-
-                return false;
-            });
-        });
-
-        productTable.setItems(filteredData);
-        initEditButtons();
+    private void atualizarAcoesEstoque(){
+        Product p=productTable.getSelectionModel().getSelectedItem();boolean controla=p!=null&&p.isControlaEstoque();
+        botaoPerda.setDisable(!controla||p.getEstoque()<=0);botaoContagem.setDisable(!controla);botaoHistoricoAjustes.setDisable(p==null);
+    }
+    @FXML public void onRegistrarPerda(){abrirAjuste(AjusteEstoque.Tipo.PERDA);}
+    @FXML public void onCorrigirContagem(){abrirAjuste(AjusteEstoque.Tipo.CONTAGEM);}
+    private void abrirAjuste(AjusteEstoque.Tipo tipo){
+        Product p=productTable.getSelectionModel().getSelectedItem();if(p==null||!p.isControlaEstoque()||tipo==AjusteEstoque.Tipo.PERDA&&p.getEstoque()<=0)return;
+        try{
+            FXMLLoader l=new FXMLLoader(getClass().getResource("/com/casarural/sistemapdv/view/AjusteEstoque.fxml"));
+            javafx.scene.Parent raiz=l.load();AjusteEstoqueController c=l.getController();c.configurar(p,tipo,ajustes);
+            Stage s=new Stage();s.setTitle(tipo==AjusteEstoque.Tipo.PERDA?"Registrar perda":"Corrigir contagem");s.initOwner(productTable.getScene().getWindow());s.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            javafx.scene.Scene cena=new javafx.scene.Scene(raiz);Tema.aplicar(cena);s.setScene(cena);s.showAndWait();
+            try{updateTableView();}catch(RuntimeException e){Alerts.showAlert(c.isConcluido()?"Ajuste salvo":"Atualizar estoque",null,"Reabra o estoque para conferir os dados atuais. Um ajuste já confirmado não precisa ser registrado novamente.",Alert.AlertType.WARNING);}
+        }catch(java.io.IOException|RuntimeException e){log.error("Falha ao abrir ajuste do produto #{}",p.getIdProduto(),e);Alerts.showAlert("Ajustar estoque",null,"Não foi possível abrir a tela de ajuste.",Alert.AlertType.WARNING);}
+    }
+    @FXML public void onHistoricoAjustes(){
+        Product p=productTable.getSelectionModel().getSelectedItem();if(p==null)return;
+        try{
+            TableView<RegistroAjusteEstoque> tabela=new TableView<>();tabela.setId("historicoAjustes");tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            colunaHistorico(tabela,"Data",r->r.data.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+            colunaHistorico(tabela,"Tipo",r->r.ajuste.tipo.toString());colunaHistorico(tabela,"Antes",r->String.valueOf(r.antes));
+            colunaHistorico(tabela,"Variação",r->(r.depois-r.antes>0?"+":"")+(r.depois-r.antes));colunaHistorico(tabela,"Depois",r->String.valueOf(r.depois));colunaHistorico(tabela,"Motivo",r->r.ajuste.motivo);
+            tabela.setPlaceholder(new Label("Nenhum ajuste registrado para este produto."));
+            Button atualizar=new Button("Atualizar"),fechar=new Button("Fechar");
+            Runnable carregar=()->{try{tabela.setItems(FXCollections.observableArrayList(ajustes.historico(p.getIdProduto())));}catch(RuntimeException e){Alerts.showAlert("Histórico de ajustes",null,e.getMessage(),Alert.AlertType.WARNING);}};
+            Stage s=new Stage();atualizar.setOnAction(e->carregar.run());fechar.setOnAction(e->s.close());
+            javafx.scene.layout.VBox raiz=new javafx.scene.layout.VBox(12,new Label("Histórico de "+p.getNomeProduto()+" · "+p.getCodBarras()),new Label("Últimos 200 ajustes. Entradas e vendas mantêm seus registros próprios."),tabela,new HBox(10,atualizar,fechar));
+            raiz.setPadding(new javafx.geometry.Insets(20));javafx.scene.layout.VBox.setVgrow(tabela,javafx.scene.layout.Priority.ALWAYS);
+            s.setTitle("Histórico de ajustes de estoque");s.initOwner(productTable.getScene().getWindow());s.initModality(javafx.stage.Modality.APPLICATION_MODAL);javafx.scene.Scene cena=new javafx.scene.Scene(raiz,1020,480);Tema.aplicar(cena);s.setScene(cena);carregar.run();s.showAndWait();
+        }catch(RuntimeException e){Alerts.showAlert("Histórico de ajustes",null,e.getMessage(),Alert.AlertType.WARNING);}
+    }
+    private static void colunaHistorico(TableView<RegistroAjusteEstoque> tabela,String nome,java.util.function.Function<RegistroAjusteEstoque,String> valor){
+        TableColumn<RegistroAjusteEstoque,String> coluna=new TableColumn<>(nome);coluna.setCellValueFactory(c->new javafx.beans.property.SimpleStringProperty(valor.apply(c.getValue())));
+        coluna.setPrefWidth(nome.equals("Motivo")?350:nome.equals("Data")?180:nome.equals("Tipo")?170:75);
+        coluna.setCellFactory(c->new TableCell<>(){protected void updateItem(String texto,boolean empty){super.updateItem(texto,empty);setText(empty?null:texto);setTooltip(empty||texto==null?null:new Tooltip(texto));setWrapText(nome.equals("Motivo"));}});
+        tabela.getColumns().add(coluna);
     }
 
     private void initEditButtons() {
@@ -219,12 +251,12 @@ public class ProductListController implements Initializable {
             if (service.temHistorico(obj.getIdProduto())) {
                 if (!obj.isAtivo()) {
                     Alerts.showAlert("Excluir produto", obj.getNomeProduto(),
-                            "Este produto já foi vendido e já está desativado. Ele fica só no histórico.",
+                            "Este produto possui histórico e já está desativado. Ele continua disponível para consulta.",
                             Alert.AlertType.INFORMATION);
                     return;
                 }
-                int escolha = Alerts.showChoice("Excluir produto", obj.getNomeProduto() + " já foi vendido",
-                        "Ele não pode ser excluído, porque o histórico de vendas precisa dele.\n\n"
+                int escolha = Alerts.showChoice("Excluir produto", obj.getNomeProduto() + " possui histórico",
+                        "Ele não pode ser excluído, porque há registros de vendas ou ajustes de estoque vinculados a ele.\n\n"
                                 + "Desativado, ele some da venda, da busca e da lista de compras, mas as vendas antigas continuam.\n"
                                 + "Para voltar a vender, é só marcar \"Produto ativo\" em Editar.",
                         Alert.AlertType.WARNING, "Voltar", "Desativar produto");
