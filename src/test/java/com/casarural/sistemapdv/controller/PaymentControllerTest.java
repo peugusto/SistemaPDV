@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.ProdutoIndisponivelException;
 import com.casarural.sistemapdv.model.entities.*;
 import com.casarural.sistemapdv.model.entities.enums.*;
 import com.casarural.sistemapdv.services.*;
@@ -78,6 +79,29 @@ class PaymentControllerTest {
             throw new AssertionError("O aviso esperado não abriu");
         });
     }
+    @Test void produtoRecusadoNoBancoBloqueiaPagamentoEOrientaConferirValoresRecebidos() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            Gravacoes g = new Gravacoes() {
+                @Override public void insert(Order o) {
+                    chamadas++;
+                    throw new ProdutoIndisponivelException(Set.of(1));
+                }
+            };
+            Tela tela = new Tela(venda(item("Arroz", "100", true)), g);
+            tela.metodo("btnDinheiro");
+            List<String> mensagens = new ArrayList<>();
+            responder(ButtonBar.ButtonData.OK_DONE, mensagens);
+            tela.pagar("100");
+
+            assertEquals(Set.of(1), tela.c.getProdutosIndisponiveis());
+            assertFalse(tela.c.isVendaConcluida());
+            assertTrue(mensagens.get(0).contains("Arroz"));
+            assertTrue(mensagens.get(0).contains("antes de cobrar novamente"));
+            chamar(tela.c, "salvarVenda");
+            assertEquals(1, g.chamadas);
+        });
+    }
+
     @Test void trocaDesatualizadaFechaSemImprimirNemPermitirNovaTentativa() throws Exception { JavafxTestSupport.executar(() -> {
         Gravacoes g=new Gravacoes() {
             @Override public void insert(Order o) { chamadas++;throw new com.casarural.sistemapdv.db.TrocaDesatualizadaException(100); }

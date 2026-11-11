@@ -10,29 +10,58 @@ import java.util.*;
 /** Usado dentro da transação que já bloqueou caixa e pedido. */
 final class DevolucaoVendaJdbc {
     private DevolucaoVendaJdbc(){}
-    static void registrar(Connection c,int pedido,int caixa,String tipo,String status,BigDecimal total,String motivo,
-                          Map<PaymentMethod,BigDecimal> pago,Order nova)throws SQLException {
-        Map<PaymentMethod,BigDecimal> devolver=new EnumMap<>(PaymentMethod.class);
-        if(nova==null)pago.forEach((m,v)->{if(m!=PaymentMethod.FIADO)devolver.put(m,v);});
-        else {
-            RegraTroca.Resultado regra=RegraTroca.calcular(pago,nova.getValorTotal());
-            Map<PaymentMethod,BigDecimal> esperados=new EnumMap<>(PaymentMethod.class),informados=new EnumMap<>(PaymentMethod.class);
-            regra.getCreditos().forEach(p->esperados.merge(p.getMetodo(),p.getValor(),BigDecimal::add));
-            nova.getPagamentos().stream().filter(Order.PaymentSlice::isCredito).forEach(p->informados.merge(p.getMetodo(),p.getValor(),BigDecimal::add));
-            if(!esperados.equals(informados))throw new SQLException("Os créditos da troca mudaram. Reabra a venda pelo histórico.");
-            devolver.putAll(regra.getDevolver());
+    static Map<PaymentMethod, BigDecimal> calcularValoresDevolvidos(Map<PaymentMethod, BigDecimal> pago, Order troca,
+                                                                  boolean outroCaixa)
+            throws SQLException {
+        if (troca == null) {
+            Map<PaymentMethod, BigDecimal> devolver = new EnumMap<>(PaymentMethod.class);
+            devolver.putAll(pago);
+            devolver.remove(PaymentMethod.FIADO);
+            return devolver;
         }
-        BigDecimal novos=nova==null?Money.ZERO:nova.getPagamentos().stream()
-                .filter(p->!p.isCredito()&&p.getMetodo()==PaymentMethod.DINHEIRO).map(Order.PaymentSlice::getValor).reduce(Money.ZERO,BigDecimal::add);
-        BigDecimal dinheiro=devolver.getOrDefault(PaymentMethod.DINHEIRO,Money.ZERO);
-        if(Money.isPositive(dinheiro)) {
-            CashRegister atual=new CashRegister();atual.setIdCaixa(caixa);
-            try(PreparedStatement st=c.prepareStatement("SELECT valor_inicial FROM caixa WHERE id_caixa=?")){
-                st.setInt(1,caixa);try(ResultSet rs=st.executeQuery()){if(!rs.next())throw new SQLException("Caixa não encontrado.");atual.setValorInicial(rs.getBigDecimal(1));}
+        RegraTroca.Resultado regra = RegraTroca.calcular(pago, troca.getValorTotal());
+        if (outroCaixa || Money.isPositive(pago.get(PaymentMethod.DINHEIRO))) {
+            conferirCreditosDaTroca(regra, troca);
+        }
+        return regra.getDevolver();
+    }
+
+    private static void conferirCreditosDaTroca(RegraTroca.Resultado regra, Order troca) throws SQLException {
+        Map<PaymentMethod, BigDecimal> esperados = new EnumMap<>(PaymentMethod.class);
+        Map<PaymentMethod, BigDecimal> informados = new EnumMap<>(PaymentMethod.class);
+        regra.getCreditos().forEach(p -> esperados.merge(p.getMetodo(), p.getValor(), BigDecimal::add));
+        troca.getPagamentos().stream().filter(Order.PaymentSlice::isCredito)
+                .forEach(p -> informados.merge(p.getMetodo(), p.getValor(), BigDecimal::add));
+        if (!esperados.equals(informados)) {
+            throw new SQLException("Os créditos da troca mudaram. Reabra a venda pelo histórico.");
+        }
+    }
+
+    /** Confere a saída real em dinheiro enquanto a transação ainda tem o lock do caixa. */
+    static void conferirSaldo(Connection conn, int idCaixa, BigDecimal devolverEmDinheiro, Order troca)
+            throws SQLException {
+        if (!Money.isPositive(devolverEmDinheiro)) return;
+        CashRegister caixa = new CashRegister();
+        caixa.setIdCaixa(idCaixa);
+        try (PreparedStatement st = conn.prepareStatement("SELECT valor_inicial FROM caixa WHERE id_caixa = ?")) {
+            st.setInt(1, idCaixa);
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next()) throw new SQLException("Caixa não encontrado.");
+                caixa.setValorInicial(rs.getBigDecimal(1));
             }
-            BigDecimal disponivel=new CashRegisterDaoJdbc().summarize(c,atual).getDinheiroEsperado().add(novos);
-            if(dinheiro.compareTo(disponivel)>0)throw new SQLException("Não há dinheiro suficiente no caixa para devolver "+Money.format(dinheiro)+". Registre um reforço de caixa antes de confirmar.");
         }
+        BigDecimal entrada = troca == null ? Money.ZERO : troca.getPagamentos().stream()
+                .filter(p -> !p.isCredito() && p.getMetodo() == PaymentMethod.DINHEIRO)
+                .map(Order.PaymentSlice::getValor).reduce(Money.ZERO, BigDecimal::add);
+        BigDecimal disponivel = new CashRegisterDaoJdbc().summarize(conn, caixa).getDinheiroEsperado().add(entrada);
+        if (devolverEmDinheiro.compareTo(disponivel) > 0) {
+            throw new SQLException("Não há dinheiro suficiente no caixa para devolver " + Money.format(devolverEmDinheiro)
+                    + ". Registre um reforço de caixa antes de confirmar.");
+        }
+    }
+
+    static void registrar(Connection c,int pedido,int caixa,String tipo,String status,BigDecimal total,String motivo,
+                          Map<PaymentMethod,BigDecimal> pago,Map<PaymentMethod,BigDecimal> devolver)throws SQLException {
         try(PreparedStatement st=c.prepareStatement("INSERT INTO devolucao_venda(id_pedido,id_caixa,tipo,status_original,valor_total,fiado_baixado,motivo) VALUES(?,?,?,?,?,?,?)")){
             st.setInt(1,pedido);st.setInt(2,caixa);st.setString(3,tipo);st.setString(4,status);st.setBigDecimal(5,total);
             st.setBigDecimal(6,pago.getOrDefault(PaymentMethod.FIADO,Money.ZERO));st.setString(7,motivo);st.executeUpdate();

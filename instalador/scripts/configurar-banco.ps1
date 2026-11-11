@@ -41,6 +41,7 @@ $ini         = Join-Path $pastaMysql "my.ini"
 $config      = Join-Path $Dados "db.properties"
 $pastaAdmin  = Join-Path $Dados "admin"
 $configAdmin = Join-Path $pastaAdmin "migracao.properties"
+$marcaAuditoria = Join-Path $pastaAdmin "auditoria-v1.ok"
 $pastaBackup = Join-Path $Dados "backup"
 $cnfBackup   = Join-Path $pastaBackup "backup.cnf"
 $log         = Join-Path $Dados "instalacao.log"
@@ -130,6 +131,33 @@ function Sql([string]$cnf, [string]$comandos) {
     $r = Executar (Join-Path $bin "mysql.exe") @("--defaults-file=$cnf", "--batch", "--skip-column-names", "--connect-timeout=10") $comandos
     if ($r.Codigo -ne 0) { throw ("MySQL: " + ($r.Erro -replace "mysql: \[Warning\][^\r\n]*", "").Trim()) }
     return $r.Saida
+}
+
+function ConfigurarAuditoria([string]$cnf, [string]$arquivoAuditoria) {
+    $trilha = [IO.File]::ReadAllText($arquivoAuditoria)
+    # Privilegios de schema se somam aos de tabela. Remover o grant abrangente
+    # antes de criar a trilha, e conceder so acesso aos demais objetos.
+    Sql $cnf "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'pdv_app'@'localhost';" | Out-Null
+    # Conexoes ja abertas podem manter o privilegio antigo de schema em cache.
+    $sessoes = Sql $cnf "SELECT ID FROM information_schema.PROCESSLIST WHERE USER = 'pdv_app';"
+    foreach ($sessao in ($sessoes -split '\s+' | Where-Object { $_ -match '^\d+$' })) {
+        try {
+            Sql $cnf "KILL CONNECTION $sessao;" | Out-Null
+        } catch {
+            # A sessao pode se encerrar entre a consulta e o KILL.
+            if ($_.Exception.Message -notmatch 'ERROR 1094\b') { throw }
+        }
+    }
+    $grants = Sql $cnf @'
+SELECT CONCAT('GRANT ', IF(TABLE_TYPE = 'VIEW' OR TABLE_NAME = 'flyway_schema_history',
+       'SELECT', 'SELECT, INSERT, UPDATE, DELETE'), ' ON casarural.`',
+       REPLACE(TABLE_NAME, '`', '``'), '` TO ''pdv_app''@''localhost'';')
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = 'casarural' AND TABLE_NAME <> 'auditoria_operacao';
+'@
+    if ([string]::IsNullOrWhiteSpace($grants)) { throw "Tabelas do PDV nao encontradas para configurar auditoria." }
+    Sql $cnf $trilha | Out-Null
+    Sql $cnf $grants | Out-Null
 }
 
 function Restringir([string]$caminho, [switch]$Pasta) {
@@ -277,7 +305,9 @@ secure-file-priv="$(& $barra (Join-Path $pastaMysql 'arquivos'))"
     Escrever "MySQL respondendo na porta $porta"
 
     # ---- 5. root e usuarios do sistema ----
-    $precisaRoot = $novo -or -not $configExistia -or ($Backup -and -not (Test-Path $cnfBackup))
+    $prepararAuditoria = $novo -or -not $configExistia -or -not (Test-Path -LiteralPath $marcaAuditoria -PathType Leaf) -or
+        [IO.File]::ReadAllText($marcaAuditoria) -cne 'v1'
+    $precisaRoot = $prepararAuditoria -or ($Backup -and -not (Test-Path $cnfBackup))
     $cnf = $null
     if ($precisaRoot) {
         if ($senhaRoot -eq "") { throw "Faltou a senha do root (o instalador pede quando precisa criar usuarios)." }
@@ -301,7 +331,6 @@ CREATE DATABASE IF NOT EXISTS casarural CHARACTER SET utf8mb4 COLLATE utf8mb4_09
 CREATE USER IF NOT EXISTS 'pdv_app'@'localhost' IDENTIFIED BY '$senhaApp';
 ALTER USER 'pdv_app'@'localhost' IDENTIFIED BY '$senhaApp';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'pdv_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE, DELETE ON casarural.* TO 'pdv_app'@'localhost';
 CREATE USER IF NOT EXISTS 'pdv_migracao'@'localhost' IDENTIFIED BY '$senhaMigracao';
 ALTER USER 'pdv_migracao'@'localhost' IDENTIFIED BY '$senhaMigracao';
 GRANT ALL PRIVILEGES ON casarural.* TO 'pdv_migracao'@'localhost';
@@ -330,37 +359,60 @@ password=$senhaApp
     $r = Executar $java @('--module-path', (Join-Path $Programa 'app\mods'), '--add-modules=ALL-MODULE-PATH',
         '-m', 'com.casarural.sistemapdv/com.casarural.sistemapdv.db.MigracaoBanco', $config, $configAdmin)
     if ($r.Codigo -ne 0) { throw 'Nao foi possivel atualizar a estrutura do banco. Confira a configuracao administrativa e execute o instalador novamente.' }
+    if ($prepararAuditoria) {
+        ConfigurarAuditoria $cnf (Join-Path $PSScriptRoot 'auditoria-operacao.sql')
+        PrepararConfig $marcaAuditoria
+        GravarTexto $marcaAuditoria 'v1'
+        Escrever 'Trilha de auditoria instalada e acesso do PDV limitado as tabelas de operacao'
+    }
     # Somente depois da separacao e migracao o operador recebe leitura da credencial DML.
     PrepararConfig $config -LeituraUsuarios
     Escrever 'Estrutura atualizada pelo instalador; credencial de migracao isolada em admin\migracao.properties'
 
     # ---- 6. backup ----
     if ($Backup) {
-        if (-not (Test-Path $pastaBackup)) { New-Item -ItemType Directory -Force -Path $pastaBackup | Out-Null }
-        Copy-Item (Join-Path $Programa "instalacao\backup-casarural.ps1") $pastaBackup -Force
+        if ($Teste) {
+            New-Item -ItemType Directory -Force -Path $pastaBackup | Out-Null
+        } else {
+            Proteger-PastaPdv $pastaBackup
+            Proteger-CopiasBackupPdv (Join-Path $pastaBackup 'copias')
+        }
+        foreach ($nomeScript in @('backup-casarural.ps1', 'seguranca-config.ps1')) {
+            $origem = Join-Path (Join-Path $Programa 'instalacao') $nomeScript
+            $destino = Join-Path $pastaBackup $nomeScript
+            PrepararConfig $destino
+            [IO.File]::WriteAllBytes($destino, [IO.File]::ReadAllBytes($origem))
+        }
 
-        if (-not (Test-Path $cnfBackup)) {
+        $cnfBackupExistia = Test-Path -LiteralPath $cnfBackup
+        if ($cnfBackupExistia) { PrepararConfig $cnfBackup }
+        if (-not $cnfBackupExistia -or (Get-Item -LiteralPath $cnfBackup).Length -eq 0) {
             $senhaBackup = NovaSenha
             Sql $cnf @"
 CREATE USER IF NOT EXISTS 'pdv_backup'@'localhost' IDENTIFIED BY '$senhaBackup';
 ALTER USER 'pdv_backup'@'localhost' IDENTIFIED BY '$senhaBackup';
 GRANT SELECT, SHOW VIEW, TRIGGER, LOCK TABLES ON casarural.* TO 'pdv_backup'@'localhost';
 "@ | Out-Null
+            PrepararConfig $cnfBackup
             GravarTexto $cnfBackup "# Usuario do backup (so le o banco). Gerado pelo instalador.`r`n[mysqldump]`r`nuser=pdv_backup`r`npassword=$senhaBackup`r`nhost=localhost`r`nport=$porta`r`n"
-            Restringir $cnfBackup
             Escrever "Usuario pdv_backup criado; senha em $cnfBackup"
         }
 
         $nuvem = Join-Path $pastaBackup "nuvem.txt"
-        if (-not (Test-Path $nuvem)) {
+        $nuvemExistia = Test-Path -LiteralPath $nuvem
+        PrepararConfig $nuvem
+        if (-not $nuvemExistia) {
             GravarTexto $nuvem (@"
 # Pasta do OneDrive / Google Drive para onde vai uma copia de cada backup.
 # Escreva o caminho na primeira linha sem # (exemplo abaixo) e salve. Vale a partir do proximo backup.
 # Deixe sem nenhuma linha (so com #) para guardar so neste computador.
+# O envio exige o certificado publico nuvem.cer nesta pasta. Veja backup-LEIA-ME.txt.
 #
 # C:\Users\Loja\OneDrive\Backup Casa Rural
 "@)
         }
+        $certificado = Join-Path $pastaBackup 'nuvem.cer'
+        if (Test-Path -LiteralPath $certificado) { PrepararConfig $certificado }
 
         if (-not $Teste) {
             $nomeSistema = (New-Object Security.Principal.SecurityIdentifier "S-1-5-18").Translate([Security.Principal.NTAccount]).Value

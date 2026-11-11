@@ -8,6 +8,7 @@ import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class ProductService {
     private ProductDao dao;
@@ -42,6 +43,10 @@ public class ProductService {
     public Optional<Product> findByCodBarras(String codBarras) {
         if (codBarras == null || codBarras.isBlank()) return Optional.empty();
         return dao.findByCodBarras(codBarras.trim());
+    }
+
+    public Set<Integer> buscarIndisponiveis(Set<Integer> ids) {
+        return dao.buscarIndisponiveis(ids);
     }
 
     public void saveOrUpdate(Product obj) throws SQLException {

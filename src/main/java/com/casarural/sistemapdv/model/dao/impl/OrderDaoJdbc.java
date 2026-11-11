@@ -2,6 +2,8 @@ package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ProdutoIndisponivelException;
+import com.casarural.sistemapdv.db.RecebimentoFiadoPendenteException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.db.TrocaDesatualizadaException;
 import com.casarural.sistemapdv.util.VersaoTroca;
@@ -30,7 +32,9 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,14 +147,20 @@ public class OrderDaoJdbc implements OrderDao {
     public void insert(Order obj) {
         // Uma única conexão do início ao fim da transação: pedido + itens + estoque + pagamentos
         executarTransacao("salvar a venda", conn -> {
+            int idCaixa = idCaixaAberto(conn);
+            if (obj.getVendaSuspensa()!=null) validarVendaSuspensa(conn,obj);
+            if (obj.isTroca()) validarReferenciaTroca(conn, obj);
+            validarFiadoAtual(conn, obj);
+            Set<Integer> ids = obj.getItemPedido().stream()
+                    .map(item -> item.getProduto().getIdProduto())
+                    .collect(Collectors.toSet());
+            Set<Integer> indisponiveis = ProductDaoJdbc.buscarIndisponiveis(conn, ids, true);
+            if (!indisponiveis.isEmpty()) throw new ProdutoIndisponivelException(indisponiveis);
+            validarProdutosNoFiado(conn, obj);
+
             try (PreparedStatement st = conn.prepareStatement(
                     "INSERT INTO pedido (id_cliente, valor_total, status, desconto, id_caixa) VALUES (?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
-
-                int idCaixa = idCaixaAberto(conn);   // antes de gravar qualquer coisa
-                if (obj.getVendaSuspensa()!=null) validarVendaSuspensa(conn,obj);
-                if (obj.isTroca()) validarReferenciaTroca(conn, obj);
-                validarFiadoAtual(conn, obj);
 
                 // Troca: desfaz a venda antiga primeiro (o estoque dela volta e pode ser vendido de novo)
                 if (obj.isTroca()) {
@@ -175,6 +185,7 @@ public class OrderDaoJdbc implements OrderDao {
                             obj.setIdPedido(idPedido);
                             inserirItensEBaixarEstoque(conn, obj.getItemPedido(), idPedido);
                             inserirPagamento(conn, obj, idPedido, idCaixa);
+                            com.casarural.sistemapdv.db.PushOutbox.recordSale(conn, idPedido);
                             if (obj.getVendaSuspensa()!=null) concluirVendaSuspensa(conn,obj,idPedido);
                             if (obj.isTroca()) {
                                 try (PreparedStatement up = conn.prepareStatement(
@@ -257,7 +268,11 @@ public class OrderDaoJdbc implements OrderDao {
                     + ", deve " + Money.format(divida) + " e dispõe de " + Money.format(disponivel)
                     + " para esta venda no fiado. Atualize a conta e revise o pagamento.");
         }
+    }
 
+    private void validarProdutosNoFiado(Connection conn, Order venda) throws SQLException {
+        BigDecimal fiado = venda.getTotalPagamentos(PaymentMethod.FIADO);
+        if (!Money.isPositive(fiado)) return;
         Map<Integer, Boolean> permiteFiado = new java.util.TreeMap<>();
         for (OrderItem item : venda.getItemPedido()) permiteFiado.put(item.getProduto().getIdProduto(), false);
         List<String> proibidos = new ArrayList<>();
@@ -341,33 +356,40 @@ public class OrderDaoJdbc implements OrderDao {
         if (idCliente == null || idCliente <= 0 || !Money.isPositive(Money.of(valorPago))) {
             throw new IllegalArgumentException("Informe o cliente e um valor recebido maior que zero.");
         }
-        RecebimentoFiado confirmado = null;
+        return executarTransacao("receber o pagamento de fiado",
+                conn -> receberNaTransacao(conn, idCliente, Money.of(valorPago), metodo));
+    }
+
+    @Override
+    public Optional<Integer> buscarRecebimentoPendente(int idCliente) {
         try (Connection conn = conexoes.get()) {
-            conn.setAutoCommit(false);
-            boolean transacaoEncerrada = false;
-            try {
-                RecebimentoFiado dados = receberNaTransacao(conn, idCliente, Money.of(valorPago), metodo);
-                conn.commit();
-                confirmado = dados;
-                transacaoEncerrada = true;
-            } catch (SQLException | RuntimeException e) {
-                try {
-                    conn.rollback();
-                    transacaoEncerrada = true;
-                } catch (SQLException falhaRollback) {
-                    e.addSuppressed(falhaRollback);
-                }
-                throw e;
-            } finally {
-                // setAutoCommit(true) pode confirmar operações pendentes: só limpar após commit/rollback concluído.
-                if (transacaoEncerrada) conn.setAutoCommit(true);
-            }
+            return buscarRecebimentoPendente(conn, idCliente, false);
         } catch (SQLException e) {
-            if (confirmado == null) throw new DbException(e.getMessage(), e);
-            // Commit já confirmado: uma falha de limpeza não pode ser anunciada como pagamento não salvo.
-            log.warn("Recebimento #{} salvo; falha ao liberar conexão", confirmado.getIdRecebimento(), e);
+            throw new DbException("Não foi possível conferir o recebimento no banco. Tente a conferência novamente.", e);
         }
-        return confirmado;
+    }
+
+    private Optional<Integer> buscarRecebimentoPendente(Connection conn, int idCliente, boolean bloquear) throws SQLException {
+        try (PreparedStatement st = conn.prepareStatement("SELECT id_recebimento FROM recebimento_fiado_pendente "
+                + "WHERE id_cliente = ?" + (bloquear ? " FOR UPDATE" : ""))) {
+            st.setInt(1, idCliente);
+            try (ResultSet rs = st.executeQuery()) {
+                return rs.next() ? Optional.of(rs.getInt(1)) : Optional.empty();
+            }
+        }
+    }
+
+    @Override
+    public void confirmarConferenciaRecebimento(int idCliente, int idRecebimento) {
+        try (Connection conn = conexoes.get();
+             PreparedStatement st = conn.prepareStatement(
+                     "DELETE FROM recebimento_fiado_pendente WHERE id_cliente = ? AND id_recebimento = ?")) {
+            st.setInt(1, idCliente);
+            st.setInt(2, idRecebimento);
+            st.executeUpdate();
+        } catch (SQLException e) {
+            throw new DbException("Não foi possível concluir a conferência. Tente a conferência novamente.", e);
+        }
     }
 
     private RecebimentoFiado receberNaTransacao(Connection conn, int idCliente, BigDecimal valorPago,
@@ -385,6 +407,8 @@ public class OrderDaoJdbc implements OrderDao {
                 cliente.setTelefone(rs.getString("telefone"));
             }
         }
+        Optional<Integer> pendente = buscarRecebimentoPendente(conn, idCliente, true);
+        if (pendente.isPresent()) throw new RecebimentoFiadoPendenteException(pendente.get());
         List<Order> abertas = carregarFiadosEmAberto(conn, idCliente);
         BigDecimal dividaAntes = abertas.stream().map(Order::getFalta).reduce(Money.ZERO, BigDecimal::add);
         if (valorPago.compareTo(dividaAntes) > 0) {
@@ -429,12 +453,19 @@ public class OrderDaoJdbc implements OrderDao {
             identificar.setInt(1, idRecebimento); identificar.setInt(2, idRecebimento);
             if (identificar.executeUpdate() != 1) throw new SQLException("Não foi possível identificar o recebimento.");
         }
+        try (PreparedStatement pendencia = conn.prepareStatement(
+                "INSERT INTO recebimento_fiado_pendente (id_cliente, id_recebimento) VALUES (?, ?)")) {
+            pendencia.setInt(1, idCliente);
+            pendencia.setInt(2, idRecebimento);
+            if (pendencia.executeUpdate() != 1) throw new SQLException("Não foi possível guardar a conferência do recebimento.");
+        }
+        com.casarural.sistemapdv.db.PushOutbox.recordReceipt(conn, idRecebimento);
         return new RecebimentoFiado(idRecebimento, idCliente, cliente.getNomeCliente(), cliente.getTelefone(),
                 agora, metodo, dividaAntes, valorPago, compras);
     }
 
     /** Leituras correntes compartilhadas pela concessão de crédito e pelo recebimento. */
-    private List<Order> carregarFiadosEmAberto(Connection conn, int idCliente) throws SQLException {
+    static List<Order> carregarFiadosEmAberto(Connection conn, int idCliente) throws SQLException {
         List<Order> abertas = new ArrayList<>();
         try (PreparedStatement st = conn.prepareStatement("SELECT id_pedido, data_pedido, valor_total, desconto "
                 + "FROM pedido WHERE id_cliente = ? AND status = 'FIADO' ORDER BY data_pedido, id_pedido FOR UPDATE")) {
@@ -552,7 +583,8 @@ public class OrderDaoJdbc implements OrderDao {
      */
     @Override
     public List<Payment> findFiadoReceipts(Integer idCliente) {
-        String sql = "SELECT pg.id_recebimento, pg.data_pagamento, pg.metodo_pagamento, SUM(pg.valor_pago) AS total, MAX(pg.id_caixa) AS id_caixa, " +
+        String sql = "SELECT pg.id_recebimento, pg.data_pagamento, pg.metodo_pagamento, SUM(pg.valor_pago) AS total, " +
+                "MAX(pg.id_caixa) AS id_caixa, COUNT(*) AS lancamentos, " +
                 "GROUP_CONCAT(CONCAT('#', pg.id_pedido) ORDER BY pg.id_pedido SEPARATOR ', ') AS pedidos " +
                 "FROM pagamento pg JOIN pedido p ON p.id_pedido = pg.id_pedido " +
                 "WHERE p.id_cliente = ? AND pg.origem = 'RECEBIMENTO_FIADO' " +
@@ -566,6 +598,7 @@ public class OrderDaoJdbc implements OrderDao {
                 while (rs.next()) {
                     Payment obj = new Payment();
                     int recebimento = rs.getInt("id_recebimento"); obj.setIdRecebimento(rs.wasNull() ? null : recebimento);
+                    obj.setRecebimentoLegadoAmbiguo(obj.getIdRecebimento() == null && rs.getInt("lancamentos") > 1);
                     obj.setDataPagamento(rs.getTimestamp("data_pagamento").toLocalDateTime());
                     obj.setMetodo(PaymentMethod.valueOf(rs.getString("metodo_pagamento")));
                     obj.setValorPago(rs.getBigDecimal("total"));
@@ -847,7 +880,11 @@ public class OrderDaoJdbc implements OrderDao {
             }
             BigDecimal recebido=pago.entrySet().stream().filter(e->e.getKey()!=PaymentMethod.FIADO).map(Map.Entry::getValue).reduce(Money.ZERO,BigDecimal::add);
             if(recebido.compareTo(valorTotal)>0)throw new SQLException("Os pagamentos antigos ultrapassam o valor da compra. Confira o histórico antes de devolver ou trocar.");
-            DevolucaoVendaJdbc.registrar(conn,idPedido,caixaAtual,tipo,statusOriginal,valorTotal,motivo,pago,nova);
+        }
+        Map<PaymentMethod, BigDecimal> devolver = DevolucaoVendaJdbc.calcularValoresDevolvidos(pago, nova, outroCaixa);
+        DevolucaoVendaJdbc.conferirSaldo(conn, caixaAtual, devolver.get(PaymentMethod.DINHEIRO), nova);
+        if (outroCaixa) {
+            DevolucaoVendaJdbc.registrar(conn, idPedido, caixaAtual, tipo, statusOriginal, valorTotal, motivo, pago, devolver);
         }
 
         // Reverte somente a baixa registrada na venda, independentemente da configuração atual.
@@ -888,8 +925,6 @@ public class OrderDaoJdbc implements OrderDao {
             st.executeUpdate();
         }
 
-        Map<PaymentMethod, BigDecimal> devolver = new EnumMap<>(PaymentMethod.class);
-        pago.forEach((forma, v) -> { if (forma != PaymentMethod.FIADO) devolver.put(forma, v); });
         return devolver;
     }
 
@@ -928,8 +963,9 @@ public class OrderDaoJdbc implements OrderDao {
             List<Integer> idsPagamento = new ArrayList<>();
             List<Integer> idsPedido = new ArrayList<>();
             BigDecimal total = Money.ZERO;
+            BigDecimal dinheiro = Money.ZERO;
             try (PreparedStatement st = conn.prepareStatement(
-                    "SELECT pg.id_pagamento, pg.id_pedido, pg.id_caixa, pg.valor_pago FROM pagamento pg " +
+                    "SELECT pg.id_pagamento, pg.id_pedido, pg.id_caixa, pg.valor_pago, pg.metodo_pagamento FROM pagamento pg " +
                     "JOIN pedido p ON p.id_pedido = pg.id_pedido " +
                     "WHERE p.id_cliente = ? AND pg.origem = 'RECEBIMENTO_FIADO' "
                     + (idRecebimento == null ? "AND pg.id_recebimento IS NULL AND pg.data_pagamento = ? AND pg.metodo_pagamento = ? "
@@ -941,13 +977,24 @@ public class OrderDaoJdbc implements OrderDao {
                 try (ResultSet rs = st.executeQuery()) {
                     while (rs.next()) {
                         if (rs.getInt("id_caixa") != idCaixa) throw new SQLException(MENSAGEM_SO_CAIXA_ABERTO);
+                        PaymentMethod forma = PaymentMethod.ler(rs.getString("metodo_pagamento"));
+                        if (forma == null || forma == PaymentMethod.FIADO) {
+                            throw new SQLException("A forma deste recebimento é inválida. Confira o histórico antes de estornar.");
+                        }
                         idsPagamento.add(rs.getInt("id_pagamento"));
                         idsPedido.add(rs.getInt("id_pedido"));
-                        total = total.add(Money.of(rs.getBigDecimal("valor_pago")));
+                        BigDecimal valor = Money.of(rs.getBigDecimal("valor_pago"));
+                        total = total.add(valor);
+                        if (forma == PaymentMethod.DINHEIRO) dinheiro = dinheiro.add(valor);
                     }
                 }
             }
             if (idsPagamento.isEmpty()) throw new SQLException("Recebimento não encontrado (talvez já tenha sido estornado).");
+            if (idRecebimento == null && idsPagamento.size() > 1) {
+                throw new SQLException("Este recebimento antigo agrupa vários lançamentos sem identificação. "
+                        + "Confira os pagamentos individualmente antes de devolver qualquer valor.");
+            }
+            DevolucaoVendaJdbc.conferirSaldo(conn, idCaixa, dinheiro, null);
 
             for (int id : idsPagamento) {
                 arquivarPagamentos(conn, "id_pagamento = ?", new Object[]{id}, TIPO_ESTORNO_RECEBIMENTO, motivo);

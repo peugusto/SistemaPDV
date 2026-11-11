@@ -1,5 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.services.CustomerService;
 import com.casarural.sistemapdv.util.Alerts;
@@ -14,6 +16,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.ResourceBundle;
 
 public class RegisterCustomerController implements Initializable {
@@ -21,6 +24,8 @@ public class RegisterCustomerController implements Initializable {
     private CustomerService service;
     private Customer entity;
     private ProtecaoPin protecao = new ProtecaoPin();
+    private boolean salvando;
+    private boolean salvamentoBloqueado;
 
     @FXML private TextField txtNome;
     @FXML private TextField txtPhoneNumber;
@@ -38,27 +43,43 @@ public class RegisterCustomerController implements Initializable {
 
     @FXML
     public void onBtnSaveAction() {
+        if (salvando || salvamentoBloqueado) return;
         if (service == null) {
             throw new IllegalStateException("Service estava nulo");
         }
+        salvando = true;
+        btnSave.setDisable(true);
         try {
             Customer obj = getFormData();
             if (obj.getLimiteCredito().signum()>0 && !protecao.autorizar(btnSave.getScene().getWindow(),
                     "conceder limite inicial de "+Money.format(obj.getLimiteCredito())+" a "+obj.getNomeCliente())) return;
             service.insert(obj);
             entity = obj;
-            Alerts.showAlert("Sucesso", null, "Cliente cadastrado com sucesso!", AlertType.INFORMATION);
-            closeStage();
-        } catch (RuntimeException e) {
+            salvamentoBloqueado = true;
+        } catch (ResultadoTransacaoIncertoException e) {
+            salvamentoBloqueado = true;
+            btnCancel.setText("Fechar");
+            Alerts.showAlert("Confirmação pendente", "O cadastro pode já estar salvo",
+                    "Feche esta janela e procure o cliente na lista antes de cadastrar novamente.",
+                    AlertType.WARNING);
+            return;
+        } catch (IllegalArgumentException e) {
             Alerts.showAlert("Erro de Validação", null, e.getMessage(), AlertType.ERROR);
-        } catch (Exception e) {
+            return;
+        } catch (DbException | SQLException e) {
             Alerts.showAlert("Erro no Banco", "Não foi possível salvar", e.getMessage(), AlertType.ERROR);
+            return;
+        } finally {
+            salvando = false;
+            btnSave.setDisable(salvamentoBloqueado);
         }
+        Alerts.showAlert("Sucesso", null, "Cliente cadastrado com sucesso!", AlertType.INFORMATION);
+        closeStage();
     }
 
     private Customer getFormData() {
         if (txtNome.getText().trim().isEmpty()) {
-            throw new RuntimeException("O nome do cliente é obrigatório.");
+            throw new IllegalArgumentException("O nome do cliente é obrigatório.");
         }
 
         Customer novo = new Customer();
@@ -73,6 +94,11 @@ public class RegisterCustomerController implements Initializable {
 
     @FXML
     public void onBtnCancelAction() {
+        if (salvando) return;
+        if (salvamentoBloqueado) {
+            closeStage();
+            return;
+        }
         if (Alerts.showConfirmation("Sair", "Deseja voltar ao menu?", "Dados não salvos serão perdidos.")) {
             closeStage();
         }

@@ -472,7 +472,7 @@ public class OrderListController implements Initializable {
                 + (v.getPagoPorForma().containsKey(PaymentMethod.FIADO)
                     ? " e " + Money.format(v.getPagoPorForma().get(PaymentMethod.FIADO)) + " saem da conta de fiado do cliente" : "")
                 + ".\n"
-                + (devolver.isEmpty() ? "" : "Devolva ao cliente: " + RegraTroca.descreverDevolucao(devolver) + ".\n")
+                + (devolver.isEmpty() ? "" : "Após o sistema confirmar, devolva " + RegraTroca.descreverDevolucao(devolver) + ".\n")
                 + (devolucao?"\nA devolução será lançada no caixa de hoje, preservando o fechamento original.\n":"")
                 + "\nInforme o motivo:";
         Optional<String> motivo = Alerts.pedirTexto(acao, acao+" #" + v.getIdPedido() + "?",

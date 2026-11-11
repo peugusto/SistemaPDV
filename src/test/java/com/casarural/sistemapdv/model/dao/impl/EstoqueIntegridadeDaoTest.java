@@ -41,6 +41,9 @@ class EstoqueIntegridadeDaoTest {
                 if(n.equals("executeQuery")){
                     consultas++;
                     if(sql.startsWith("SELECT id_caixa"))return rows(List.of(Map.of("1",1,"aberto_em",Timestamp.valueOf(DATA.minusHours(1)))));
+                    if (sql.startsWith("SELECT id_produto FROM produto WHERE id_produto IN")) {
+                        return rows(List.of(Map.of("id_produto", produto.getIdProduto())));
+                    }
                     if(sql.startsWith("SELECT aberto_em"))return rows(List.of(Map.of("1",Timestamp.valueOf(DATA.minusHours(1)))));
                     if(sql.startsWith("SELECT status"))return rows(List.of(Map.of("status",cancelado?"CANCELADO":"PAGO","data_pedido",Timestamp.valueOf(DATA),"valor_total",dinheiro("2.00"))));
                     if(sql.startsWith("SELECT id_produto, COALESCE"))return rows(List.of(Map.of("id_produto",1,"repor",BigDecimal.valueOf(baixa==null?0:baixa),"legados",baixa==null?1:0)));

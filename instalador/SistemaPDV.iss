@@ -97,13 +97,16 @@ begin
   Result := FileExists(PastaDados + '\mysql\data\mysql.ibd');
 end;
 
-{ A senha do root só é pedida quando é preciso criar usuários no MySQL:
-  primeira instalação, configuração apagada, ou backup marcado pela primeira vez.
-  Numa atualização comum a página nem aparece. }
+{ A senha do root é pedida na configuração inicial, na ativação da trilha
+  de auditoria e quando se habilita o backup pela primeira vez. }
 function PrecisaSenhaRoot: Boolean;
+var
+  Auditoria: AnsiString;
 begin
   Result := (not BancoJaExiste)
     or (not FileExists(PastaDados + '\db.properties'))
+    or (not LoadStringFromFile(PastaDados + '\admin\auditoria-v1.ok', Auditoria))
+    or (Auditoria <> 'v1')
     or (WizardIsTaskSelected('backup') and not FileExists(PastaDados + '\backup\backup.cnf'));
 end;
 
@@ -256,7 +259,9 @@ begin
     Exit;
   DelTree(Dados + '\mysql', True, True, True);
   DeleteFile(Dados + '\db.properties');
+  DeleteFile(Dados + '\admin\auditoria-v1.ok');
   DeleteFile(Dados + '\backup\backup.cnf');
   DeleteFile(Dados + '\backup\nuvem.txt');
   DeleteFile(Dados + '\backup\backup-casarural.ps1');
+  DeleteFile(Dados + '\backup\seguranca-config.ps1');
 end;

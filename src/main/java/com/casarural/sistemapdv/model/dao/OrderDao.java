@@ -20,6 +20,8 @@ public interface OrderDao extends GenericDao<Order> {
     List<Payment> findPaymentsByOrder(int idPedido);
     BigDecimal getCustomerDebt(Integer idCliente);
     RecebimentoFiado registerPartialPayment(Integer idCliente, BigDecimal valorPago, PaymentMethod metodo);
+    Optional<Integer> buscarRecebimentoPendente(int idCliente);
+    void confirmarConferenciaRecebimento(int idCliente, int idRecebimento);
     List<Order> findOpenFiadoOrders(Integer idCliente);
     List<Payment> findFiadoReceipts(Integer idCliente);
     List<Order> findPaidOrdersByCustomer(Integer idCliente);

@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.ProdutoIndisponivelException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,6 +33,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class OrderDaoJdbcTransacaoTest {
     private static final LocalDateTime DATA = LocalDateTime.of(2026, 10, 29, 12, 0);
     private static final BigDecimal DEZ = Money.of(new BigDecimal("10.00"));
+
+    @org.junit.jupiter.api.Test
+    void produtoDesativadoDepoisDeMontarVendaBloqueiaAntesDeEscrever() {
+        Banco banco = new Banco();
+        banco.produtoAtivo = false;
+
+        ProdutoIndisponivelException erro = assertThrows(ProdutoIndisponivelException.class,
+                () -> Fluxo.VENDA.executar(banco));
+
+        assertEquals(Set.of(3), erro.getIds());
+        assertEquals(0, banco.escritas);
+        assertEquals(0, banco.commits);
+        assertEquals(1, banco.rollbacks);
+    }
 
     @org.junit.jupiter.api.Test
     void vendaEEstornoNaoUsamCaixaDeOutroDia() {
@@ -43,13 +59,65 @@ class OrderDaoJdbcTransacaoTest {
         }
     }
 
+    @org.junit.jupiter.api.Test
+    void cancelamentoEEstornoSemDinheiroNaGavetaParamAntesDeEscrever() {
+        for (Fluxo fluxo : List.of(Fluxo.CANCELAMENTO, Fluxo.ESTORNO)) {
+            Banco banco = new Banco();
+            banco.saldoGaveta = new BigDecimal("9.99");
+            DbException erro = assertThrows(DbException.class, () -> fluxo.executar(banco));
+            assertTrue(erro.getMessage().contains("Registre um reforço"));
+            assertEquals(0, banco.escritas);
+            assertEquals(0, banco.commits);
+            assertEquals(1, banco.rollbacks);
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void cancelamentoEEstornoEmPixNaoUsamSaldoDaGaveta() {
+        for (Fluxo fluxo : List.of(Fluxo.CANCELAMENTO, Fluxo.ESTORNO)) {
+            Banco banco = new Banco();
+            banco.forma = PaymentMethod.PIX;
+            banco.saldoGaveta = Money.ZERO;
+            assertEquals(fluxo == Fluxo.CANCELAMENTO ? Map.of(PaymentMethod.PIX, DEZ) : DEZ, fluxo.executar(banco));
+            assertEquals(0, banco.consultasSaldo);
+            assertEquals(1, banco.commits);
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void grupoLegadoAmbiguoNaoEstornaNenhumLancamento() {
+        Banco banco = new Banco();
+        banco.variasParcelas = true;
+        banco.saldoGaveta = DEZ.add(DEZ);
+        DbException erro = assertThrows(DbException.class, () -> Fluxo.ESTORNO.executar(banco));
+        assertTrue(erro.getMessage().contains("vários lançamentos sem identificação"));
+        assertEquals(0, banco.consultasSaldo);
+        assertEquals(0, banco.escritas);
+        assertEquals(0, banco.commits);
+        assertEquals(1, banco.rollbacks);
+    }
+
+    @org.junit.jupiter.api.Test
+    void recebimentoIdentificadoEstornaTodasAsParcelas() {
+        Banco banco = new Banco();
+        banco.variasParcelas = true;
+        banco.saldoGaveta = DEZ.add(DEZ);
+        OrderDaoJdbc dao = new OrderDaoJdbc(banco::conexao, Fluxo.RELOGIO);
+        assertEquals(DEZ.add(DEZ), dao.reverseFiadoReceiptPorId(7, 11, "Teste isolado"));
+        assertEquals(2, banco.confirmados.stream().filter(sql -> sql.startsWith("DELETE FROM pagamento")).count());
+        assertEquals(1, banco.commits);
+    }
+
     private enum Fluxo {
         VENDA, CANCELAMENTO, ESTORNO;
 
+        private static final java.time.Clock RELOGIO = java.time.Clock.fixed(
+                DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault());
+
         Object executar(Banco banco) {
-            OrderDaoJdbc dao = new OrderDaoJdbc(banco::conexao, java.time.Clock.fixed(DATA.atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault()));
+            OrderDaoJdbc dao = new OrderDaoJdbc(banco::conexao, RELOGIO);
             if (this == CANCELAMENTO) return dao.cancel(401, "Teste isolado");
-            if (this == ESTORNO) return dao.reverseFiadoReceipt(7, DATA, PaymentMethod.DINHEIRO, "Teste isolado");
+            if (this == ESTORNO) return dao.reverseFiadoReceipt(7, DATA, banco.forma, "Teste isolado");
             Product produto = new Product("TESTE", "TESTE", DEZ, 20);
             produto.setIdProduto(3);
             Order venda = new Order();
@@ -196,6 +264,11 @@ class OrderDaoJdbcTransacaoTest {
 
     private static final class Banco {
         LocalDateTime abertura = DATA.minusHours(1);
+        BigDecimal saldoGaveta = DEZ;
+        PaymentMethod forma = PaymentMethod.DINHEIRO;
+        boolean variasParcelas;
+        int consultasSaldo;
+        boolean produtoAtivo = true;
         final List<String> pendentes = new ArrayList<>();
         final List<String> confirmados = new ArrayList<>();
         final SQLException erroEscrita = new SQLException("ESCRITA FALHOU");
@@ -261,16 +334,37 @@ class OrderDaoJdbcTransacaoTest {
                 if (nome.equals("executeQuery")) {
                     if (falhaConsulta) throw new SQLException("CONSULTA FALHOU");
                     if (sql.startsWith("SELECT id_caixa")) return linhas(List.of(Map.of("1", 10, "aberto_em", Timestamp.valueOf(abertura))));
+                    if (sql.startsWith("SELECT id_produto FROM produto WHERE id_produto IN")) {
+                        assertTrue(sql.endsWith("FOR UPDATE"));
+                        return linhas(bancoProdutosAtivos());
+                    }
                     if (sql.startsWith("SELECT aberto_em")) return linhas(List.of(Map.of("1", Timestamp.valueOf(DATA.minusHours(1)))));
                     if (sql.startsWith("SELECT status")) return linhas(List.of(Map.of(
                             "status", "PAGO", "data_pedido", Timestamp.valueOf(DATA), "valor_total", DEZ)));
                     if (sql.startsWith("SELECT id_produto, COALESCE(SUM(estoque_baixado)")) return linhas(List.of(Map.of("id_produto", 7, "repor", BigDecimal.ONE, "legados", 0)));
-                    if (sql.startsWith("SELECT metodo_pagamento")) return linhas(List.of(Map.of("1", "DINHEIRO", "2", DEZ)));
-                    if (sql.startsWith("SELECT pg.id_pagamento")) return linhas(List.of(Map.of(
-                            "id_pagamento", 11, "id_pedido", 401, "id_caixa", 10, "valor_pago", DEZ)));
+                    if (sql.startsWith("SELECT valor_inicial FROM caixa")) {
+                        consultasSaldo++;
+                        return linhas(List.of(Map.of("1", saldoGaveta)));
+                    }
+                    if (sql.contains("FROM pagamento_caixa") || sql.contains("FROM movimento_caixa")
+                            || sql.contains("FROM devolucao_venda_forma")) return linhas(List.of());
+                    if (sql.startsWith("SELECT metodo_pagamento")) return linhas(List.of(Map.of("1", forma.name(), "2", DEZ)));
+                    if (sql.startsWith("SELECT pg.id_pagamento")) {
+                        Map<String, Object> primeira = parcela(11, 401);
+                        return linhas(variasParcelas ? List.of(primeira, parcela(12, 402)) : List.of(primeira));
+                    }
                 }
                 throw new AssertionError("Statement não esperado: " + nome + ": " + sql);
             });
+        }
+
+        private Map<String, Object> parcela(int idPagamento, int idPedido) {
+            return Map.of("id_pagamento", idPagamento, "id_pedido", idPedido,
+                    "id_caixa", 10, "valor_pago", DEZ, "metodo_pagamento", forma.name());
+        }
+
+        private List<Map<String, Object>> bancoProdutosAtivos() {
+            return produtoAtivo ? List.of(Map.of("id_produto", 3)) : List.of();
         }
 
         ResultSet linhas(List<Map<String, Object>> dados) {

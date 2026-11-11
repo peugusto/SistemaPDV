@@ -15,9 +15,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +35,32 @@ public class ProductDaoJdbc implements ProductDao {
     /** Permite verificar transações com conexões isoladas, sem usar a configuração da loja. */
     public ProductDaoJdbc(Supplier<Connection> conexoes) {
         this.conexoes = Objects.requireNonNull(conexoes);
+    }
+
+    @Override
+    public Set<Integer> buscarIndisponiveis(Set<Integer> ids) {
+        if (ids.isEmpty()) return Set.of();
+        try (Connection conn = conexoes.get()) {
+            return buscarIndisponiveis(conn, ids, false);
+        } catch (SQLException e) {
+            throw new DbException("Não foi possível conferir a disponibilidade dos produtos.", e);
+        }
+    }
+
+    static Set<Integer> buscarIndisponiveis(Connection conn, Set<Integer> ids, boolean bloquear) throws SQLException {
+        if (ids.isEmpty()) return Set.of();
+        String parametros = String.join(", ", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT id_produto FROM produto WHERE id_produto IN (" + parametros + ") AND ativo"
+                + " ORDER BY id_produto" + (bloquear ? " FOR UPDATE" : "");
+        Set<Integer> indisponiveis = new HashSet<>(ids);
+        try (PreparedStatement st = conn.prepareStatement(sql)) {
+            int indice = 1;
+            for (int id : ids) st.setInt(indice++, id);
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) indisponiveis.remove(rs.getInt("id_produto"));
+            }
+        }
+        return indisponiveis;
     }
 
     @Override
@@ -259,7 +288,7 @@ public class ProductDaoJdbc implements ProductDao {
         int saldoAntes=((Number)esperado[3]).intValue();
         boolean mudouEstoque=saldoAntes!=obj.getEstoque();
         String motivo=mudouEstoque?com.casarural.sistemapdv.model.entities.AjusteEstoque.validarMotivo(obj.getMotivoAjusteEstoque()):null;
-        TransacaoEstoque.executar(conexoes,"salvar o produto",conn->{
+        TransacaoJdbc.executar(conexoes,"salvar o produto",conn->{
         try (PreparedStatement st = conn.prepareStatement(
                      "UPDATE produto SET cod_barras = ?, nome_produto = ?, preco_produto = ?, estoque = ?, permite_fiado = ?, "
                              + "tipo_venda = ?, controla_estoque = ?, preco_custo = ?, ativo = ? WHERE id_produto = ? AND BINARY cod_barras <=> BINARY ? AND BINARY nome_produto <=> BINARY ? AND preco_produto <=> ? AND estoque <=> ? AND permite_fiado <=> ? AND tipo_venda <=> ? AND controla_estoque <=> ? AND preco_custo <=> ? AND ativo <=> ?")) {

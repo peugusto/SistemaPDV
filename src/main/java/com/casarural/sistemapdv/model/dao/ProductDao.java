@@ -5,10 +5,20 @@ import com.casarural.sistemapdv.model.entities.EntradaEstoque;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ProductDao extends GenericDao<Product> {
     Optional<Product> findByCodBarras(String codBarras);
+
+    default Set<Integer> buscarIndisponiveis(Set<Integer> ids) {
+        Set<Integer> indisponiveis = new HashSet<>();
+        for (int id : ids) {
+            if (findById(id).filter(Product::isAtivo).isEmpty()) indisponiveis.add(id);
+        }
+        return indisponiveis;
+    }
 
     /** Incremento atômico, sem sobrescrever metadados; repetir a chave não duplica a entrada. */
     void registrarEntrada(EntradaEstoque entrada);

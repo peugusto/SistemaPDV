@@ -64,6 +64,32 @@ class SegundaViaTelasTest {
             assertEquals(1,t.getItems().size());i.envio.complete(null);
         });
     }
+    @Test void recebimentoLegadoAmbiguoBloqueiaEstornoMesmoNoCaixaAberto() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            FXMLLoader loader = tela("FiadoList");
+            FiadoListController controller = loader.getController();
+            set(controller, "idCaixaAberto", 7);
+            Payment ambiguo = new Payment();
+            ambiguo.setIdCaixa(7);
+            ambiguo.setMetodo(PaymentMethod.PIX);
+            ambiguo.setDataPagamento(LocalDateTime.of(2026, 11, 1, 10, 0));
+            ambiguo.setRecebimentoLegadoAmbiguo(true);
+            Payment identificado = new Payment();
+            identificado.setIdCaixa(7);
+            identificado.setIdRecebimento(30);
+            identificado.setMetodo(PaymentMethod.PIX);
+            identificado.setDataPagamento(ambiguo.getDataPagamento());
+            TableView<Payment> tabela = tabela(loader, "tableRecebimentos");
+            tabela.getItems().setAll(ambiguo, identificado);
+            tabela.getSelectionModel().select(0);
+            assertTrue(botao(loader, "btnEstornar").isDisabled());
+            assertFalse(botao(loader, "btnSegundaViaRecebimento").isDisabled());
+            Label dica = (Label) loader.getNamespace().get("labelEstornoDica");
+            assertTrue(dica.getText().contains("conferência manual"));
+            tabela.getSelectionModel().select(1);
+            assertFalse(botao(loader, "btnEstornar").isDisabled());
+        });
+    }
     @Test void comprasAbertasEQuitadasSelecionamPedidoSemReceberNovamente()throws Exception {
         JavafxTestSupport.executar(()->{
             for(boolean aberta:new boolean[]{true,false}) {

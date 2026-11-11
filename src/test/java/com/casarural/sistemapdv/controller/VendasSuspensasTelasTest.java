@@ -39,8 +39,10 @@ class VendasSuspensasTelasTest {
     }
     static class Pagamento extends PaymentController {
         boolean lancou,concluiu;
+        Set<Integer> indisponiveis = Set.of();
         @Override public boolean isHouveLancamento(){return lancou;}
         @Override public boolean isVendaConcluida(){return concluiu;}
+        @Override Set<Integer> getProdutosIndisponiveis() { return indisponiveis; }
     }
     static class Pdv extends PDVController {
         Pagamento pagamento=new Pagamento();int abriu,continuou;Order order;
@@ -50,10 +52,13 @@ class VendasSuspensasTelasTest {
     static class Tela {
         final Product p=new Product("COD7","Arroz",Money.parse("2,50"),20);final Persistencia banco;final FXMLLoader l;final Pdv c;final Stage stage;
         int consultas;
+        Set<Integer> indisponiveis = Set.of();
         Tela()throws Exception {
             p.setIdProduto(7);banco=new Persistencia(p);l=new FXMLLoader(PDVController.class.getResource("/com/casarural/sistemapdv/view/pdv.fxml"));l.setControllerFactory(t->new Pdv());Parent raiz=l.load();stage=new Stage();stage.setScene(new Scene(raiz));c=l.getController();
             ProductDao dao=(ProductDao)Proxy.newProxyInstance(ProductDao.class.getClassLoader(),new Class<?>[]{ProductDao.class},(x,m,a)->{
-                if(m.getName().equals("findByCodBarras")){consultas++;return Optional.of(p);}if(m.getName().equals("findAll"))return List.of(p);throw new AssertionError(m.getName());
+                if(m.getName().equals("findByCodBarras")){consultas++;return Optional.of(p);}if(m.getName().equals("findAll"))return List.of(p);
+                if (m.getName().equals("buscarIndisponiveis")) return indisponiveis;
+                throw new AssertionError(m.getName());
             });c.setProductService(new ProductService(dao));c.setVendaSuspensaService(banco);
         }
         Button b(String id){return (Button)l.getNamespace().get(id);}TextField f(String id){return (TextField)l.getNamespace().get(id);}
@@ -64,6 +69,48 @@ class VendasSuspensasTelasTest {
     static DialogPane dialogo(){return Window.getWindows().stream().filter(w->w.isShowing()&&w.getScene()!=null&&w.getScene().getRoot() instanceof DialogPane).map(w->(DialogPane)w.getScene().getRoot()).findFirst().orElseThrow();}
     static void responder(String nome){Platform.runLater(()->{DialogPane d=dialogo();if(nome!=null)((TextField)d.lookup(".text-field")).setText(nome);ButtonType ok=d.getButtonTypes().stream().filter(b->b.getButtonData()==ButtonBar.ButtonData.OK_DONE).findFirst().orElse(d.getButtonTypes().get(0));((Button)d.lookupButton(ok)).fire();});}
     static void fecharAviso(){DialogPane d=dialogo();((Button)d.lookupButton(d.getButtonTypes().get(0))).fire();}
+    @Test void produtoDesativadoPermaneceNoCarrinhoEAReativacaoPermitePagar() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            Tela t = new Tela();
+            t.carregar();
+            t.indisponiveis = Set.of(7);
+            t.stage.show();
+            t.b("botaoFinalizar").fire();
+            t.stage.getScene().getRoot().applyCss();
+            t.stage.getScene().getRoot().layout();
+
+            assertEquals(0, t.c.abriu);
+            assertTrue(t.banco.chamadas.isEmpty());
+            assertEquals(1, t.lista().getItems().size());
+            assertTrue(t.lista().lookupAll(".label").stream().filter(Label.class::isInstance)
+                    .map(Label.class::cast).anyMatch(label -> label.getText().contains("[Indisponível]")));
+            assertEquals("Conferir produtos (F1)", t.b("botaoFinalizar").getText());
+
+            t.indisponiveis = Set.of();
+            t.b("botaoFinalizar").fire();
+            assertEquals(1, t.c.abriu);
+        });
+    }
+
+    @Test void produtoRecusadoDurantePagamentoDevolveCarrinhoRetomadoParaEdicao() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            Tela t = new Tela();
+            t.carregar();
+            t.c.pagamento.lancou = true;
+            t.c.pagamento.indisponiveis = Set.of(7);
+
+            t.b("botaoFinalizar").fire();
+
+            assertEquals(1, t.c.abriu);
+            assertEquals(Estado.EM_USO, t.banco.vendas.values().iterator().next().estado);
+            assertEquals(1, t.lista().getItems().size());
+            assertEquals("Conferir produtos (F1)", t.b("botaoFinalizar").getText());
+            assertFalse(t.b("botaoRemover").isDisabled());
+            t.lista().getSelectionModel().select(0);
+            t.b("botaoRemover").fire();
+            assertTrue(t.lista().getItems().isEmpty());
+        });
+    }
     @Test void suspendeLimpaSomenteDepoisDeConfirmarERetomaPelaLista()throws Exception{JavafxTestSupport.executar(()->{
         Tela t=new Tela();assertTrue(t.b("botaoRetomar").isDisabled());t.c.onRetomarVenda();t.adicionar("2");responder("Maria");t.b("botaoSuspender").fire();assertTrue(t.lista().getItems().isEmpty());assertEquals(1,t.banco.vendas.size());assertTrue(t.b("botaoRetomar").getText().contains("(1)"));assertFalse(t.b("botaoRetomar").isDisabled());
         Platform.runLater(()->{

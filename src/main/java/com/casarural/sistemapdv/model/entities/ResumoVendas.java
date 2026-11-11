@@ -33,6 +33,12 @@ public class ResumoVendas {
     private BigDecimal custoItens = Money.ZERO;
     /** Soma das parcelas já rateadas dentro de cada pedido; null quando não foi carregada. */
     private BigDecimal descontoComCusto;
+    /** A cobertura considera vendas e devoluções pelo valor de cada movimento. */
+    private BigDecimal valorMovimentado = Money.ZERO;
+    private BigDecimal valorMovimentadoComCusto = Money.ZERO;
+    private boolean custosApuradosPorPedido;
+    private boolean itensComCusto;
+    private boolean itensSemCusto;
 
     public int getQuantidadeVendas() { return quantidadeVendas; }
     public void setQuantidadeVendas(int quantidadeVendas) { this.quantidadeVendas = quantidadeVendas; }
@@ -71,6 +77,15 @@ public class ResumoVendas {
     /** Soma os custos de um pedido e só então agrega sua parcela de desconto ao período. */
     public void adicionarCustosDoPedido(BigDecimal receita, BigDecimal receitaComCusto,
                                        BigDecimal custo, BigDecimal descontoDoPedido) {
+        BigDecimal total = Money.of(receita);
+        BigDecimal conhecido = Money.of(receitaComCusto);
+        adicionarCustosDoPedido(total, conhecido, custo, descontoDoPedido,
+                conhecido.signum() != 0 || Money.of(custo).signum() != 0, total.compareTo(conhecido) != 0);
+    }
+
+    public void adicionarCustosDoPedido(BigDecimal receita, BigDecimal receitaComCusto,
+                                       BigDecimal custo, BigDecimal descontoDoPedido,
+                                       boolean temItensComCusto, boolean temItensSemCusto) {
         receita = Money.of(receita);
         receitaComCusto = Money.of(receitaComCusto);
         BigDecimal parcela = receita.signum() == 0 ? Money.ZERO
@@ -81,6 +96,11 @@ public class ResumoVendas {
         this.receitaComCusto = this.receitaComCusto.add(receitaComCusto);
         this.custoItens = this.custoItens.add(Money.of(custo));
         this.descontoComCusto = (this.descontoComCusto == null ? Money.ZERO : this.descontoComCusto).add(parcela);
+        custosApuradosPorPedido = true;
+        valorMovimentado = valorMovimentado.add(receita.abs());
+        valorMovimentadoComCusto = valorMovimentadoComCusto.add(receitaComCusto.abs());
+        itensComCusto |= temItensComCusto;
+        itensSemCusto |= temItensSemCusto;
     }
 
     /** Define uma parcela já apurada por pedido, sem inferi-la dos totais agregados. */
@@ -88,16 +108,24 @@ public class ResumoVendas {
         this.descontoComCusto = valor == null ? null : Money.of(valor);
     }
 
-    public boolean temReceitaComCusto() { return receitaComCusto.signum() != 0; }
+    public boolean temReceitaComCusto() {
+        return custosApuradosPorPedido ? itensComCusto : receitaComCusto.signum() != 0;
+    }
+
+    public boolean temItensSemCusto() {
+        return custosApuradosPorPedido ? itensSemCusto : receitaComCusto.abs().compareTo(receitaItens.abs()) < 0;
+    }
 
     public boolean temCustoParcial() {
-        return temReceitaComCusto() && receitaComCusto.abs().compareTo(receitaItens.abs()) < 0;
+        return temReceitaComCusto() && temItensSemCusto();
     }
 
     /** Percentual apenas para apresentação. A existência/completude é decidida pelos valores reais. */
     public BigDecimal getCoberturaCusto() {
-        if (receitaItens.signum() == 0) return null;
-        return receitaComCusto.multiply(BigDecimal.valueOf(100)).divide(receitaItens, 1, RoundingMode.HALF_UP);
+        BigDecimal total = custosApuradosPorPedido ? valorMovimentado : receitaItens.abs();
+        if (total.signum() == 0) return null;
+        BigDecimal conhecido = custosApuradosPorPedido ? valorMovimentadoComCusto : receitaComCusto.abs();
+        return conhecido.multiply(BigDecimal.valueOf(100)).divide(total, 1, RoundingMode.HALF_UP);
     }
 
     /**

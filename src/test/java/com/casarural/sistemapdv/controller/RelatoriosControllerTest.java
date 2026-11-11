@@ -17,4 +17,28 @@ class RelatoriosControllerTest {
             }
         });
     }
+
+    @Test void mostraCoberturaDoValorMovimentadoQuandoHaDevolucaoEVendaSemCusto() throws Exception {
+        JavafxTestSupport.executar(() -> {
+            ResumoVendas resumo = new ResumoVendas();
+            resumo.adicionarCustosDoPedido(new BigDecimal("-100"), new BigDecimal("-100"),
+                    new BigDecimal("-60"), BigDecimal.ZERO, true, false);
+            resumo.adicionarCustosDoPedido(new BigDecimal("200"), BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO, false, true);
+            RelatoriosController controller = new RelatoriosController();
+            Label lucro = new Label(), detalhe = new Label();
+            campo(controller, "lblLucro", lucro);
+            campo(controller, "lblLucroDetalhe", detalhe);
+            controller.mostrarLucro(resumo);
+            assertEquals(com.casarural.sistemapdv.util.Money.format(new BigDecimal("-40")), lucro.getText());
+            assertTrue(detalhe.getText().contains("custo parcial"));
+            assertTrue(detalhe.getText().contains("33,3% do valor movimentado"));
+        });
+    }
+
+    private static void campo(RelatoriosController controller, String nome, Label valor) throws Exception {
+        java.lang.reflect.Field campo = RelatoriosController.class.getDeclaredField(nome);
+        campo.setAccessible(true);
+        campo.set(controller, valor);
+    }
 }

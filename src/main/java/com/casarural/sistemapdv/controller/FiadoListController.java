@@ -1,6 +1,7 @@
 package com.casarural.sistemapdv.controller;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.RecebimentoFiadoPendenteException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.Customer;
 import com.casarural.sistemapdv.model.entities.Order;
@@ -109,6 +110,7 @@ public class FiadoListController implements Initializable {
     private OrderService orderService;
     private BigDecimal dividaAtual = Money.ZERO;
     private boolean recebendo;
+    private boolean conferirRecebimento;
     private ImpressaoVendaService impressaoVendaService = new ImpressaoVendaService();
 
     @Override
@@ -164,6 +166,11 @@ public class FiadoListController implements Initializable {
         colRecPedidos.setCellValueFactory(new PropertyValueFactory<>("pedidos"));
         tableRecebimentos.getSelectionModel().selectedItemProperty().addListener((obs, antes, rec) -> {
             atualizarSegundaVia();
+            if (rec != null && rec.isRecebimentoLegadoAmbiguo()) {
+                btnEstornar.setDisable(true);
+                labelEstornoDica.setText("Recebimento antigo com lançamentos agrupados. É preciso conferência manual para estornar.");
+                return;
+            }
             boolean pode = rec != null && idCaixaAberto != null && idCaixaAberto.equals(rec.getIdCaixa());
             btnEstornar.setDisable(!pode);
             labelEstornoDica.setText(rec != null && !pode
@@ -208,8 +215,8 @@ public class FiadoListController implements Initializable {
         carregarDados();
     }
 
-    private void carregarDados() {
-        if (orderService == null || customer == null) return;
+    private Optional<Integer> carregarDados() {
+        if (orderService == null || customer == null) return Optional.empty();
         int id = customer.getIdCliente();
 
         List<Order> abertas = orderService.findOpenFiadoOrders(id);
@@ -236,7 +243,10 @@ public class FiadoListController implements Initializable {
         labelSituacao.setText(String.format("Situação: %s   |   Limite: %s   |   Disponível para fiado: %s",
                 situacao, Money.format(customer.getLimiteCredito()), Money.format(disponivel)));
 
-        btnPagar.setDisable(!Money.isPositive(dividaAtual));
+        Optional<Integer> pendente = orderService.buscarRecebimentoPendente(id);
+        conferirRecebimento = pendente.isPresent();
+        atualizarBotaoRecebimento();
+        return pendente;
     }
 
     private void mostrarItens(Order pedido, TableView<OrderItem> tabela, Label titulo) {
@@ -255,7 +265,11 @@ public class FiadoListController implements Initializable {
 
     @FXML
     public void onPagarAction() {
-        if (recebendo) return;
+        if (recebendo || customer == null) return;
+        if (conferirRecebimento) {
+            conferirRecebimentoPendente();
+            return;
+        }
         if (customer == null || !Money.isPositive(dividaAtual)) {
             Alerts.showAlert("Aviso", null, "Este cliente não tem dívida de fiado.", Alert.AlertType.WARNING);
             return;
@@ -306,12 +320,20 @@ public class FiadoListController implements Initializable {
             RecebimentoFiado recebimento;
             try {
                 recebimento = orderService.registerPartialPayment(customer.getIdCliente(), valorPago, forma);
+            } catch (ResultadoTransacaoIncertoException | RecebimentoFiadoPendenteException e) {
+                conferirRecebimento = true;
+                log.warn("Recebimento do cliente #{} precisa de conferência", customer.getIdCliente(), e);
+                Alerts.showAlertAndWait("Conferir recebimento", "Confira antes de receber novamente",
+                        e.getMessage() + "\n\nUse o botão Conferir recebimento para atualizar a conta.",
+                        Alert.AlertType.WARNING);
+                return;
             } catch (DbException | IllegalArgumentException e) {
                 Alerts.showAlert("Erro", "Erro ao registrar o pagamento", e.getMessage(), Alert.AlertType.ERROR);
                 return;
             }
 
             // Recebimento confirmado: nem a impressão nem a atualização da tela podem pedir novo pagamento.
+            conferirRecebimento = true;
             campoValorPagamento.clear();
             dividaAtual = recebimento.getDividaDepois();
             customer.setTotalDevendo(dividaAtual);
@@ -333,13 +355,61 @@ public class FiadoListController implements Initializable {
                         "As compras atrasadas foram pagas. O fiado de " + customer.getNomeCliente() + " está liberado.",
                         Alert.AlertType.INFORMATION);
             }
-            Alerts.showAlert("Pagamento registrado", null,
+            Alerts.showAlertAndWait("Pagamento registrado", "Recebimento #" + recebimento.getIdRecebimento(),
                     recebimento.getDividaDepois().signum() == 0 ? "Dívida quitada."
-                            : "Pagamento registrado. Ainda falta " + Money.format(recebimento.getDividaDepois()) + ".",
+                            : "Ainda falta " + Money.format(recebimento.getDividaDepois()) + ".",
                     Alert.AlertType.INFORMATION);
+            confirmarConferencia(recebimento.getIdRecebimento());
         } finally {
             recebendo = false;
-            btnPagar.setDisable(!Money.isPositive(dividaAtual));
+            atualizarBotaoRecebimento();
+        }
+    }
+
+    private void atualizarBotaoRecebimento() {
+        btnPagar.setText(conferirRecebimento ? "Conferir recebimento" : "Receber");
+        btnPagar.setDisable(recebendo || (!conferirRecebimento && !Money.isPositive(dividaAtual)));
+    }
+
+    private void conferirRecebimentoPendente() {
+        recebendo = true;
+        atualizarBotaoRecebimento();
+        try {
+            Optional<Integer> pendente = carregarDados();
+            campoValorPagamento.clear();
+            if (pendente.isEmpty()) {
+                Alerts.showAlertAndWait("Conferir recebimento", "Conta atualizada",
+                        "Nenhum recebimento aguarda conferência. Revise o histórico antes de registrar outro pagamento.",
+                        Alert.AlertType.INFORMATION);
+                return;
+            }
+            int id = pendente.get();
+            tableRecebimentos.getItems().stream()
+                    .filter(rec -> Integer.valueOf(id).equals(rec.getIdRecebimento()))
+                    .findFirst().ifPresent(tableRecebimentos.getSelectionModel()::select);
+            if (Alerts.showConfirmation("Conferir recebimento", "O recebimento #" + id + " já foi registrado",
+                    "Confira esse pagamento no histórico. Confirma que tomou ciência do recebimento?")) {
+                confirmarConferencia(id);
+            }
+        } catch (DbException e) {
+            conferirRecebimento = true;
+            Alerts.showAlert("Conferir recebimento", "Não foi possível atualizar a conta",
+                    e.getMessage(), Alert.AlertType.WARNING);
+        } finally {
+            recebendo = false;
+            atualizarBotaoRecebimento();
+        }
+    }
+
+    private void confirmarConferencia(int idRecebimento) {
+        try {
+            orderService.confirmarConferenciaRecebimento(customer.getIdCliente(), idRecebimento);
+            conferirRecebimento = orderService.buscarRecebimentoPendente(customer.getIdCliente()).isPresent();
+        } catch (DbException e) {
+            conferirRecebimento = true;
+            log.warn("Recebimento #{} já registrado. Falha ao concluir a conferência.", idRecebimento, e);
+            Alerts.showAlert("Pagamento registrado", "O recebimento #" + idRecebimento + " já foi salvo",
+                    "Use Conferir recebimento antes de registrar outro pagamento.", Alert.AlertType.WARNING);
         }
     }
 
@@ -451,7 +521,7 @@ public class FiadoListController implements Initializable {
     @FXML
     public void onEstornarAction() {
         Payment rec = tableRecebimentos.getSelectionModel().getSelectedItem();
-        if (rec == null) return;
+        if (rec == null || rec.isRecebimentoLegadoAmbiguo()) return;
         javafx.stage.Window janela = tableRecebimentos.getScene().getWindow();
         if (!PinDialogo.liberar(acesso, janela, "Estornar recebimento", "estornar este recebimento")) return;
 
@@ -459,7 +529,8 @@ public class FiadoListController implements Initializable {
         Optional<String> motivo = Alerts.pedirTexto("Estornar recebimento",
                 "Estornar " + Money.format(rec.getValorPago()) + " (" + nomeDaForma(rec.getMetodo()) + ", " + quando + ")?",
                 "As compras " + rec.getPedidos() + " voltam a dever esse valor.\n"
-                        + "Devolva ao cliente " + Money.format(rec.getValorPago()) + " " + RegraTroca.comoDevolver(rec.getMetodo()) + ".\n\n"
+                        + "Após o sistema confirmar o estorno, devolva " + Money.format(rec.getValorPago()) + " "
+                        + RegraTroca.comoDevolver(rec.getMetodo()) + ".\n\n"
                         + "Por que está estornando?",
                 "Motivo (ex.: valor digitado errado)", "Estornar");
         if (motivo.isEmpty()) return;

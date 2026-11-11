@@ -231,12 +231,12 @@ public class RelatoriosController implements Initializable {
     }
 
     void mostrarLucro(ResumoVendas r) {
-        // Lucro: só das vendas com custo informado; avisa quanto das vendas isso cobre
+        // O resultado usa os valores líquidos; a cobertura mede vendas e devoluções.
         java.math.BigDecimal cobertura = r.getCoberturaCusto();
         if (!r.temReceitaComCusto()) {
             lblLucro.setText("—");
-            lblLucroDetalhe.setText(cobertura == null ? "sem vendas no período"
-                    : "informe o custo dos produtos (Estoque > Editar)");
+            lblLucroDetalhe.setText(r.temItensSemCusto() ? "informe o custo dos produtos (Estoque > Editar)"
+                    : "sem vendas ou devoluções no período");
         } else if (r.getLucroBruto() == null) {
             lblLucro.setText("—");
             lblLucroDetalhe.setText("Não foi possível apurar o desconto de cada venda.");
@@ -244,10 +244,11 @@ public class RelatoriosController implements Initializable {
             lblLucro.setText(Money.format(r.getLucroBruto()));
             String detalheLucro = "margem " + RegraLucro.formatarMargem(r.getMargem());
             if (r.temCustoParcial()) {
-                String percentualCusto = cobertura.signum() == 0 ? "menos de 0,1"
-                        : cobertura.compareTo(java.math.BigDecimal.valueOf(100)) >= 0 ? "mais de 99,9"
-                        : cobertura.stripTrailingZeros().toPlainString().replace('.', ',');
-                detalheLucro += " · custo parcial: " + percentualCusto + "% das vendas têm custo";
+                String detalheCusto = cobertura == null || cobertura.signum() == 0
+                        || cobertura.compareTo(java.math.BigDecimal.valueOf(100)) == 0
+                        ? "há itens sem custo informado"
+                        : cobertura.stripTrailingZeros().toPlainString().replace('.', ',') + "% do valor movimentado tem custo";
+                detalheLucro += " · custo parcial: " + detalheCusto;
             }
             lblLucroDetalhe.setText(detalheLucro);
         }

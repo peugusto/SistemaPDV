@@ -22,6 +22,7 @@ public class Payment {
     private String pedidos;
     private Integer idCaixa;
     private boolean estornado;
+    private boolean recebimentoLegadoAmbiguo;
 
     public Payment(){}
     public Payment(Order order, BigDecimal valorPago, LocalDateTime dataPagamento, PaymentMethod metodo) {
@@ -95,6 +96,15 @@ public class Payment {
 
     public void setEstornado(boolean estornado) {
         this.estornado = estornado;
+    }
+
+    /** Mais de um lançamento antigo agrupado por horário e forma, sem identidade de recebimento. */
+    public boolean isRecebimentoLegadoAmbiguo() {
+        return recebimentoLegadoAmbiguo;
+    }
+
+    public void setRecebimentoLegadoAmbiguo(boolean recebimentoLegadoAmbiguo) {
+        this.recebimentoLegadoAmbiguo = recebimentoLegadoAmbiguo;
     }
 
     public String getPedidos() {

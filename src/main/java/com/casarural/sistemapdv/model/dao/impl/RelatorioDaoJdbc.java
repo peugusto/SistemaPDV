@@ -62,7 +62,9 @@ public class RelatorioDaoJdbc implements RelatorioDao {
             try (PreparedStatement st = conn.prepareStatement(
                     "SELECT p.id_pedido, p.desconto, COALESCE(SUM(p.sinal * i.quantidade * i.preco_unitario), 0) AS receita, " +
                     "COALESCE(SUM(CASE WHEN i.custo_unitario IS NOT NULL THEN p.sinal * i.quantidade * i.preco_unitario END), 0) AS receita_com_custo, " +
-                    "COALESCE(SUM(p.sinal * i.quantidade * i.custo_unitario), 0) AS custo " +
+                    "COALESCE(SUM(p.sinal * i.quantidade * i.custo_unitario), 0) AS custo, " +
+                    "MAX(i.custo_unitario IS NOT NULL) AS tem_itens_com_custo, " +
+                    "MAX(i.custo_unitario IS NULL) AS tem_itens_sem_custo " +
                     "FROM itempedido i JOIN movimento_venda_relatorio p ON ABS(p.id_pedido) = i.id_pedido " +
                     "WHERE p.data_pedido >= ? AND p.data_pedido < ?" + VENDA_VALIDA +
                     "GROUP BY p.id_pedido, p.desconto")) {
@@ -70,7 +72,8 @@ public class RelatorioDaoJdbc implements RelatorioDao {
                 try (ResultSet rs = st.executeQuery()) {
                     while (rs.next()) {
                         r.adicionarCustosDoPedido(rs.getBigDecimal("receita"), rs.getBigDecimal("receita_com_custo"),
-                                rs.getBigDecimal("custo"), rs.getBigDecimal("desconto"));
+                                rs.getBigDecimal("custo"), rs.getBigDecimal("desconto"),
+                                rs.getBoolean("tem_itens_com_custo"), rs.getBoolean("tem_itens_sem_custo"));
                     }
                 }
             }

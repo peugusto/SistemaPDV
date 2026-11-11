@@ -1,6 +1,8 @@
 package com.casarural.sistemapdv.model.dao.impl;
 
 import com.casarural.sistemapdv.db.DbException;
+import com.casarural.sistemapdv.db.RecebimentoFiadoPendenteException;
+import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.model.entities.RecebimentoFiado;
 import com.casarural.sistemapdv.model.entities.enums.PaymentMethod;
 import com.casarural.sistemapdv.util.Money;
@@ -45,7 +47,8 @@ class OrderDaoJdbcRecebimentoTest {
     private static class Banco {
         java.time.Clock relogio = java.time.Clock.fixed(java.time.LocalDateTime.of(2026,10,29,12,0).atZone(java.time.ZoneId.systemDefault()).toInstant(), java.time.ZoneId.systemDefault());
         LocalDateTime abertura = LocalDateTime.of(2026,10,29,8,0);
-        boolean confirmou, caixaAberto = true, falhaLimpeza, semChave, falhaRollback;
+        boolean confirmou, caixaAberto = true, falhaLimpeza, semChave, falhaRollback, perderRespostaCommit;
+        Integer idEmTransacao, idPendente;
         int conexoes, insercoes, rollbacks, falharNaInsercao, resetsAutoCommit;
         final List<Map<String,Object>> pendentes = new ArrayList<>(), gravados = new ArrayList<>();
         final List<Integer> quitados = new ArrayList<>(), produtosConsultados = new ArrayList<>();
@@ -66,11 +69,19 @@ class OrderDaoJdbcRecebimentoTest {
                             if (Boolean.TRUE.equals(a[0])) resetsAutoCommit++;
                             if (Boolean.TRUE.equals(a[0]) && falhaLimpeza) throw new SQLException("Limpeza simulada");
                             return null;
-                        case "commit": confirmou = true; gravados.addAll(pendentes); pendentes.clear(); return null;
+                        case "commit":
+                            confirmou = true;
+                            gravados.addAll(pendentes);
+                            pendentes.clear();
+                            idPendente = idEmTransacao;
+                            idEmTransacao = null;
+                            if (perderRespostaCommit) throw new SQLException("Resposta do commit perdida");
+                            return null;
                         case "rollback":
                             rollbacks++;
                             if (falhaRollback) throw new SQLException("Rollback simulado falhou");
-                            pendentes.clear(); quitados.clear(); return null;
+                            pendentes.clear(); quitados.clear(); idEmTransacao = null; return null;
+                        case "abort": return null;
                         case "close": return null;
                         default: throw new AssertionError("Connection inesperada: " + m.getName());
                     }
@@ -92,6 +103,9 @@ class OrderDaoJdbcRecebimentoTest {
                         return result(List.of(row("id_cliente", 9, "nome_cliente", "Maria da Silva", "telefone", "11987654321")));
                     }
                     if (sql.contains("FROM caixa")) return result(caixaAberto ? List.of(row("1", 22, "aberto_em", Timestamp.valueOf(abertura))) : List.of());
+                    if (sql.contains("FROM recebimento_fiado_pendente")) {
+                        return result(idPendente == null ? List.of() : List.of(row("1", idPendente)));
+                    }
                     if (sql.contains("FROM pedido WHERE")) {
                         assertTrue(sql.contains("ORDER BY data_pedido, id_pedido FOR UPDATE"));
                         return result(compras);
@@ -117,6 +131,11 @@ class OrderDaoJdbcRecebimentoTest {
                     } else if (sql.startsWith("UPDATE pedido")) quitados.add((Integer) parametros.get(1));
                     else if (sql.startsWith("UPDATE pagamento SET id_recebimento")) {
                         for(Map<String,Object> linha:pendentes)if(Objects.equals(linha.get("id"),parametros.get(2)))linha.put("recebimento",parametros.get(1));
+                    } else if (sql.startsWith("INSERT INTO recebimento_fiado_pendente")) {
+                        idEmTransacao = (Integer) parametros.get(2);
+                    } else if (sql.startsWith("DELETE FROM recebimento_fiado_pendente")) {
+                        if (!Objects.equals(idPendente, parametros.get(2))) return 0;
+                        idPendente = null;
                     }
                     else throw new AssertionError("Update inesperado: " + sql);
                     return 1;
@@ -217,6 +236,25 @@ class OrderDaoJdbcRecebimentoTest {
         assertFalse(banco.confirmou);
         assertEquals(0, banco.resetsAutoCommit);
         assertEquals(1, erro.getCause().getSuppressed().length);
+    }
+
+    @Test
+    void commitSemRespostaBloqueiaNovaTentativaAteConferirOMesmoRecebimento() {
+        Banco banco = new Banco();
+        banco.perderRespostaCommit = true;
+        assertThrows(ResultadoTransacaoIncertoException.class,
+                () -> banco.dao().registerPartialPayment(9, r("20"), PaymentMethod.PIX));
+        assertEquals(List.of(r("20")), banco.gravados.stream().map(pg -> pg.get("valor")).collect(java.util.stream.Collectors.toList()));
+        OrderDaoJdbc novaInstancia = banco.dao();
+        assertEquals(Optional.of(900), novaInstancia.buscarRecebimentoPendente(9));
+        novaInstancia.confirmarConferenciaRecebimento(9, 899);
+        assertThrows(RecebimentoFiadoPendenteException.class,
+                () -> novaInstancia.registerPartialPayment(9, r("20"), PaymentMethod.PIX));
+        assertEquals(1, banco.insercoes);
+        novaInstancia.confirmarConferenciaRecebimento(9, 900);
+        assertEquals(Optional.empty(), novaInstancia.buscarRecebimentoPendente(9));
+        banco.perderRespostaCommit = false;
+        assertEquals(901, novaInstancia.registerPartialPayment(9, r("10"), PaymentMethod.PIX).getIdRecebimento());
     }
 
     @Test

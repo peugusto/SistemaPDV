@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.ProdutoIndisponivelException;
 import com.casarural.sistemapdv.db.ResultadoTransacaoIncertoException;
 import com.casarural.sistemapdv.db.TrocaDesatualizadaException;
 import com.casarural.sistemapdv.model.entities.Customer;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PaymentController implements Initializable {
@@ -66,6 +68,8 @@ public class PaymentController implements Initializable {
     private boolean vendaConcluida = false;
     private boolean vendaPendenteConferencia = false;
     private boolean trocaDesatualizada;
+    private Set<Integer> produtosIndisponiveis = Set.of();
+    Set<Integer> getProdutosIndisponiveis() { return produtosIndisponiveis; }
     private boolean houveLancamento;
     public boolean isHouveLancamento(){return houveLancamento;}
     public javafx.stage.Stage getJanela(){return (javafx.stage.Stage)btnCancelar.getScene().getWindow();}
@@ -89,6 +93,10 @@ public class PaymentController implements Initializable {
     /** Impede que o PDV transforme uma tentativa de resultado desconhecido em nova venda. */
     public boolean isVendaPendenteConferencia() {
         return vendaPendenteConferencia;
+    }
+
+    private boolean pagamentoBloqueado() {
+        return vendaConcluida || vendaPendenteConferencia || trocaDesatualizada || !produtosIndisponiveis.isEmpty();
     }
 
     public void setDadosVenda(Order order, OrderService orderService, CustomerService customerService) {
@@ -212,7 +220,7 @@ public class PaymentController implements Initializable {
     // ===================== Desconto (sempre com PIN) =====================
 
     private void onDesconto() {
-        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
+        if (pagamentoBloqueado()) return;
         if (order.temPagamentoNovo()) {
             Alerts.showAlert("Desconto", null,
                     "O desconto é dado antes de lançar os pagamentos. Clique em Voltar (Esc) e finalize a venda de novo.",
@@ -323,7 +331,7 @@ public class PaymentController implements Initializable {
     }
 
     private void realizarBaixaAutomatica() {
-        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
+        if (pagamentoBloqueado()) return;
         if (Money.isPositive(saldoRestante)) {
             if (txtValorRecebido.getText() == null || txtValorRecebido.getText().isBlank()) {
                 processarPagamento(saldoRestante);
@@ -336,7 +344,7 @@ public class PaymentController implements Initializable {
     }
 
     private void processarPagamento(BigDecimal valor) {
-        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
+        if (pagamentoBloqueado()) return;
         if (!Money.isPositive(saldoRestante)) {
             salvarVenda();
             return;
@@ -512,7 +520,7 @@ public class PaymentController implements Initializable {
     }
 
     private void salvarVenda() {
-        if (vendaConcluida || vendaPendenteConferencia || trocaDesatualizada) return;
+        if (pagamentoBloqueado()) return;
         BigDecimal totalFiado = totalPorMetodo(PaymentMethod.FIADO);
         if (totalFiado.compareTo(order.getTotalPermitidoNoFiado()) > 0) {
             String lista = order.getItensSemFiado().stream()
@@ -538,6 +546,21 @@ public class PaymentController implements Initializable {
             }
 
             orderService.insert(order);
+        } catch (ProdutoIndisponivelException e) {
+            produtosIndisponiveis = e.getIds();
+            btnConfirmar.setDisable(true);
+            btnDesconto.setDisable(true);
+            txtValorRecebido.setDisable(true);
+            String nomes = order.getItemPedido().stream()
+                    .filter(item -> produtosIndisponiveis.contains(item.getProduto().getIdProduto()))
+                    .map(OrderItem::getNomeProduto).distinct().collect(Collectors.joining(", "));
+            boolean recebeu = order.getPagamentos().stream()
+                    .anyMatch(p -> !p.isCredito() && p.getMetodo() != PaymentMethod.FIADO);
+            String aviso = recebeu ? "\n\nSe já recebeu algum valor, confira e acerte o pagamento antes de cobrar novamente." : "";
+            Alerts.showAlertAndWait("Produtos indisponíveis", nomes,
+                    "A venda não foi gravada. Volte ao carrinho para revisar os itens." + aviso, Alert.AlertType.WARNING);
+            fecharJanela();
+            return;
         } catch (com.casarural.sistemapdv.db.VendaSuspensaIndisponivelException e) {
             vendaPendenteConferencia=true;
             btnConfirmar.setDisable(true);btnDesconto.setDisable(true);txtValorRecebido.setDisable(true);

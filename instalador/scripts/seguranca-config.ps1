@@ -31,6 +31,18 @@ function Nova-AclPdv([switch]$Pasta, [switch]$LeituraUsuarios,
     return $acl
 }
 
+function Aplicar-AclPdv([IO.FileSystemInfo]$Item, [Security.AccessControl.FileSystemSecurity]$Acl) {
+    $atual = $Item.GetAccessControl()
+    $secao = [Security.AccessControl.AccessControlSections]::Access
+    $atual.SetSecurityDescriptorSddlForm($Acl.GetSecurityDescriptorSddlForm($secao), $secao)
+    $tipoSid = [Security.Principal.SecurityIdentifier]
+    $proprietario = $Acl.GetOwner($tipoSid)
+    if ($atual.GetOwner($tipoSid).Value -ne $proprietario.Value) {
+        $atual.SetOwner($proprietario)
+    }
+    $Item.SetAccessControl($atual)
+}
+
 function Proteger-PastaPdv([string]$Caminho, [switch]$LeituraUsuarios,
                           [string]$Proprietario = 'S-1-5-32-544') {
     Confirmar-CaminhoPdv $Caminho
@@ -38,7 +50,7 @@ function Proteger-PastaPdv([string]$Caminho, [switch]$LeituraUsuarios,
     $pasta = New-Object IO.DirectoryInfo ([IO.Path]::GetFullPath($Caminho))
     # Create(ACL) evita uma janela de criacao com permissoes herdadas.
     $pasta.Create($acl)
-    $pasta.SetAccessControl($acl) # Tambem remove ACEs explicitas antigas e troca o proprietario.
+    Aplicar-AclPdv $pasta $acl
 }
 
 function Preparar-ArquivoPdv([string]$Caminho, [switch]$LeituraUsuarios,
@@ -47,11 +59,21 @@ function Preparar-ArquivoPdv([string]$Caminho, [switch]$LeituraUsuarios,
     $acl = Nova-AclPdv -LeituraUsuarios:$LeituraUsuarios -Proprietario $Proprietario
     $arquivo = New-Object IO.FileInfo ([IO.Path]::GetFullPath($Caminho))
     if ($arquivo.Exists) {
-        $arquivo.SetAccessControl($acl)
+        Aplicar-AclPdv $arquivo $acl
     } else {
         $stream = New-Object IO.FileStream($arquivo.FullName, [IO.FileMode]::CreateNew,
             [Security.AccessControl.FileSystemRights]::Write, [IO.FileShare]::None, 4096,
             [IO.FileOptions]::None, $acl)
         $stream.Dispose()
+    }
+}
+
+function Proteger-CopiasBackupPdv([string]$Caminho, [string]$Proprietario = 'S-1-5-32-544') {
+    Proteger-PastaPdv $Caminho -Proprietario $Proprietario
+    foreach ($arquivo in (Get-ChildItem -LiteralPath $Caminho -File -Force)) {
+        if ($arquivo.Name -like 'casarural_*.sql' -or $arquivo.Name -like 'casarural_*.zip' -or
+                $arquivo.Name -in @('backup.log', 'ULTIMO_BACKUP_FALHOU.txt')) {
+            Preparar-ArquivoPdv $arquivo.FullName -Proprietario $Proprietario
+        }
     }
 }

@@ -123,6 +123,20 @@ Passo "Criando o SistemaPDV.exe (jpackage)"
     --dest $alvo
 Conferir "jpackage"
 
+Passo "Validando a dependencia de impressao no pacote"
+$javaEmpacotado = Join-Path $pacote "runtime\bin\java.exe"
+$modulosEmpacotados = Join-Path $pacote "app\mods"
+$runtimeEmpacotado = & $javaEmpacotado --list-modules
+Conferir "Modulos do runtime empacotado"
+if (-not ($runtimeEmpacotado -match '^java\.desktop(@|$)')) {
+    throw "O runtime empacotado nao inclui java.desktop, necessario para imprimir."
+}
+$descritorEmpacotado = & $javaEmpacotado --module-path $modulosEmpacotados --describe-module com.casarural.sistemapdv
+Conferir "Descritor do JAR empacotado"
+if ($descritorEmpacotado -notcontains 'requires java.desktop') {
+    throw "O JAR empacotado nao declara requires java.desktop. Gere o pacote novamente a partir do codigo-fonte."
+}
+
 # ---------------- 5. MySQL e scripts ----------------
 Passo "Juntando o MySQL (sem arquivos de depuracao)"
 # Fica de fora: simbolos de depuracao, arquivos para programar em C, o dicionario japones (mecab,
@@ -141,6 +155,7 @@ $instalacao = Join-Path $pacote "instalacao"
 New-Item -ItemType Directory -Force -Path $instalacao | Out-Null
 Copy-Item (Join-Path $PSScriptRoot "scripts\configurar-banco.ps1") $instalacao
 Copy-Item (Join-Path $PSScriptRoot "scripts\seguranca-config.ps1") $instalacao
+Copy-Item (Join-Path $PSScriptRoot "scripts\auditoria-operacao.sql") $instalacao
 Copy-Item (Join-Path $PSScriptRoot "scripts\remover.ps1") $instalacao
 Copy-Item (Join-Path $PSScriptRoot "LEIA-ME.txt") $instalacao
 Copy-Item (Join-Path $raiz "config\backup\backup-casarural.ps1") $instalacao

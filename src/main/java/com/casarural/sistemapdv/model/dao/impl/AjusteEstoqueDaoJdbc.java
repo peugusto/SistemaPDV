@@ -13,7 +13,7 @@ public class AjusteEstoqueDaoJdbc implements AjusteEstoqueDao {
     public AjusteEstoqueDaoJdbc(Supplier<Connection> conexoes){this.conexoes=Objects.requireNonNull(conexoes);}
     @Override public RegistroAjusteEstoque registrar(AjusteEstoque a){
         Objects.requireNonNull(a,"Ajuste não informado.");
-        return TransacaoEstoque.executar(conexoes,"registrar ajuste de estoque",c->{
+        return TransacaoJdbc.executar(conexoes,"registrar ajuste de estoque",c->{
             String nome,codigo;int saldo;long repor;boolean controla;
             try(PreparedStatement st=c.prepareStatement("SELECT nome_produto,cod_barras,estoque,quantidade_repor,controla_estoque,tipo_venda FROM produto WHERE id_produto=? FOR UPDATE")){
                 st.setInt(1,a.produto);try(ResultSet rs=st.executeQuery()){

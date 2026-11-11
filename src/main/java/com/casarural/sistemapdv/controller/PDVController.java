@@ -1,5 +1,6 @@
 package com.casarural.sistemapdv.controller;
 
+import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.OrderItem;
 import com.casarural.sistemapdv.model.entities.Product;
@@ -24,9 +25,12 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PDVController implements Initializable {
 
@@ -34,6 +38,7 @@ public class PDVController implements Initializable {
 
     private ProductService productService;
     private ObservableList<OrderItem> itensVenda = FXCollections.observableArrayList();
+    private final Set<Integer> produtosIndisponiveis = new HashSet<>();
     /** Troca em andamento: a venda que vai ser substituída (null = venda normal). */
     private VendaParaDesfazer trocaDe;
     /** Na troca, o estoque que a venda antiga devolve ao ser cancelada (id do produto -> quantidade). */
@@ -96,11 +101,13 @@ public class PDVController implements Initializable {
                     lQtd.setPrefWidth(40);
 
                     // Produto que não pode ir para o fiado aparece marcado no carrinho
+                    boolean indisponivel = produtosIndisponiveis.contains(item.getProduto().getIdProduto());
                     Label lDesc = new Label(item.getProduto().getNomeProduto()
                             + (item.getProduto().isPesavel() ? "  (balança)" : "")
-                            + (item.getProduto().isPermiteFiado() ? "" : "  [sem fiado]"));
+                            + (indisponivel ? "  [Indisponível]" : item.getProduto().isPermiteFiado() ? "" : "  [sem fiado]"));
                     lDesc.setPrefWidth(200);
                     lDesc.setStyle("-fx-wrap-text: true;");
+                    if (indisponivel) lDesc.getStyleClass().add("texto-perigo");
 
                     Label lVal = new Label(Money.formatPlain(item.getPrecoUnitario()));
                     lVal.setPrefWidth(70);
@@ -352,10 +359,11 @@ public class PDVController implements Initializable {
         this.aoConcluirTroca = aoConcluir;
         estoqueDaTroca.clear();
         estoqueDaTroca.putAll(devolucoes);
+        produtosIndisponiveis.clear();
         itensVenda.clear();
         for (OrderItem i : venda.getItens()) {
             itensVenda.add(new OrderItem(i.getProduto(), i.getQtd(), i.getPrecoUnitario()));
-
+            if (!i.getProduto().isAtivo()) produtosIndisponiveis.add(i.getProduto().getIdProduto());
         }
         atualizarTotalVenda();
         labelUltimoItem.setText("TROCA DA VENDA #" + venda.getIdPedido());
@@ -380,8 +388,16 @@ public class PDVController implements Initializable {
         if(pagamentoRetido!=null){
             pagamento[0]=pagamentoRetido;continuarPagamento(pagamentoRetido);
         }else{
+        if (!conferirDisponibilidade()) return;
         if(rascunho!=null&&rascunho.estado!=Estado.EM_PAGAMENTO&&!gravarSuspensa(Estado.EM_PAGAMENTO,rascunho.identificacao))return;
         pagamento[0]=abrirPagamento(prepararPedido());
+        }
+
+        if (pagamento[0] != null && !pagamento[0].getProdutosIndisponiveis().isEmpty()) {
+            marcarIndisponiveis(pagamento[0].getProdutosIndisponiveis());
+            pagamentoRetido = null;
+            if (rascunho != null) gravarSuspensa(Estado.EM_USO, rascunho.identificacao);
+            return;
         }
 
         if (pagamento[0] != null && pagamento[0].isTrocaDesatualizada()) {
@@ -416,6 +432,29 @@ public class PDVController implements Initializable {
         } finally {finalizando=false;atualizarAcoes();if(podeEditar())campoCodigoProduto.requestFocus();}
     }
 
+    private Set<Integer> idsDoCarrinho() {
+        return itensVenda.stream().map(item -> item.getProduto().getIdProduto()).collect(Collectors.toSet());
+    }
+
+    private boolean conferirDisponibilidade() {
+        try {
+            marcarIndisponiveis(productService.buscarIndisponiveis(idsDoCarrinho()));
+            return produtosIndisponiveis.isEmpty();
+        } catch (DbException e) {
+            log.warn("Não foi possível conferir os produtos do carrinho", e);
+            Alerts.showAlert("Confira os produtos", null,
+                    "Não foi possível consultar a disponibilidade. Tente conferir novamente.", Alert.AlertType.WARNING);
+            return false;
+        }
+    }
+
+    private void marcarIndisponiveis(Set<Integer> ids) {
+        produtosIndisponiveis.clear();
+        produtosIndisponiveis.addAll(ids);
+        produtosIndisponiveis.retainAll(idsDoCarrinho());
+        listaItens.refresh();
+    }
+
     protected PaymentController abrirPagamento(Order order){
         PaymentController[] pagamento=new PaymentController[1];
         com.casarural.sistemapdv.util.ViewLoader.showView(true,"/com/casarural/sistemapdv/view/FechamentoVenda.fxml","Finalizar Pagamento - Casa Rural",(PaymentController controller)->{
@@ -447,6 +486,7 @@ public class PDVController implements Initializable {
     }
 
     private void atualizarTotalVenda() {
+        produtosIndisponiveis.retainAll(idsDoCarrinho());
         if(!carregando&&rascunho!=null&&rascunho.estado==Estado.EM_USO&&pendente==null&&!rascunhoBloqueado) {
             try{if(!VendaSuspensa.capturar(itensVenda).equals(rascunho.itens))gravarSuspensa(Estado.EM_USO,rascunho.identificacao);}
             catch(IllegalArgumentException e){itensVenda.setAll(copiarItens(ultimoCarrinhoConfirmado));Alerts.showAlert("Carrinho não alterado",null,e.getMessage(),Alert.AlertType.WARNING);}
@@ -469,11 +509,16 @@ public class PDVController implements Initializable {
         botaoAdicionar.setDisable(!edita);botaoBuscar.setDisable(!edita);botaoRemover.setDisable(!edita);botaoLimpar.setDisable(!edita);
         campoCodigoProduto.setDisable(!edita);campoQuantidade.setDisable(!edita);
         botaoFinalizar.setDisable(operando||finalizando||pendente!=null||rascunhoBloqueado||itensVenda.isEmpty());
-        botaoFinalizar.setText(pagamentoRetido==null&&(rascunho==null||rascunho.estado!=Estado.EM_PAGAMENTO)?"Finalizar venda (F1)":"Continuar pagamento (F1)");
+        if (pagamentoRetido != null || (rascunho != null && rascunho.estado == Estado.EM_PAGAMENTO)) {
+            botaoFinalizar.setText("Continuar pagamento (F1)");
+        } else {
+            botaoFinalizar.setText(produtosIndisponiveis.isEmpty() ? "Finalizar venda (F1)" : "Conferir produtos (F1)");
+        }
         botaoSuspender.setDisable(suspensas==null||trocaDe!=null||operando||finalizando||rascunhoBloqueado||pagamentoRetido!=null||pendente==null&&(itensVenda.isEmpty()||rascunho!=null&&rascunho.estado!=Estado.EM_USO));
         botaoSuspender.setText(pendente==null?"Suspender venda (F3)":"Confirmar salvamento (F3)");
         botaoRetomar.setDisable(suspensas==null||quantidadeSuspensas==0||trocaDe!=null||!edita||rascunho!=null||!itensVenda.isEmpty());
         String status=rascunho==null?"":"Carrinho retomado: "+rascunho.getIdentificacao();
+        if (!produtosIndisponiveis.isEmpty()) status = "Remova os produtos indisponíveis ou confira novamente com F1.";
         if(pendente!=null)status="Salvamento pendente. Confirme a mesma tentativa antes de continuar.";
         if(rascunhoBloqueado)status="Carrinho indisponível. Feche esta tela e confira a lista.";
         if(pagamentoRetido!=null)status="Há pagamentos lançados. Use Continuar pagamento; o carrinho não pode ser suspenso.";
@@ -523,6 +568,7 @@ public class PDVController implements Initializable {
         }finally{atualizarContagem();atualizarAcoes();}
     }
     void carregarRetomada(VendasSuspensasDialogo.Resultado resultado){
+        produtosIndisponiveis.clear();
         rascunho=resultado.venda;carregando=true;itensVenda.clear();
         for(OrderItem i:resultado.itens)itensVenda.add(new OrderItem(i.getProduto(),i.getQtd(),i.getPrecoUnitario()));
         ultimoCarrinhoConfirmado=copiarItens(itensVenda);atualizarTotalVenda();carregando=false;labelUltimoItem.setText("VENDA RETOMADA");campoCodigoProduto.requestFocus();

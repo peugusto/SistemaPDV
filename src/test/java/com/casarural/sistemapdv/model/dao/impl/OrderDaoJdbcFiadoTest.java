@@ -31,6 +31,7 @@ class OrderDaoJdbcFiadoTest {
         BigDecimal limite = r("100"); String status = "DISPONIVEL"; boolean existe = true;
         final List<Compra> compras = new ArrayList<>();
         final Map<Integer, Boolean> permissoes = new TreeMap<>(Map.of(1, true, 2, false));
+        final Set<Integer> indisponiveis = new HashSet<>();
         final List<String> consultas = new ArrayList<>(), escritas = new ArrayList<>();
         int commits, rollbacks;
         OrderDaoJdbc dao() { return new OrderDaoJdbc(this::conectar, RELOGIO); }
@@ -57,6 +58,10 @@ class OrderDaoJdbcFiadoTest {
                 if (!n.equals("executeQuery")) throw new AssertionError(n);
                 consultas.add(sql);
                 if (sql.startsWith("SELECT id_caixa")) return rows(List.of(Map.of("1", 1, "aberto_em", Timestamp.valueOf(AGORA.minusHours(4)))));
+                if (sql.startsWith("SELECT id_produto FROM produto WHERE id_produto IN")) {
+                    return rows(params.values().stream().filter(id -> permissoes.containsKey(id) && !indisponiveis.contains(id))
+                            .map(id -> Map.<String, Object>of("id_produto", id)).collect(java.util.stream.Collectors.toList()));
+                }
                 if (sql.startsWith("SELECT id_cliente, limite")) return rows(existe ? List.of(Map.of("limite_credito", limite, "situacao_fiado", status)) : List.of());
                 if (sql.startsWith("SELECT id_pedido, data_pedido")) {
                     List<Map<String, Object>> resultado = new ArrayList<>();
@@ -137,6 +142,18 @@ class OrderDaoJdbcFiadoTest {
         Banco b = new Banco(); b.compras.add(new Compra(10, "80", "0", 0)); b.compras.add(new Compra(11, "20", "0", 1));
         Order o = venda("90"); referenciarTroca(o); b.recusa(o, "Limite de crédito");
     }
+    @Test void produtoDesativadoEmTrocaNaoCancelaVendaOriginal() {
+        Banco b = new Banco();
+        Order pedido = venda("80");
+        referenciarTroca(pedido);
+        b.indisponiveis.add(1);
+
+        com.casarural.sistemapdv.db.ProdutoIndisponivelException erro = assertThrows(
+                com.casarural.sistemapdv.db.ProdutoIndisponivelException.class, () -> b.dao().insert(pedido));
+        assertEquals(Set.of(1), erro.getIds());
+        assertTrue(b.escritas.isEmpty());
+        assertEquals(0, b.commits);
+    }
     static void referenciarTroca(Order o) {
         VendaParaDesfazer v = new VendaParaDesfazer(); v.setIdPedido(10); v.setIdCliente(9);
         v.setStatus(OrderStatus.FIADO); v.setDataPedido(AGORA.minusHours(1));
@@ -158,6 +175,8 @@ class OrderDaoJdbcFiadoTest {
     @Test void vendaAVistaContinuaPermitidaParaClienteBloqueado() {
         Banco b = new Banco(); b.status = "BLOQUEADO"; Order o = venda("80");
         o.setStatus(OrderStatus.PAGO); o.getPagamentos().clear(); o.getPagamentos().add(new Order.PaymentSlice(r("80"), PaymentMethod.PIX));
-        b.dao().insert(o); assertEquals(1, b.commits); assertEquals(1, b.consultas.size());
+        b.dao().insert(o);
+        assertEquals(1, b.commits);
+        assertFalse(b.consultas.stream().anyMatch(sql -> sql.contains("FROM cliente")));
     }
 }

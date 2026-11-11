@@ -87,6 +87,14 @@ public class OrderService {
         return dao.registerPartialPayment(idCliente, valorPago, metodo);
     }
 
+    public Optional<Integer> buscarRecebimentoPendente(int idCliente) {
+        return dao.buscarRecebimentoPendente(idCliente);
+    }
+
+    public void confirmarConferenciaRecebimento(int idCliente, int idRecebimento) {
+        dao.confirmarConferenciaRecebimento(idCliente, idRecebimento);
+    }
+
     public List<Order> findPaidOrdersByCustomer(Integer idCliente) {
         List<Order> orders = dao.findPaidOrdersByCustomer(idCliente);
         for (Order order : orders) {

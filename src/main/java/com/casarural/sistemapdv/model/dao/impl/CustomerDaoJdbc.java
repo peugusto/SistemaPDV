@@ -4,9 +4,12 @@ import com.casarural.sistemapdv.db.DB;
 import com.casarural.sistemapdv.db.DbException;
 import com.casarural.sistemapdv.model.dao.CustomerDao;
 import com.casarural.sistemapdv.model.entities.Customer;
+import com.casarural.sistemapdv.model.entities.Order;
 import com.casarural.sistemapdv.model.entities.RegraFiado;
 import com.casarural.sistemapdv.model.entities.enums.CustomerStatus;
+import com.casarural.sistemapdv.util.Money;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,30 +23,31 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public void insert(Customer obj) {
-        try (Connection conn = conexoes.get();
-             PreparedStatement st = conn.prepareStatement(
-                     "INSERT INTO cliente (nome_cliente, limite_credito, situacao_fiado, telefone) VALUES (?, ?, ?, ?)",
-                     Statement.RETURN_GENERATED_KEYS)) {
+        int idCliente = TransacaoJdbc.executar(conexoes, "cadastrar o cliente", conn -> {
+            try (PreparedStatement st = conn.prepareStatement(
+                    "INSERT INTO cliente (nome_cliente, limite_credito, situacao_fiado, telefone) VALUES (?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                st.setString(1, obj.getNomeCliente());
+                st.setBigDecimal(2, obj.getLimiteCredito());
+                st.setString(3, obj.getSituacaoFiado().toString());
+                st.setString(4, obj.getTelefone());
 
-            st.setString(1, obj.getNomeCliente());
-            st.setBigDecimal(2, obj.getLimiteCredito());
-            st.setString(3, obj.getSituacaoFiado().toString());
-            st.setString(4, obj.getTelefone());
-
-            int rowsAffected = st.executeUpdate();
-
-            if (rowsAffected > 0) {
-                try (ResultSet rs = st.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        obj.setIdCliente(rs.getInt(1));
-                    }
+                if (st.executeUpdate() != 1) {
+                    throw new DbException("Não foi possível inserir o cliente.");
                 }
-            } else {
-                throw new DbException("Erro inesperado! Nenhum cliente inserido.");
+                try (ResultSet rs = st.getGeneratedKeys()) {
+                    if (!rs.next()) {
+                        throw new DbException("Não foi possível identificar o novo cliente.");
+                    }
+                    int id = rs.getInt(1);
+                    if (id <= 0) {
+                        throw new DbException("O banco retornou um identificador de cliente inválido.");
+                    }
+                    return id;
+                }
             }
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
-        }
+        });
+        obj.setIdCliente(idCliente);
     }
 
     @Override
@@ -97,25 +101,38 @@ public class CustomerDaoJdbc implements CustomerDao {
 
     @Override
     public void update(Customer obj) {
-        Object[] original=obj.getEstadoOriginal();
-        try (Connection conn = conexoes.get();
-             PreparedStatement st = conn.prepareStatement(
-                     "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ?, telefone = ? WHERE id_cliente = ? "
-                             + "AND limite_credito <=> ? AND situacao_fiado <=> ?")) {
-
-            st.setString(1, obj.getNomeCliente());
-            st.setBigDecimal(2, obj.getLimiteCredito());
-            st.setString(3, obj.getSituacaoFiado().toString());
-            st.setString(4, obj.getTelefone());
-            st.setInt(5, obj.getIdCliente());
-            st.setObject(6,original[0]);
-            st.setString(7,original[1] == null ? null : original[1].toString());
-            if (st.executeUpdate() != 1) throw new DbException(
-                    "O limite ou o bloqueio deste cliente mudou. Reabra a edição para conferir os dados antes de salvar.");
-            obj.registrarEstadoOriginal();
-        } catch (SQLException e) {
-            throw new DbException(e.getMessage(), e);
-        }
+        Object[] original = obj.getEstadoOriginal();
+        BigDecimal dividaAtual = TransacaoJdbc.executar(conexoes, "atualizar o cliente", conn -> {
+            // Mesmo bloqueio de cliente que uma venda ou um recebimento no fiado usa.
+            try (PreparedStatement st = conn.prepareStatement("SELECT id_cliente FROM cliente WHERE id_cliente = ? "
+                    + "AND limite_credito <=> ? AND situacao_fiado <=> ? FOR UPDATE")) {
+                st.setInt(1, obj.getIdCliente());
+                st.setObject(2, original[0]);
+                st.setString(3, original[1] == null ? null : original[1].toString());
+                try (ResultSet rs = st.executeQuery()) {
+                    if (!rs.next()) throw new DbException(
+                            "O limite ou o bloqueio deste cliente mudou. Reabra a edição para conferir os dados antes de salvar.");
+                }
+            }
+            BigDecimal divida = OrderDaoJdbc.carregarFiadosEmAberto(conn, obj.getIdCliente()).stream()
+                    .map(Order::getFalta).reduce(Money.ZERO, BigDecimal::add);
+            if (obj.getLimiteCredito().compareTo(divida) < 0) {
+                throw new DbException("O limite de crédito (" + Money.format(obj.getLimiteCredito())
+                        + ") não pode ser menor que a dívida atual (" + Money.format(divida) + ").");
+            }
+            try (PreparedStatement st = conn.prepareStatement(
+                    "UPDATE cliente SET nome_cliente = ?, limite_credito = ?, situacao_fiado = ?, telefone = ? WHERE id_cliente = ?")) {
+                st.setString(1, obj.getNomeCliente());
+                st.setBigDecimal(2, obj.getLimiteCredito());
+                st.setString(3, obj.getSituacaoFiado().toString());
+                st.setString(4, obj.getTelefone());
+                st.setInt(5, obj.getIdCliente());
+                st.executeUpdate();
+            }
+            return divida;
+        });
+        obj.setTotalDevendo(dividaAtual);
+        obj.registrarEstadoOriginal();
     }
 
     @Override
